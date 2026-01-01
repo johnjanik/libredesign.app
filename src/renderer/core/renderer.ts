@@ -252,9 +252,72 @@ export class Renderer extends EventEmitter<RendererEvents> {
       return;
     }
 
-    // Render page and its children
+    // Get page properties
+    const pageData = page as { backgroundColor?: RGBA; opacity?: number };
+    const bgColor = pageData.backgroundColor ?? { r: 0.102, g: 0.102, b: 0.102, a: 1 };
+    const pageOpacity = pageData.opacity ?? 1;
+
+    // If page has transparency, show grid underneath
+    if (pageOpacity < 1) {
+      this.renderTransparencyGrid();
+    }
+
+    // Render page background with its color and opacity
+    this.renderPageBackground(bgColor, pageOpacity);
+
+    // Render page children
     const viewProjection = this.viewport.getViewProjectionMatrix();
-    this.renderNode(pageId, identity(), viewProjection);
+    const childIds = this.sceneGraph.getChildIds(pageId);
+    for (const childId of childIds) {
+      this.renderNode(childId, identity(), viewProjection);
+    }
+  }
+
+  /**
+   * Render the page background color.
+   */
+  private renderPageBackground(color: RGBA, opacity: number): void {
+    const gl = this.ctx.gl;
+    const viewProjection = this.viewport.getViewProjectionMatrix();
+
+    // Get visible world bounds
+    const bounds = this.viewport.getVisibleBounds();
+
+    // Create fullscreen quad covering the visible area
+    const vertices = new Float32Array([
+      bounds.minX, bounds.minY,
+      bounds.maxX, bounds.minY,
+      bounds.maxX, bounds.maxY,
+      bounds.minX, bounds.maxY,
+    ]);
+    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+
+    // Use fill shader
+    const shader = this.shaders.use('fill');
+
+    // Upload geometry
+    this.ctx.bindVertexArray(this.fillVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
+
+    // Enable blending for transparency
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Set uniforms
+    this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+    this.setMatrixUniform(shader, 'uTransform', identity());
+    gl.uniform4f(shader.uniforms.get('uColor')!, color.r, color.g, color.b, color.a);
+    gl.uniform1f(shader.uniforms.get('uOpacity')!, opacity);
+
+    // Draw
+    this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    this.drawCallCount++;
+    this.triangleCount += 2;
+
+    this.ctx.bindVertexArray(null);
   }
 
   /**
