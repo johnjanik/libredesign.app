@@ -1,0 +1,805 @@
+/**
+ * Android Code Generator
+ *
+ * Generate Kotlin and Java code from scene graph nodes.
+ */
+
+import type { NodeId } from '@core/types/common';
+import type { RGBA } from '@core/types/color';
+import type { SceneGraph } from '@scene/graph/scene-graph';
+import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
+
+/**
+ * Android code generation options
+ */
+export interface AndroidCodeGeneratorOptions {
+  /** Output language (default: 'kotlin') */
+  language?: 'kotlin' | 'java' | undefined;
+  /** Use Jetpack Compose or View system (default: 'compose' for kotlin, 'view' for java) */
+  framework?: 'compose' | 'view' | undefined;
+  /** Package name (default: 'com.designlibre.generated') */
+  packageName?: string | undefined;
+  /** Class name prefix (default: '') */
+  prefix?: string | undefined;
+  /** Include preview annotations (default: true, Compose only) */
+  includePreview?: boolean | undefined;
+  /** Generate colors.xml resource (default: true) */
+  generateColorsXml?: boolean | undefined;
+  /** Include comments (default: true) */
+  includeComments?: boolean | undefined;
+}
+
+/**
+ * Android code generation result
+ */
+export interface AndroidCodeGeneratorResult {
+  /** Generated code */
+  readonly code: string;
+  /** Colors XML content */
+  readonly colorsXml: string;
+  /** Dimens XML content */
+  readonly dimensXml: string;
+  /** File extension */
+  readonly extension: string;
+  /** Blob for download */
+  readonly blob: Blob;
+  /** Download URL */
+  readonly url: string;
+}
+
+/**
+ * Android Code Generator
+ */
+export class AndroidCodeGenerator {
+  private sceneGraph: SceneGraph;
+  private colorIndex = 0;
+  private dimenIndex = 0;
+  private extractedColors: Map<string, { name: string; rgba: RGBA }> = new Map();
+  private extractedDimens: Map<number, string> = new Map();
+
+  constructor(sceneGraph: SceneGraph) {
+    this.sceneGraph = sceneGraph;
+  }
+
+  /**
+   * Generate Android code for a node.
+   */
+  generate(nodeId: NodeId, options: AndroidCodeGeneratorOptions = {}): AndroidCodeGeneratorResult {
+    const language = options.language ?? 'kotlin';
+    const framework = options.framework ?? (language === 'kotlin' ? 'compose' : 'view');
+    const packageName = options.packageName ?? 'com.designlibre.generated';
+    const prefix = options.prefix ?? '';
+    const includePreview = options.includePreview ?? true;
+    const generateColorsXml = options.generateColorsXml ?? true;
+    const includeComments = options.includeComments ?? true;
+
+    // Reset extraction state
+    this.colorIndex = 0;
+    this.dimenIndex = 0;
+    this.extractedColors.clear();
+    this.extractedDimens.clear();
+
+    // Extract design tokens first
+    this.extractDesignTokens(nodeId);
+
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) {
+      throw new Error(`Node not found: ${nodeId}`);
+    }
+
+    let code: string;
+
+    if (language === 'kotlin') {
+      if (framework === 'compose') {
+        code = this.generateCompose(nodeId, packageName, prefix, includePreview, includeComments);
+      } else {
+        code = this.generateKotlinView(nodeId, packageName, prefix, includeComments);
+      }
+    } else {
+      code = this.generateJavaView(nodeId, packageName, prefix, includeComments);
+    }
+
+    const colorsXml = generateColorsXml ? this.generateColorsXml() : '';
+    const dimensXml = this.generateDimensXml();
+
+    const ext = language === 'kotlin' ? 'kt' : 'java';
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    return {
+      code,
+      colorsXml,
+      dimensXml,
+      extension: ext,
+      blob,
+      url,
+    };
+  }
+
+  /**
+   * Download the generated code.
+   */
+  download(
+    nodeId: NodeId,
+    filename?: string,
+    options: AndroidCodeGeneratorOptions = {}
+  ): void {
+    const result = this.generate(nodeId, options);
+    const ext = result.extension;
+    const finalFilename = filename ?? `DesignLibreView.${ext}`;
+
+    const link = document.createElement('a');
+    link.href = result.url;
+    link.download = finalFilename;
+    link.click();
+
+    URL.revokeObjectURL(result.url);
+  }
+
+  // =========================================================================
+  // Jetpack Compose Generation
+  // =========================================================================
+
+  private generateCompose(
+    nodeId: NodeId,
+    packageName: string,
+    prefix: string,
+    includePreview: boolean,
+    includeComments: boolean
+  ): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const funcName = `${prefix}${this.sanitizeName(node.name || node.type)}Screen`;
+
+    const parts: string[] = [];
+
+    // Package and imports
+    parts.push(`package ${packageName}`);
+    parts.push('');
+
+    if (includeComments) {
+      parts.push('// Generated by DesignLibre');
+      parts.push('// Do not modify directly');
+      parts.push('');
+    }
+
+    parts.push('import androidx.compose.foundation.background');
+    parts.push('import androidx.compose.foundation.layout.*');
+    parts.push('import androidx.compose.foundation.shape.RoundedCornerShape');
+    parts.push('import androidx.compose.material3.Text');
+    parts.push('import androidx.compose.runtime.Composable');
+    parts.push('import androidx.compose.ui.Alignment');
+    parts.push('import androidx.compose.ui.Modifier');
+    parts.push('import androidx.compose.ui.draw.clip');
+    parts.push('import androidx.compose.ui.draw.rotate');
+    parts.push('import androidx.compose.ui.draw.shadow');
+    parts.push('import androidx.compose.ui.graphics.Color');
+    parts.push('import androidx.compose.ui.graphics.Path');
+    parts.push('import androidx.compose.ui.graphics.drawscope.Fill');
+    parts.push('import androidx.compose.ui.text.font.FontWeight');
+    parts.push('import androidx.compose.ui.tooling.preview.Preview');
+    parts.push('import androidx.compose.ui.unit.dp');
+    parts.push('import androidx.compose.ui.unit.sp');
+    parts.push('');
+
+    // Color constants
+    parts.push('// Color Palette');
+    for (const [, color] of this.extractedColors) {
+      const hex = this.rgbaToHex(color.rgba);
+      parts.push(`private val ${color.name} = Color(0x${hex})`);
+    }
+    parts.push('');
+
+    // Main composable
+    parts.push('@Composable');
+    parts.push(`fun ${funcName}() {`);
+    parts.push(this.generateComposeBody(nodeId, 4));
+    parts.push('}');
+
+    // Preview
+    if (includePreview) {
+      parts.push('');
+      parts.push('@Preview(showBackground = true)');
+      parts.push('@Composable');
+      parts.push(`fun ${funcName}Preview() {`);
+      parts.push(`    ${funcName}()`);
+      parts.push('}');
+    }
+
+    return parts.join('\n');
+  }
+
+  private generateComposeBody(nodeId: NodeId, indent: number): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    switch (node.type) {
+      case 'FRAME':
+        parts.push(this.generateComposeFrame(node as FrameNodeData, nodeId, indent));
+        break;
+      case 'VECTOR':
+        parts.push(this.generateComposeVector(node as VectorNodeData, indent));
+        break;
+      case 'TEXT':
+        parts.push(this.generateComposeText(node as TextNodeData, indent));
+        break;
+      case 'GROUP':
+        parts.push(this.generateComposeGroup(nodeId, indent));
+        break;
+      default:
+        parts.push(`${spaces}Box {}`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private generateComposeFrame(
+    node: FrameNodeData,
+    nodeId: NodeId,
+    indent: number
+  ): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+    const hasChildren = childIds.length > 0;
+
+    // Determine layout
+    const isHorizontal = node.autoLayout?.mode === 'HORIZONTAL';
+    const isVertical = node.autoLayout?.mode === 'VERTICAL';
+
+    // Build modifier chain
+    const modifiers = this.generateComposeModifiers(node, indent + 4);
+
+    if (hasChildren) {
+      if (isHorizontal) {
+        const spacing = node.autoLayout?.itemSpacing ?? 0;
+        parts.push(`${spaces}Row(`);
+        parts.push(`${spaces}    modifier = ${modifiers},`);
+        parts.push(`${spaces}    horizontalArrangement = Arrangement.spacedBy(${spacing}.dp)`);
+        parts.push(`${spaces}) {`);
+      } else if (isVertical) {
+        const spacing = node.autoLayout?.itemSpacing ?? 0;
+        parts.push(`${spaces}Column(`);
+        parts.push(`${spaces}    modifier = ${modifiers},`);
+        parts.push(`${spaces}    verticalArrangement = Arrangement.spacedBy(${spacing}.dp)`);
+        parts.push(`${spaces}) {`);
+      } else {
+        parts.push(`${spaces}Box(`);
+        parts.push(`${spaces}    modifier = ${modifiers}`);
+        parts.push(`${spaces}) {`);
+      }
+
+      for (const childId of childIds) {
+        parts.push(this.generateComposeBody(childId, indent + 4));
+      }
+
+      parts.push(`${spaces}}`);
+    } else {
+      parts.push(`${spaces}Box(`);
+      parts.push(`${spaces}    modifier = ${modifiers}`);
+      parts.push(`${spaces}) {}`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private generateComposeVector(node: VectorNodeData, indent: number): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    const path = node.vectorPaths?.[0];
+    if (!path) {
+      return `${spaces}Box {}`;
+    }
+
+    parts.push(`${spaces}Canvas(`);
+    parts.push(`${spaces}    modifier = Modifier.size(${node.width}.dp, ${node.height}.dp)`);
+    parts.push(`${spaces}) {`);
+    parts.push(`${spaces}    val path = Path().apply {`);
+
+    for (const cmd of path.commands) {
+      switch (cmd.type) {
+        case 'M':
+          parts.push(`${spaces}        moveTo(${cmd.x}f, ${cmd.y}f)`);
+          break;
+        case 'L':
+          parts.push(`${spaces}        lineTo(${cmd.x}f, ${cmd.y}f)`);
+          break;
+        case 'C':
+          parts.push(`${spaces}        cubicTo(${cmd.x1}f, ${cmd.y1}f, ${cmd.x2}f, ${cmd.y2}f, ${cmd.x}f, ${cmd.y}f)`);
+          break;
+        case 'Z':
+          parts.push(`${spaces}        close()`);
+          break;
+      }
+    }
+
+    parts.push(`${spaces}    }`);
+
+    const fill = this.getFirstSolidFill(node.fills);
+    if (fill) {
+      const colorName = this.getColorName(fill);
+      parts.push(`${spaces}    drawPath(path, color = ${colorName})`);
+    }
+
+    parts.push(`${spaces}}`);
+
+    return parts.join('\n');
+  }
+
+  private generateComposeText(node: TextNodeData, indent: number): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    const firstStyle = node.textStyles[0];
+    const fontSize = firstStyle?.fontSize ?? 16;
+    const fontWeight = this.kotlinFontWeight(firstStyle?.fontWeight ?? 400);
+
+    const fill = this.getFirstSolidFill(node.fills);
+    const colorName = fill ? this.getColorName(fill) : 'Color.Black';
+
+    parts.push(`${spaces}Text(`);
+    parts.push(`${spaces}    text = "${this.escapeString(node.characters)}",`);
+    parts.push(`${spaces}    fontSize = ${fontSize}.sp,`);
+    parts.push(`${spaces}    fontWeight = FontWeight.${fontWeight},`);
+    parts.push(`${spaces}    color = ${colorName}`);
+    parts.push(`${spaces})`);
+
+    return parts.join('\n');
+  }
+
+  private generateComposeGroup(nodeId: NodeId, indent: number): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+
+    parts.push(`${spaces}Box {`);
+    for (const childId of childIds) {
+      parts.push(this.generateComposeBody(childId, indent + 4));
+    }
+    parts.push(`${spaces}}`);
+
+    return parts.join('\n');
+  }
+
+  private generateComposeModifiers(node: NodeData, indent: number): string {
+    const parts: string[] = ['Modifier'];
+
+    // Size
+    if ('width' in node && 'height' in node) {
+      const n = node as { width: number; height: number };
+      parts.push(`.size(${n.width}.dp, ${n.height}.dp)`);
+    }
+
+    // Background
+    if ('fills' in node) {
+      const fill = this.getFirstSolidFill((node as FrameNodeData).fills);
+      if (fill) {
+        const colorName = this.getColorName(fill);
+        parts.push(`.background(${colorName})`);
+      }
+    }
+
+    // Corner radius
+    if ('cornerRadius' in node) {
+      const radius = (node as { cornerRadius: number }).cornerRadius;
+      if (radius > 0) {
+        parts.push(`.clip(RoundedCornerShape(${radius}.dp))`);
+      }
+    }
+
+    // Rotation
+    if ('rotation' in node) {
+      const rotation = (node as { rotation: number }).rotation;
+      if (rotation && rotation !== 0) {
+        parts.push(`.rotate(${rotation}f)`);
+      }
+    }
+
+    // Shadow
+    if ('effects' in node) {
+      const effects = (node as { effects: readonly unknown[] }).effects ?? [];
+      for (const effect of effects) {
+        const e = effect as { type: string; visible?: boolean; color?: RGBA; radius?: number };
+        if (e.type === 'DROP_SHADOW' && e.visible !== false) {
+          parts.push(`.shadow(elevation = ${e.radius ?? 4}.dp)`);
+          break;
+        }
+      }
+    }
+
+    return parts.join('\n' + ' '.repeat(indent));
+  }
+
+  // =========================================================================
+  // Kotlin View Generation
+  // =========================================================================
+
+  private generateKotlinView(
+    nodeId: NodeId,
+    packageName: string,
+    prefix: string,
+    includeComments: boolean
+  ): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const className = `${prefix}${this.sanitizeName(node.name || node.type)}View`;
+
+    const parts: string[] = [];
+
+    parts.push(`package ${packageName}`);
+    parts.push('');
+
+    if (includeComments) {
+      parts.push('// Generated by DesignLibre');
+      parts.push('// Do not modify directly');
+      parts.push('');
+    }
+
+    parts.push('import android.content.Context');
+    parts.push('import android.graphics.Color');
+    parts.push('import android.util.AttributeSet');
+    parts.push('import android.view.View');
+    parts.push('import android.widget.FrameLayout');
+    parts.push('import android.widget.LinearLayout');
+    parts.push('import android.widget.TextView');
+    parts.push('');
+
+    parts.push(`class ${className} @JvmOverloads constructor(`);
+    parts.push('    context: Context,');
+    parts.push('    attrs: AttributeSet? = null,');
+    parts.push('    defStyleAttr: Int = 0');
+    parts.push(') : FrameLayout(context, attrs, defStyleAttr) {');
+    parts.push('');
+    parts.push('    init {');
+    parts.push('        setupView()');
+    parts.push('    }');
+    parts.push('');
+    parts.push('    private fun setupView() {');
+    parts.push(this.generateKotlinViewSetup(nodeId, 8));
+    parts.push('    }');
+    parts.push('}');
+
+    return parts.join('\n');
+  }
+
+  private generateKotlinViewSetup(nodeId: NodeId, indent: number): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    // Background color
+    if ('fills' in node) {
+      const fill = this.getFirstSolidFill((node as FrameNodeData).fills);
+      if (fill) {
+        const hex = this.rgbaToHex(fill);
+        parts.push(`${spaces}setBackgroundColor(Color.parseColor("#${hex}"))`);
+      }
+    }
+
+    // Add children
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+    for (let i = 0; i < childIds.length; i++) {
+      const childId = childIds[i]!;
+      const childNode = this.sceneGraph.getNode(childId);
+      if (!childNode) continue;
+
+      parts.push('');
+      parts.push(`${spaces}// Child: ${childNode.name || childNode.type}`);
+      parts.push(`${spaces}val child${i} = View(context).apply {`);
+      parts.push(this.generateKotlinChildSetup(childId, indent + 4));
+      parts.push(`${spaces}}`);
+      parts.push(`${spaces}addView(child${i})`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private generateKotlinChildSetup(nodeId: NodeId, indent: number): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    // Layout params
+    if ('width' in node && 'height' in node) {
+      const n = node as { x?: number; y?: number; width: number; height: number };
+      const w = Math.round(n.width);
+      const h = Math.round(n.height);
+      parts.push(`${spaces}layoutParams = FrameLayout.LayoutParams(${w}.dpToPx(), ${h}.dpToPx())`);
+
+      if (n.x !== undefined && n.y !== undefined) {
+        parts.push(`${spaces}x = ${n.x}f`);
+        parts.push(`${spaces}y = ${n.y}f`);
+      }
+    }
+
+    // Background color
+    if ('fills' in node) {
+      const fill = this.getFirstSolidFill((node as FrameNodeData).fills);
+      if (fill) {
+        const hex = this.rgbaToHex(fill);
+        parts.push(`${spaces}setBackgroundColor(Color.parseColor("#${hex}"))`);
+      }
+    }
+
+    return parts.join('\n');
+  }
+
+  // =========================================================================
+  // Java View Generation
+  // =========================================================================
+
+  private generateJavaView(
+    nodeId: NodeId,
+    packageName: string,
+    prefix: string,
+    includeComments: boolean
+  ): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const className = `${prefix}${this.sanitizeName(node.name || node.type)}View`;
+
+    const parts: string[] = [];
+
+    parts.push(`package ${packageName};`);
+    parts.push('');
+
+    if (includeComments) {
+      parts.push('// Generated by DesignLibre');
+      parts.push('// Do not modify directly');
+      parts.push('');
+    }
+
+    parts.push('import android.content.Context;');
+    parts.push('import android.graphics.Color;');
+    parts.push('import android.util.AttributeSet;');
+    parts.push('import android.view.View;');
+    parts.push('import android.widget.FrameLayout;');
+    parts.push('import android.widget.LinearLayout;');
+    parts.push('import android.widget.TextView;');
+    parts.push('');
+
+    parts.push(`public class ${className} extends FrameLayout {`);
+    parts.push('');
+    parts.push(`    public ${className}(Context context) {`);
+    parts.push('        super(context);');
+    parts.push('        init();');
+    parts.push('    }');
+    parts.push('');
+    parts.push(`    public ${className}(Context context, AttributeSet attrs) {`);
+    parts.push('        super(context, attrs);');
+    parts.push('        init();');
+    parts.push('    }');
+    parts.push('');
+    parts.push(`    public ${className}(Context context, AttributeSet attrs, int defStyleAttr) {`);
+    parts.push('        super(context, attrs, defStyleAttr);');
+    parts.push('        init();');
+    parts.push('    }');
+    parts.push('');
+    parts.push('    private void init() {');
+    parts.push(this.generateJavaViewSetup(nodeId, 8));
+    parts.push('    }');
+    parts.push('}');
+
+    return parts.join('\n');
+  }
+
+  private generateJavaViewSetup(nodeId: NodeId, indent: number): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    // Background color
+    if ('fills' in node) {
+      const fill = this.getFirstSolidFill((node as FrameNodeData).fills);
+      if (fill) {
+        const hex = this.rgbaToHex(fill);
+        parts.push(`${spaces}setBackgroundColor(Color.parseColor("#${hex}"));`);
+      }
+    }
+
+    // Add children
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+    for (let i = 0; i < childIds.length; i++) {
+      const childId = childIds[i]!;
+      const childNode = this.sceneGraph.getNode(childId);
+      if (!childNode) continue;
+
+      parts.push('');
+      parts.push(`${spaces}// Child: ${childNode.name || childNode.type}`);
+      parts.push(`${spaces}View child${i} = new View(getContext());`);
+      parts.push(this.generateJavaChildSetup(childId, `child${i}`, indent));
+      parts.push(`${spaces}addView(child${i});`);
+    }
+
+    return parts.join('\n');
+  }
+
+  private generateJavaChildSetup(nodeId: NodeId, varName: string, indent: number): string {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return '';
+
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    // Layout params
+    if ('width' in node && 'height' in node) {
+      const n = node as { width: number; height: number };
+      const w = Math.round(n.width);
+      const h = Math.round(n.height);
+      parts.push(`${spaces}${varName}.setLayoutParams(new FrameLayout.LayoutParams(${w}, ${h}));`);
+    }
+
+    // Background color
+    if ('fills' in node) {
+      const fill = this.getFirstSolidFill((node as FrameNodeData).fills);
+      if (fill) {
+        const hex = this.rgbaToHex(fill);
+        parts.push(`${spaces}${varName}.setBackgroundColor(Color.parseColor("#${hex}"));`);
+      }
+    }
+
+    return parts.join('\n');
+  }
+
+  // =========================================================================
+  // Resource XML Generation
+  // =========================================================================
+
+  private generateColorsXml(): string {
+    const parts: string[] = [];
+    parts.push('<?xml version="1.0" encoding="utf-8"?>');
+    parts.push('<resources>');
+
+    for (const [_key, color] of this.extractedColors) {
+      const hex = this.rgbaToHex(color.rgba);
+      parts.push(`    <color name="${color.name}">#${hex}</color>`);
+    }
+
+    parts.push('</resources>');
+    return parts.join('\n');
+  }
+
+  private generateDimensXml(): string {
+    const parts: string[] = [];
+    parts.push('<?xml version="1.0" encoding="utf-8"?>');
+    parts.push('<resources>');
+
+    for (const [value, name] of this.extractedDimens) {
+      parts.push(`    <dimen name="${name}">${value}dp</dimen>`);
+    }
+
+    parts.push('</resources>');
+    return parts.join('\n');
+  }
+
+  // =========================================================================
+  // Helper Methods
+  // =========================================================================
+
+  private extractDesignTokens(nodeId: NodeId): void {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return;
+
+    // Extract colors
+    if ('fills' in node) {
+      const fills = (node as FrameNodeData).fills ?? [];
+      for (const fill of fills) {
+        if (fill.type === 'SOLID' && fill.visible !== false && fill.color) {
+          this.registerColor(fill.color);
+        }
+      }
+    }
+
+    if ('strokes' in node) {
+      const strokes = (node as VectorNodeData).strokes ?? [];
+      for (const stroke of strokes) {
+        if (stroke.type === 'SOLID' && stroke.visible !== false && stroke.color) {
+          this.registerColor(stroke.color);
+        }
+      }
+    }
+
+    // Extract dimensions
+    if ('width' in node) {
+      this.registerDimen((node as { width: number }).width);
+    }
+    if ('height' in node) {
+      this.registerDimen((node as { height: number }).height);
+    }
+    if ('cornerRadius' in node) {
+      this.registerDimen((node as { cornerRadius: number }).cornerRadius);
+    }
+
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+    for (const childId of childIds) {
+      this.extractDesignTokens(childId);
+    }
+  }
+
+  private registerColor(color: RGBA): string {
+    const key = this.colorToKey(color);
+    if (!this.extractedColors.has(key)) {
+      const name = `designlibre_color_${++this.colorIndex}`;
+      this.extractedColors.set(key, { name, rgba: color });
+    }
+    return this.extractedColors.get(key)!.name;
+  }
+
+  private registerDimen(value: number): string {
+    const rounded = Math.round(value);
+    if (!this.extractedDimens.has(rounded)) {
+      const name = `designlibre_dimen_${++this.dimenIndex}`;
+      this.extractedDimens.set(rounded, name);
+    }
+    return this.extractedDimens.get(rounded)!;
+  }
+
+  private getColorName(color: RGBA): string {
+    const key = this.colorToKey(color);
+    return this.extractedColors.get(key)?.name ?? 'Color.Black';
+  }
+
+  private colorToKey(color: RGBA): string {
+    return `${color.r.toFixed(3)}-${color.g.toFixed(3)}-${color.b.toFixed(3)}-${color.a.toFixed(3)}`;
+  }
+
+  private rgbaToHex(color: RGBA): string {
+    const r = Math.round(color.r * 255).toString(16).padStart(2, '0');
+    const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
+    const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
+    const a = Math.round(color.a * 255).toString(16).padStart(2, '0');
+    return `${a}${r}${g}${b}`.toUpperCase();
+  }
+
+  private getFirstSolidFill(fills: readonly { type: string; visible?: boolean; color?: RGBA }[] | undefined): RGBA | null {
+    if (!fills) return null;
+    const solid = fills.find(f => f.type === 'SOLID' && f.visible !== false);
+    return solid?.color ?? null;
+  }
+
+  private kotlinFontWeight(weight: number): string {
+    if (weight <= 100) return 'Thin';
+    if (weight <= 200) return 'ExtraLight';
+    if (weight <= 300) return 'Light';
+    if (weight <= 400) return 'Normal';
+    if (weight <= 500) return 'Medium';
+    if (weight <= 600) return 'SemiBold';
+    if (weight <= 700) return 'Bold';
+    if (weight <= 800) return 'ExtraBold';
+    return 'Black';
+  }
+
+  private sanitizeName(name: string): string {
+    return name
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .replace(/^(\d)/, '_$1');
+  }
+
+  private escapeString(str: string): string {
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n');
+  }
+}
+
+/**
+ * Create an Android code generator.
+ */
+export function createAndroidCodeGenerator(sceneGraph: SceneGraph): AndroidCodeGenerator {
+  return new AndroidCodeGenerator(sceneGraph);
+}

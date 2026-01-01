@@ -1,0 +1,15 @@
+/**
+ * Noise/Grain Shader
+ *
+ * Applies film grain or noise effect to an image.
+ * Uses hash-based pseudo-random noise generation.
+ */
+/**
+ * Vertex shader for post-processing effects
+ */
+export declare const NOISE_VERTEX_SHADER = "#version 300 es\nprecision highp float;\n\nlayout(location = 0) in vec2 aPosition;\nlayout(location = 1) in vec2 aTexCoord;\n\nout vec2 vTexCoord;\n\nvoid main() {\n  vTexCoord = aTexCoord;\n  gl_Position = vec4(aPosition, 0.0, 1.0);\n}\n";
+/**
+ * Fragment shader for noise/grain effect
+ */
+export declare const NOISE_FRAGMENT_SHADER = "#version 300 es\nprecision highp float;\n\nuniform sampler2D uTexture;\nuniform float uAmount;     // 0 to 100\nuniform float uSize;       // 1 to 10 (grain size)\nuniform bool uMonochrome;  // true for grayscale noise\nuniform float uTime;       // Animation time for varying noise\nuniform vec2 uResolution;  // Texture resolution\n\nin vec2 vTexCoord;\nout vec4 fragColor;\n\n// Hash function for pseudo-random number generation\n// Based on integer hash, produces values in [0, 1]\nfloat hash(vec2 p) {\n  vec3 p3 = fract(vec3(p.xyx) * 0.1031);\n  p3 += dot(p3, p3.yzx + 33.33);\n  return fract((p3.x + p3.y) * p3.z);\n}\n\n// 2D noise based on hashing\nfloat noise2D(vec2 p) {\n  vec2 i = floor(p);\n  vec2 f = fract(p);\n\n  // Four corners in 2D of a tile\n  float a = hash(i);\n  float b = hash(i + vec2(1.0, 0.0));\n  float c = hash(i + vec2(0.0, 1.0));\n  float d = hash(i + vec2(1.0, 1.0));\n\n  // Smooth interpolation\n  vec2 u = f * f * (3.0 - 2.0 * f);\n\n  // Mix four corners\n  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;\n}\n\n// Generate colored noise (RGB)\nvec3 colorNoise(vec2 p) {\n  return vec3(\n    hash(p),\n    hash(p + vec2(127.1, 311.7)),\n    hash(p + vec2(269.5, 183.3))\n  );\n}\n\nvoid main() {\n  vec4 color = texture(uTexture, vTexCoord);\n\n  // Skip fully transparent pixels\n  if (color.a < 0.001) {\n    fragColor = color;\n    return;\n  }\n\n  // Calculate noise coordinates based on size\n  // Smaller size values = larger grains\n  vec2 noiseCoord = vTexCoord * uResolution / uSize;\n\n  // Add time-based variation for animated noise\n  noiseCoord += vec2(uTime * 0.1);\n\n  // Generate noise value\n  vec3 noiseValue;\n  if (uMonochrome) {\n    float n = hash(noiseCoord);\n    noiseValue = vec3(n);\n  } else {\n    noiseValue = colorNoise(noiseCoord);\n  }\n\n  // Center noise around 0 (-0.5 to 0.5)\n  noiseValue = noiseValue - 0.5;\n\n  // Scale by amount (0-100 -> 0-0.5 intensity)\n  float intensity = uAmount / 200.0;\n  noiseValue *= intensity;\n\n  // Unpremultiply alpha for correct blending\n  vec3 rgb = color.a > 0.0 ? color.rgb / color.a : color.rgb;\n\n  // Add noise to color\n  rgb = clamp(rgb + noiseValue, 0.0, 1.0);\n\n  // Re-premultiply alpha\n  fragColor = vec4(rgb * color.a, color.a);\n}\n";
+//# sourceMappingURL=noise.glsl.d.ts.map

@@ -1,0 +1,2 @@
+# WASM files will be placed here
+# harfbuzz.wasm will be copied from harfbuzzjs during setup

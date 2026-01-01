@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@core/*": ["src/core/*"],
+      "@scene/*": ["src/scene/*"],
+      "@layout/*": ["src/layout/*"],
+      "@renderer/*": ["src/renderer/*"],
+      "@text/*": ["src/text/*"],
+      "@tools/*": ["src/tools/*"],
+      "@persistence/*": ["src/persistence/*"],
+      "@operations/*": ["src/operations/*"],
+      "@runtime/*": ["src/runtime/*"],
+      "@ui/*": ["src/ui/*"],
+      "@collaboration/*": ["src/collaboration/*"],
+      "@devtools/*": ["src/devtools/*"],
+      "@animation/*": ["src/animation/*"],
+      "@prototype/*": ["src/prototype/*"]
+    },
+
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
