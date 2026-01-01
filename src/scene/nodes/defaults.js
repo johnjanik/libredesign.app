@@ -44,8 +44,8 @@ export const DEFAULT_AUTO_LAYOUT = {
     counterAxisSizingMode: 'FIXED',
     wrap: false,
 };
-/** Default page background color */
-export const DEFAULT_PAGE_BACKGROUND = rgba(1, 1, 1, 1);
+/** Default page background color - dark grey (#1a1a1a) */
+export const DEFAULT_PAGE_BACKGROUND = rgba(0.102, 0.102, 0.102, 1);
 /** Default text style */
 export const DEFAULT_TEXT_STYLE = {
     fontFamily: 'Inter',
@@ -62,7 +62,7 @@ export function getDefaultNodeName(type) {
         case 'DOCUMENT':
             return 'Untitled';
         case 'PAGE':
-            return 'Page 1';
+            return 'Leaf 1';
         case 'FRAME':
             return 'Frame';
         case 'GROUP':

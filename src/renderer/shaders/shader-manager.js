@@ -155,6 +155,13 @@ export class ShaderManager {
             uniforms: ['uTexture', 'uAngle', 'uDistance', 'uResolution'],
             attributes: ['aPosition', 'aTexCoord'],
         });
+        // Transparency grid shader (checkerboard pattern)
+        this.registerShader('transparencyGrid', {
+            vertex: TRANSPARENCY_GRID_VERTEX_SHADER,
+            fragment: TRANSPARENCY_GRID_FRAGMENT_SHADER,
+            uniforms: ['uViewProjection', 'uGridSize', 'uColor1', 'uColor2'],
+            attributes: ['aPosition'],
+        });
     }
     // =========================================================================
     // Program Compilation
@@ -550,6 +557,40 @@ void main() {
   // Shadow is only visible inside the original shape (masked by source alpha)
   vec3 blended = mix(source.rgb, shadow.rgb, shadow.a * source.a);
   fragColor = vec4(blended, source.a);
+}
+`;
+// ============================================================================
+// Transparency Grid Shader (Checkerboard)
+// ============================================================================
+const TRANSPARENCY_GRID_VERTEX_SHADER = `#version 300 es
+precision highp float;
+
+uniform mat3 uViewProjection;
+
+in vec2 aPosition;
+out vec2 vWorldPos;
+
+void main() {
+  vec3 pos = uViewProjection * vec3(aPosition, 1.0);
+  gl_Position = vec4(pos.xy, 0.0, 1.0);
+  vWorldPos = aPosition;
+}
+`;
+const TRANSPARENCY_GRID_FRAGMENT_SHADER = `#version 300 es
+precision highp float;
+
+uniform float uGridSize;
+uniform vec4 uColor1;
+uniform vec4 uColor2;
+
+in vec2 vWorldPos;
+out vec4 fragColor;
+
+void main() {
+  // Create checkerboard pattern
+  vec2 cell = floor(vWorldPos / uGridSize);
+  float checker = mod(cell.x + cell.y, 2.0);
+  fragColor = mix(uColor1, uColor2, checker);
 }
 `;
 //# sourceMappingURL=shader-manager.js.map

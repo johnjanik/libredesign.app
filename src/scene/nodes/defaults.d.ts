@@ -12,7 +12,7 @@ export declare const DEFAULT_APPEARANCE: AppearanceProps;
 export declare const DEFAULT_CONSTRAINTS: LayoutConstraints;
 /** Default auto layout properties */
 export declare const DEFAULT_AUTO_LAYOUT: AutoLayoutProps;
-/** Default page background color */
+/** Default page background color - dark grey (#1a1a1a) */
 export declare const DEFAULT_PAGE_BACKGROUND: RGBA;
 /** Default text style */
 export declare const DEFAULT_TEXT_STYLE: Omit<TextStyleRange, 'start' | 'end'>;

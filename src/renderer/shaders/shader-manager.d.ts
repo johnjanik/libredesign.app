@@ -24,7 +24,7 @@ export interface ShaderSource {
 /**
  * Built-in shader names
  */
-export type BuiltInShader = 'fill' | 'stroke' | 'text-sdf' | 'image' | 'blur' | 'composite' | 'shadow' | 'innerShadow' | 'innerShadowComposite' | 'linearGradient' | 'radialGradient' | 'angularGradient' | 'diamondGradient' | 'colorAdjustment' | 'noise' | 'motionBlur' | 'motionBlurHQ';
+export type BuiltInShader = 'fill' | 'stroke' | 'text-sdf' | 'image' | 'blur' | 'composite' | 'shadow' | 'innerShadow' | 'innerShadowComposite' | 'linearGradient' | 'radialGradient' | 'angularGradient' | 'diamondGradient' | 'colorAdjustment' | 'noise' | 'motionBlur' | 'motionBlurHQ' | 'transparencyGrid';
 /**
  * Shader Manager - compiles and manages shader programs
  */

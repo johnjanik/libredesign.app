@@ -18,7 +18,7 @@ interface ToolDefinition {
  */
 export interface ToolbarOptions {
     /** Position of toolbar */
-    position?: 'top' | 'left' | 'right' | undefined;
+    position?: 'top' | 'left' | 'right' | 'bottom' | undefined;
     /** Show tool labels */
     showLabels?: boolean | undefined;
 }

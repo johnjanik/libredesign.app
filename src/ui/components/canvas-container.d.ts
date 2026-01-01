@@ -30,6 +30,7 @@ export declare class CanvasContainer {
     private options;
     private animationFrameId;
     private isRunning;
+    private resizeObserver;
     constructor(runtime: DesignLibreRuntime, container: HTMLElement, options?: CanvasContainerOptions);
     private setup;
     /**

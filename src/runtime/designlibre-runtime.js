@@ -143,21 +143,6 @@ export class DesignLibreRuntime extends EventEmitter {
     createDocument(name = 'Untitled') {
         // Create document structure using createNewDocument which creates doc + first page
         const docId = this.sceneGraph.createNewDocument(name);
-        // Get page and add a sample frame
-        const doc = this.sceneGraph.getDocument();
-        if (doc) {
-            const pageIds = this.sceneGraph.getChildIds(doc.id);
-            if (pageIds.length > 0) {
-                const pageId = pageIds[0];
-                this.sceneGraph.createFrame(pageId, {
-                    name: 'Frame 1',
-                    x: 100,
-                    y: 100,
-                    width: 400,
-                    height: 300,
-                });
-            }
-        }
         this.state.currentDocumentId = docId;
         // Start autosave
         if (this.autosaveManager) {
@@ -365,6 +350,12 @@ export class DesignLibreRuntime extends EventEmitter {
      */
     getSelectionManager() {
         return this.selectionManager;
+    }
+    /**
+     * Get the renderer.
+     */
+    getRenderer() {
+        return this.renderer;
     }
     // =========================================================================
     // Cleanup

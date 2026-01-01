@@ -1,19 +1,15 @@
 /**
  * Inspector Panel
  *
- * Property inspection panel for the developer handoff feature.
+ * Three-panel inspector with Design, Prototype, and Inspect/Dev Mode tabs.
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { NodeId } from '@core/types/common';
-import type { NodeData } from '@scene/nodes/base-node';
-import {
-  extractProperties,
-  extractSharedProperties,
-  type ExtractedProperties,
-  type PropertyDisplay,
-  type PropertyCategory,
-} from '@devtools/inspection/property-extractor';
+import type { RGBA } from '@core/types/color';
+import type { NodeData, FrameNodeData, TextNodeData, VectorNodeData } from '@scene/nodes/base-node';
+import type { SolidPaint } from '@core/types/paint';
+import { rgbaToHex } from '@core/types/color';
 import { copyToClipboard, showCopyFeedback } from '@devtools/code-export/clipboard';
 
 /** Inspector panel options */
@@ -21,17 +17,21 @@ export interface InspectorPanelOptions {
   position?: 'left' | 'right';
   width?: number;
   collapsed?: boolean;
+  defaultTab?: 'design' | 'prototype' | 'inspect';
 }
+
+type InspectorTab = 'design' | 'prototype' | 'inspect';
 
 /** Inspector panel */
 export class InspectorPanel {
   private runtime: DesignLibreRuntime;
   private container: HTMLElement;
   private element: HTMLElement | null = null;
+  private tabsElement: HTMLElement | null = null;
   private contentElement: HTMLElement | null = null;
   private options: Required<InspectorPanelOptions>;
   private selectedNodeIds: NodeId[] = [];
-  private collapsed: boolean;
+  private activeTab: InspectorTab = 'design';
   private unsubscribers: Array<() => void> = [];
 
   constructor(
@@ -45,8 +45,9 @@ export class InspectorPanel {
       position: options.position ?? 'right',
       width: options.width ?? 280,
       collapsed: options.collapsed ?? false,
+      defaultTab: options.defaultTab ?? 'design',
     };
-    this.collapsed = this.options.collapsed;
+    this.activeTab = this.options.defaultTab;
 
     this.setup();
   }
@@ -57,9 +58,9 @@ export class InspectorPanel {
     this.element.className = 'designlibre-inspector-panel';
     this.element.style.cssText = this.getPanelStyles();
 
-    // Create header
-    const header = this.createHeader();
-    this.element.appendChild(header);
+    // Create tabs
+    this.tabsElement = this.createTabs();
+    this.element.appendChild(this.tabsElement);
 
     // Create content area
     this.contentElement = document.createElement('div');
@@ -111,87 +112,80 @@ export class InspectorPanel {
       font-size: 12px;
       color: var(--designlibre-text-primary, #e4e4e4);
       z-index: 100;
-      box-shadow: var(--designlibre-shadow, 0 4px 12px rgba(0, 0, 0, 0.4));
     `;
   }
 
-  private headerTitle: HTMLElement | null = null;
-  private toggleBtn: HTMLButtonElement | null = null;
-
-  private createHeader(): HTMLElement {
-    const header = document.createElement('div');
-    header.className = 'designlibre-inspector-header';
-    header.style.cssText = `
-      padding: 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+  private createTabs(): HTMLElement {
+    const tabs = document.createElement('div');
+    tabs.className = 'designlibre-inspector-tabs';
+    tabs.style.cssText = `
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-weight: 600;
-      user-select: none;
-      min-height: 44px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
     `;
 
-    this.headerTitle = document.createElement('span');
-    this.headerTitle.textContent = 'Inspector';
-    this.headerTitle.style.cssText = `
-      overflow: hidden;
-      white-space: nowrap;
-    `;
-    header.appendChild(this.headerTitle);
+    const tabDefs: { id: InspectorTab; label: string }[] = [
+      { id: 'design', label: 'Design' },
+      { id: 'prototype', label: 'Prototype' },
+      { id: 'inspect', label: 'Inspect' },
+    ];
 
-    // Toggle button
-    this.toggleBtn = document.createElement('button');
-    this.toggleBtn.className = 'designlibre-inspector-toggle';
-    this.toggleBtn.style.cssText = `
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 4px 8px;
-      opacity: 0.6;
-      font-size: 14px;
-      flex-shrink: 0;
-      transition: opacity 0.15s;
-    `;
-    this.toggleBtn.innerHTML = this.collapsed
-      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>`
-      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
-    this.toggleBtn.title = this.collapsed ? 'Expand Inspector' : 'Collapse Inspector';
-    this.toggleBtn.addEventListener('click', () => this.toggleCollapsed());
-    this.toggleBtn.addEventListener('mouseenter', () => {
-      if (this.toggleBtn) this.toggleBtn.style.opacity = '1';
-    });
-    this.toggleBtn.addEventListener('mouseleave', () => {
-      if (this.toggleBtn) this.toggleBtn.style.opacity = '0.6';
-    });
-    header.appendChild(this.toggleBtn);
+    for (const tabDef of tabDefs) {
+      const tab = document.createElement('button');
+      tab.className = 'designlibre-inspector-tab';
+      tab.setAttribute('data-tab', tabDef.id);
+      tab.textContent = tabDef.label;
+      tab.style.cssText = `
+        flex: 1;
+        padding: 10px 8px;
+        border: none;
+        background: ${tabDef.id === this.activeTab ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent'};
+        color: ${tabDef.id === this.activeTab ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        border-bottom: 2px solid ${tabDef.id === this.activeTab ? 'var(--designlibre-accent, #4dabff)' : 'transparent'};
+      `;
 
-    return header;
+      tab.addEventListener('click', () => this.switchTab(tabDef.id));
+      tab.addEventListener('mouseenter', () => {
+        if (tabDef.id !== this.activeTab) {
+          tab.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+        }
+      });
+      tab.addEventListener('mouseleave', () => {
+        if (tabDef.id !== this.activeTab) {
+          tab.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+        }
+      });
+
+      tabs.appendChild(tab);
+    }
+
+    return tabs;
   }
 
-  private toggleCollapsed(): void {
-    this.collapsed = !this.collapsed;
-    if (this.element) {
-      this.element.style.width = this.collapsed ? '40px' : `${this.options.width}px`;
+  private switchTab(tab: InspectorTab): void {
+    this.activeTab = tab;
+
+    // Update tab styles
+    if (this.tabsElement) {
+      const tabs = this.tabsElement.querySelectorAll('.designlibre-inspector-tab');
+      tabs.forEach((t) => {
+        const tabEl = t as HTMLElement;
+        const isActive = tabEl.getAttribute('data-tab') === tab;
+        tabEl.style.background = isActive ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent';
+        tabEl.style.color = isActive ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)';
+        tabEl.style.borderBottom = isActive ? '2px solid var(--designlibre-accent, #4dabff)' : '2px solid transparent';
+      });
     }
-    if (this.contentElement) {
-      this.contentElement.style.display = this.collapsed ? 'none' : 'block';
-    }
-    if (this.headerTitle) {
-      this.headerTitle.style.display = this.collapsed ? 'none' : 'block';
-    }
-    if (this.toggleBtn) {
-      this.toggleBtn.innerHTML = this.collapsed
-        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>`
-        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`;
-      this.toggleBtn.title = this.collapsed ? 'Expand Inspector' : 'Collapse Inspector';
-    }
+
+    this.updateContent();
   }
 
   private updateContent(): void {
     if (!this.contentElement) return;
-
-    // Clear content
     this.contentElement.innerHTML = '';
 
     if (this.selectedNodeIds.length === 0) {
@@ -199,13 +193,10 @@ export class InspectorPanel {
       return;
     }
 
-    // Get nodes
     const nodes: NodeData[] = [];
     for (const nodeId of this.selectedNodeIds) {
       const node = this.runtime.getNode(nodeId);
-      if (node) {
-        nodes.push(node);
-      }
+      if (node) nodes.push(node);
     }
 
     if (nodes.length === 0) {
@@ -213,13 +204,16 @@ export class InspectorPanel {
       return;
     }
 
-    // Extract properties
-    const properties = nodes.length === 1
-      ? extractProperties(nodes[0]!)
-      : extractSharedProperties(nodes);
-
-    if (properties) {
-      this.renderProperties(properties);
+    switch (this.activeTab) {
+      case 'design':
+        this.renderDesignPanel(nodes);
+        break;
+      case 'prototype':
+        this.renderPrototypePanel(nodes);
+        break;
+      case 'inspect':
+        this.renderInspectPanel(nodes);
+        break;
     }
   }
 
@@ -236,478 +230,1245 @@ export class InspectorPanel {
     this.contentElement.appendChild(empty);
   }
 
-  private renderProperties(props: ExtractedProperties): void {
+  // =========================================================================
+  // Design Panel
+  // =========================================================================
+
+  private renderDesignPanel(nodes: NodeData[]): void {
     if (!this.contentElement) return;
+    const node = nodes[0]!;
+    const nodeId = this.selectedNodeIds[0]!;
+
+    // Page/Leaf specific panel
+    if (node.type === 'PAGE') {
+      this.renderPagePanel(node, nodeId);
+      return;
+    }
 
     // Node header
-    const nodeHeader = document.createElement('div');
-    nodeHeader.style.cssText = `
+    this.renderNodeHeader(node);
+
+    // Layout & Position section
+    this.renderLayoutSection(node, nodeId);
+
+    // Fill section
+    if ('fills' in node) {
+      this.renderFillSection(node as FrameNodeData | VectorNodeData, nodeId);
+    }
+
+    // Stroke section
+    if ('strokes' in node) {
+      this.renderStrokeSection(node as VectorNodeData, nodeId);
+    }
+
+    // Effects section
+    if ('effects' in node) {
+      this.renderEffectsSection(node as FrameNodeData, nodeId);
+    }
+
+    // Text section (only for text nodes)
+    if (node.type === 'TEXT') {
+      this.renderTextSection(node as TextNodeData, nodeId);
+    }
+  }
+
+  /**
+   * Render page-specific properties panel.
+   */
+  private renderPagePanel(node: NodeData, nodeId: NodeId): void {
+    if (!this.contentElement) return;
+
+    // Page header
+    const header = document.createElement('div');
+    header.style.cssText = `
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 1px solid var(--designlibre-border, #e0e0e0);
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
     `;
 
-    const nodeName = document.createElement('div');
-    nodeName.style.cssText = `
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 4px;
-    `;
-    nodeName.textContent = props.nodeName;
-    nodeHeader.appendChild(nodeName);
+    const name = document.createElement('div');
+    name.style.cssText = `font-weight: 600; font-size: 14px; margin-bottom: 4px;`;
+    name.textContent = node.name || 'Leaf 1';
+    header.appendChild(name);
 
-    const nodeType = document.createElement('div');
-    nodeType.style.cssText = `
+    const type = document.createElement('div');
+    type.style.cssText = `
       font-size: 11px;
-      color: var(--designlibre-text-secondary, #666666);
+      color: var(--designlibre-text-secondary, #a0a0a0);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     `;
-    nodeType.textContent = props.nodeType;
-    nodeHeader.appendChild(nodeType);
+    type.textContent = 'LEAF';
+    header.appendChild(type);
 
-    this.contentElement.appendChild(nodeHeader);
+    this.contentElement.appendChild(header);
 
-    // Color swatches
-    if (props.colors.length > 0) {
-      const swatchContainer = document.createElement('div');
-      swatchContainer.style.cssText = `
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 16px;
-      `;
+    // Page properties section
+    const propsSection = this.createSection('Properties');
 
-      for (const colorInfo of props.colors) {
-        const swatch = this.createColorSwatch(colorInfo.hex, colorInfo.color);
-        swatchContainer.appendChild(swatch);
-      }
+    // Background Color
+    const colorRow = this.createPropertyRow();
+    const colorLabel = document.createElement('span');
+    colorLabel.textContent = 'Color';
+    colorLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
 
-      this.contentElement.appendChild(swatchContainer);
-    }
+    const pageNode = node as { backgroundColor?: RGBA };
+    const bgColor = pageNode.backgroundColor ?? { r: 0.102, g: 0.102, b: 0.102, a: 1 };
 
-    // Property sections
-    const categories: PropertyCategory[] = ['transform', 'appearance', 'layout', 'typography', 'effects'];
-
-    for (const category of categories) {
-      const categoryProps = props.categories[category];
-      if (categoryProps && categoryProps.length > 0) {
-        const section = this.createPropertySection(category, categoryProps);
-        this.contentElement.appendChild(section);
-      }
-    }
-
-    // Copy all button
-    const copyAllBtn = document.createElement('button');
-    copyAllBtn.className = 'designlibre-button designlibre-button-secondary';
-    copyAllBtn.style.cssText = `
-      width: 100%;
-      margin-top: 16px;
-      padding: 8px;
-      background: var(--designlibre-bg-secondary, #f5f5f5);
-      border: 1px solid var(--designlibre-border, #e0e0e0);
-      border-radius: var(--designlibre-radius-sm, 4px);
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.value = rgbaToHex(bgColor);
+    colorPicker.style.cssText = `
+      width: 32px;
+      height: 24px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 12px;
+      background: none;
+      padding: 0;
     `;
-    copyAllBtn.textContent = 'Copy All Properties';
-    copyAllBtn.addEventListener('click', async () => {
-      const allProps = this.formatAllProperties(props);
-      const result = await copyToClipboard(allProps);
-      showCopyFeedback(copyAllBtn, result.success);
+
+    // Hex code input
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.value = rgbaToHex(bgColor).toUpperCase();
+    hexInput.style.cssText = `
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      font-family: monospace;
+    `;
+
+    colorPicker.addEventListener('input', () => {
+      const hex = colorPicker.value;
+      hexInput.value = hex.toUpperCase();
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      this.updateNode(nodeId, { backgroundColor: { r, g, b, a: 1 } });
     });
-    this.contentElement.appendChild(copyAllBtn);
+
+    hexInput.addEventListener('change', () => {
+      let hex = hexInput.value.trim();
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+        colorPicker.value = hex;
+        hexInput.value = hex.toUpperCase();
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        this.updateNode(nodeId, { backgroundColor: { r, g, b, a: 1 } });
+      }
+    });
+
+    colorRow.appendChild(colorLabel);
+    colorRow.appendChild(colorPicker);
+    colorRow.appendChild(hexInput);
+    propsSection.appendChild(colorRow);
+
+    // Transparency/Opacity
+    const opacityRow = this.createPropertyRow();
+    const opacityLabel = document.createElement('span');
+    opacityLabel.textContent = 'Transparency';
+    opacityLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
+
+    const opacity = (node as { opacity?: number }).opacity ?? 1;
+    const opacityInput = document.createElement('input');
+    opacityInput.type = 'number';
+    opacityInput.min = '0';
+    opacityInput.max = '100';
+    opacityInput.value = String(Math.round(opacity * 100));
+    opacityInput.style.cssText = `
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      text-align: right;
+    `;
+    opacityInput.addEventListener('change', () => {
+      const val = Math.max(0, Math.min(100, parseInt(opacityInput.value) || 100));
+      this.updateNode(nodeId, { opacity: val / 100 });
+    });
+
+    const opacityUnit = document.createElement('span');
+    opacityUnit.textContent = '%';
+    opacityUnit.style.cssText = `margin-left: 4px; font-size: 12px; color: var(--designlibre-text-muted, #6a6a6a);`;
+
+    opacityRow.appendChild(opacityLabel);
+    opacityRow.appendChild(opacityInput);
+    opacityRow.appendChild(opacityUnit);
+    propsSection.appendChild(opacityRow);
+
+    // Visibility toggle
+    const visibilityRow = this.createPropertyRow();
+    const visibilityLabel = document.createElement('span');
+    visibilityLabel.textContent = 'Visibility';
+    visibilityLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
+
+    const visible = (node as { visible?: boolean }).visible !== false;
+    const eyeBtn = document.createElement('button');
+    eyeBtn.innerHTML = visible
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+      : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+    eyeBtn.style.cssText = `
+      width: 32px;
+      height: 24px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: ${visible ? 'var(--designlibre-bg-secondary, #2d2d2d)' : 'var(--designlibre-bg-tertiary, #252525)'};
+      color: ${visible ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-muted, #6a6a6a)'};
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+    eyeBtn.addEventListener('click', () => {
+      this.updateNode(nodeId, { visible: !visible });
+    });
+
+    visibilityRow.appendChild(visibilityLabel);
+    visibilityRow.appendChild(eyeBtn);
+    propsSection.appendChild(visibilityRow);
+
+    this.contentElement.appendChild(propsSection);
+
+    // Separator
+    const sep1 = document.createElement('div');
+    sep1.style.cssText = `height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 16px 0;`;
+    this.contentElement.appendChild(sep1);
+
+    // Styles section
+    this.renderPageStylesSection(nodeId);
+
+    // Separator
+    const sep2 = document.createElement('div');
+    sep2.style.cssText = `height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 16px 0;`;
+    this.contentElement.appendChild(sep2);
+
+    // Export section
+    this.renderPageExportSection(nodeId);
   }
 
-  private createPropertySection(
-    category: PropertyCategory,
-    properties: readonly PropertyDisplay[]
-  ): HTMLElement {
+  /**
+   * Render page styles section.
+   */
+  private renderPageStylesSection(_nodeId: NodeId): void {
+    if (!this.contentElement) return;
+
     const section = document.createElement('div');
-    section.className = 'designlibre-inspector-section';
     section.style.cssText = `margin-bottom: 16px;`;
 
-    // Section header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = 'Styles';
+    title.style.cssText = `
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
+
+    const addBtn = document.createElement('button');
+    addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    addBtn.title = 'Add style';
+    addBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.backgroundColor = 'transparent';
+    });
+    addBtn.addEventListener('click', () => {
+      // TODO: Open style picker
+    });
+
+    header.appendChild(title);
+    header.appendChild(addBtn);
+    section.appendChild(header);
+
+    // Placeholder for styles list
+    const placeholder = document.createElement('div');
+    placeholder.style.cssText = `
+      padding: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 4px;
+    `;
+    placeholder.textContent = 'No styles applied';
+    section.appendChild(placeholder);
+
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render page export section.
+   */
+  private renderPageExportSection(nodeId: NodeId): void {
+    if (!this.contentElement) return;
+
+    const section = document.createElement('div');
+    section.style.cssText = `margin-bottom: 16px;`;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = 'Export';
+    title.style.cssText = `
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
+
+    const addBtn = document.createElement('button');
+    addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+    addBtn.title = 'Add export preset';
+    addBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.backgroundColor = 'transparent';
+    });
+    addBtn.addEventListener('click', () => {
+      // Add a new export preset
+      this.addExportPreset(section, nodeId);
+    });
+
+    header.appendChild(title);
+    header.appendChild(addBtn);
+    section.appendChild(header);
+
+    // Export presets container
+    const presetsContainer = document.createElement('div');
+    presetsContainer.className = 'export-presets-container';
+    section.appendChild(presetsContainer);
+
+    // Default export buttons
+    const exportButtons = document.createElement('div');
+    exportButtons.style.cssText = `display: flex; gap: 8px; margin-top: 8px;`;
+
+    const pngBtn = this.createExportButton('PNG', () => {
+      this.runtime.downloadPNG(nodeId).catch(console.error);
+    });
+    const svgBtn = this.createExportButton('SVG', () => {
+      try {
+        this.runtime.downloadSVG(nodeId);
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
+    exportButtons.appendChild(pngBtn);
+    exportButtons.appendChild(svgBtn);
+    section.appendChild(exportButtons);
+
+    this.contentElement.appendChild(section);
+  }
+
+  private createExportButton(label: string, onClick: () => void): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.cssText = `
+      flex: 1;
+      padding: 8px 16px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
+    btn.addEventListener('mouseenter', () => {
+      btn.style.backgroundColor = 'var(--designlibre-bg-tertiary, #252525)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  private addExportPreset(section: HTMLElement, _nodeId: NodeId): void {
+    const container = section.querySelector('.export-presets-container');
+    if (!container) return;
+
+    const preset = document.createElement('div');
+    preset.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 4px;
+      margin-bottom: 8px;
+    `;
+
+    // Scale selector
+    const scaleSelect = document.createElement('select');
+    scaleSelect.style.cssText = `
+      padding: 4px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+    `;
+    ['1x', '2x', '3x', '4x'].forEach(scale => {
+      const opt = document.createElement('option');
+      opt.value = scale;
+      opt.textContent = scale;
+      scaleSelect.appendChild(opt);
+    });
+
+    // Format selector
+    const formatSelect = document.createElement('select');
+    formatSelect.style.cssText = scaleSelect.style.cssText;
+    ['PNG', 'SVG', 'PDF', 'JPG'].forEach(format => {
+      const opt = document.createElement('option');
+      opt.value = format.toLowerCase();
+      opt.textContent = format;
+      formatSelect.appendChild(opt);
+    });
+
+    // Remove button
+    const removeBtn = document.createElement('button');
+    removeBtn.innerHTML = '×';
+    removeBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      cursor: pointer;
+      font-size: 16px;
+      margin-left: auto;
+    `;
+    removeBtn.addEventListener('click', () => preset.remove());
+
+    preset.appendChild(scaleSelect);
+    preset.appendChild(formatSelect);
+    preset.appendChild(removeBtn);
+    container.appendChild(preset);
+  }
+
+  private renderNodeHeader(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+
+    const name = document.createElement('div');
+    name.style.cssText = `font-weight: 600; font-size: 14px; margin-bottom: 4px;`;
+    name.textContent = node.name || 'Unnamed';
+    header.appendChild(name);
+
+    const type = document.createElement('div');
+    type.style.cssText = `
+      font-size: 11px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    type.textContent = node.type;
+    header.appendChild(type);
+
+    this.contentElement.appendChild(header);
+  }
+
+  private renderLayoutSection(node: NodeData, nodeId: NodeId): void {
+    const section = this.createSection('Layout & Position');
+
+    // X / Y Position
+    if ('x' in node && 'y' in node) {
+      const posRow = this.createPropertyRow2Col();
+      posRow.appendChild(this.createNumberField('X', (node as FrameNodeData).x ?? 0, (v) => this.updateNode(nodeId, { x: v })));
+      posRow.appendChild(this.createNumberField('Y', (node as FrameNodeData).y ?? 0, (v) => this.updateNode(nodeId, { y: v })));
+      section.appendChild(posRow);
+    }
+
+    // Width / Height
+    if ('width' in node && 'height' in node) {
+      const sizeRow = this.createPropertyRow2Col();
+      sizeRow.appendChild(this.createNumberField('W', (node as FrameNodeData).width ?? 0, (v) => this.updateNode(nodeId, { width: v })));
+      sizeRow.appendChild(this.createNumberField('H', (node as FrameNodeData).height ?? 0, (v) => this.updateNode(nodeId, { height: v })));
+      section.appendChild(sizeRow);
+    }
+
+    // Rotation
+    if ('rotation' in node) {
+      section.appendChild(this.createLabeledNumberField('Rotation', (node as FrameNodeData).rotation ?? 0, '°', (v) => this.updateNode(nodeId, { rotation: v })));
+    }
+
+    // Constraints
+    if ('constraints' in node) {
+      const constraints = (node as FrameNodeData).constraints;
+      section.appendChild(this.createLabeledDropdown('Horizontal', constraints?.horizontal ?? 'MIN', ['MIN', 'CENTER', 'MAX', 'STRETCH', 'SCALE'], (v) => {
+        this.updateNode(nodeId, { constraints: { ...constraints, horizontal: v } });
+      }));
+      section.appendChild(this.createLabeledDropdown('Vertical', constraints?.vertical ?? 'MIN', ['MIN', 'CENTER', 'MAX', 'STRETCH', 'SCALE'], (v) => {
+        this.updateNode(nodeId, { constraints: { ...constraints, vertical: v } });
+      }));
+    }
+
+    this.contentElement!.appendChild(section);
+  }
+
+  private renderFillSection(node: FrameNodeData | VectorNodeData, nodeId: NodeId): void {
+    const section = this.createSection('Fill');
+    const fills = node.fills ?? [];
+
+    if (fills.length === 0) {
+      const noFill = document.createElement('div');
+      noFill.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; margin-bottom: 8px;`;
+      noFill.textContent = 'No fill';
+      section.appendChild(noFill);
+    } else {
+      for (let i = 0; i < fills.length; i++) {
+        const fill = fills[i]!;
+        const fillRow = document.createElement('div');
+        fillRow.style.cssText = `margin-bottom: 8px;`;
+
+        if (fill.type === 'SOLID') {
+          const solidFill = fill as SolidPaint;
+          fillRow.appendChild(this.createColorField(
+            solidFill.color,
+            (color) => {
+              const newFills = [...fills];
+              newFills[i] = { ...solidFill, color } as SolidPaint;
+              this.updateNode(nodeId, { fills: newFills });
+            }
+          ));
+
+          // Opacity slider
+          fillRow.appendChild(this.createSliderField('Opacity', (solidFill.opacity ?? 1) * 100, 0, 100, '%', (v) => {
+            const newFills = [...fills];
+            newFills[i] = { ...solidFill, opacity: v / 100 } as SolidPaint;
+            this.updateNode(nodeId, { fills: newFills });
+          }));
+        }
+
+        // Fill type dropdown
+        fillRow.appendChild(this.createLabeledDropdown('Type', fill.type, ['SOLID', 'GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'IMAGE'], (_v) => {
+          // Type changes require restructuring the paint object - skip for now
+        }));
+
+        section.appendChild(fillRow);
+      }
+    }
+
+    // Add fill button
+    section.appendChild(this.createButton('+ Add Fill', () => {
+      const newFills = [...fills, { type: 'SOLID' as const, visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5, a: 1 } }];
+      this.updateNode(nodeId, { fills: newFills });
+    }));
+
+    this.contentElement!.appendChild(section);
+  }
+
+  private renderStrokeSection(node: VectorNodeData, nodeId: NodeId): void {
+    const section = this.createSection('Stroke');
+    const strokes = node.strokes ?? [];
+
+    if (strokes.length === 0) {
+      const noStroke = document.createElement('div');
+      noStroke.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; margin-bottom: 8px;`;
+      noStroke.textContent = 'No stroke';
+      section.appendChild(noStroke);
+    } else {
+      for (let i = 0; i < strokes.length; i++) {
+        const stroke = strokes[i]!;
+        const strokeRow = document.createElement('div');
+        strokeRow.style.cssText = `margin-bottom: 8px;`;
+
+        if (stroke.type === 'SOLID') {
+          const solidStroke = stroke as SolidPaint;
+          strokeRow.appendChild(this.createColorField(
+            solidStroke.color,
+            (color) => {
+              const newStrokes = [...strokes];
+              newStrokes[i] = { ...solidStroke, color } as SolidPaint;
+              this.updateNode(nodeId, { strokes: newStrokes });
+            }
+          ));
+        }
+
+        section.appendChild(strokeRow);
+      }
+    }
+
+    // Stroke weight
+    section.appendChild(this.createLabeledNumberField('Weight', node.strokeWeight ?? 1, 'px', (v) => {
+      this.updateNode(nodeId, { strokeWeight: v });
+    }));
+
+    // Stroke style (dash pattern)
+    const hasDash = node.dashPattern && node.dashPattern.length > 0;
+    section.appendChild(this.createLabeledDropdown('Style', hasDash ? 'Dashed' : 'Solid', ['Solid', 'Dashed', 'Dotted'], (v) => {
+      let dashPattern: number[] = [];
+      if (v === 'Dashed') dashPattern = [8, 4];
+      else if (v === 'Dotted') dashPattern = [2, 2];
+      this.updateNode(nodeId, { dashPattern });
+    }));
+
+    // Stroke position
+    section.appendChild(this.createLabeledDropdown('Position', node.strokeAlign ?? 'CENTER', ['INSIDE', 'CENTER', 'OUTSIDE'], (v) => {
+      this.updateNode(nodeId, { strokeAlign: v as 'INSIDE' | 'CENTER' | 'OUTSIDE' });
+    }));
+
+    this.contentElement!.appendChild(section);
+  }
+
+  private renderEffectsSection(node: FrameNodeData, nodeId: NodeId): void {
+    const section = this.createSection('Effects');
+    const effects = node.effects ?? [];
+
+    // Drop Shadow
+    const dropShadow = effects.find(e => e.type === 'DROP_SHADOW');
+    section.appendChild(this.createToggleWithFields('Drop Shadow', !!dropShadow, (enabled) => {
+      if (enabled) {
+        const newEffects = [...effects, { type: 'DROP_SHADOW' as const, visible: true, color: { r: 0, g: 0, b: 0, a: 0.25 }, offset: { x: 0, y: 4 }, radius: 8, spread: 0 }];
+        this.updateNode(nodeId, { effects: newEffects });
+      } else {
+        const newEffects = effects.filter(e => e.type !== 'DROP_SHADOW');
+        this.updateNode(nodeId, { effects: newEffects });
+      }
+    }));
+
+    // Inner Shadow
+    const innerShadow = effects.find(e => e.type === 'INNER_SHADOW');
+    section.appendChild(this.createToggleWithFields('Inner Shadow', !!innerShadow, (enabled) => {
+      if (enabled) {
+        const newEffects = [...effects, { type: 'INNER_SHADOW' as const, visible: true, color: { r: 0, g: 0, b: 0, a: 0.25 }, offset: { x: 0, y: 2 }, radius: 4, spread: 0 }];
+        this.updateNode(nodeId, { effects: newEffects });
+      } else {
+        const newEffects = effects.filter(e => e.type !== 'INNER_SHADOW');
+        this.updateNode(nodeId, { effects: newEffects });
+      }
+    }));
+
+    // Layer Blur
+    const layerBlur = effects.find(e => e.type === 'BLUR');
+    section.appendChild(this.createToggleWithFields('Layer Blur', !!layerBlur, (enabled) => {
+      if (enabled) {
+        const newEffects = [...effects, { type: 'BLUR' as const, visible: true, radius: 10 }];
+        this.updateNode(nodeId, { effects: newEffects });
+      } else {
+        const newEffects = effects.filter(e => e.type !== 'BLUR');
+        this.updateNode(nodeId, { effects: newEffects });
+      }
+    }));
+
+    // Background Blur
+    const bgBlur = effects.find(e => e.type === 'BACKGROUND_BLUR');
+    section.appendChild(this.createToggleWithFields('Background Blur', !!bgBlur, (enabled) => {
+      if (enabled) {
+        const newEffects = [...effects, { type: 'BACKGROUND_BLUR' as const, visible: true, radius: 10 }];
+        this.updateNode(nodeId, { effects: newEffects });
+      } else {
+        const newEffects = effects.filter(e => e.type !== 'BACKGROUND_BLUR');
+        this.updateNode(nodeId, { effects: newEffects });
+      }
+    }));
+
+    this.contentElement!.appendChild(section);
+  }
+
+  private renderTextSection(node: TextNodeData, nodeId: NodeId): void {
+    const section = this.createSection('Text');
+
+    // Get first text style for display (simplified - real impl would be more complex)
+    const firstStyle = node.textStyles?.[0];
+    const fontFamily = firstStyle?.fontFamily ?? 'Inter';
+    const fontWeight = firstStyle?.fontWeight ?? 400;
+    const fontSize = firstStyle?.fontSize ?? 14;
+
+    // Font Family
+    section.appendChild(this.createLabeledDropdown('Font', fontFamily, ['Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Courier New'], (_v) => {
+      // Text style updates require updating the textStyles array
+    }));
+
+    // Font Weight
+    section.appendChild(this.createLabeledDropdown('Weight', String(fontWeight), ['100', '200', '300', '400', '500', '600', '700', '800', '900'], (_v) => {
+      // Text style updates require updating the textStyles array
+    }));
+
+    // Font Size
+    section.appendChild(this.createLabeledNumberField('Size', fontSize, 'px', (_v) => {
+      // Text style updates require updating the textStyles array
+    }));
+
+    // Text Align
+    section.appendChild(this.createLabeledDropdown('Align', node.textAlignHorizontal ?? 'LEFT', ['LEFT', 'CENTER', 'RIGHT', 'JUSTIFIED'], (v) => {
+      this.updateNode(nodeId, { textAlignHorizontal: v as 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED' });
+    }));
+
+    this.contentElement!.appendChild(section);
+  }
+
+  // =========================================================================
+  // Prototype Panel
+  // =========================================================================
+
+  private renderPrototypePanel(nodes: NodeData[]): void {
+    if (!this.contentElement) return;
+    const node = nodes[0]!;
+
+    this.renderNodeHeader(node);
+
+    const section = this.createSection('Interactions');
+
+    // Interaction Trigger
+    section.appendChild(this.createLabeledDropdown('Trigger', 'None', ['None', 'On Click', 'On Hover', 'On Drag', 'After Delay', 'Mouse Enter', 'Mouse Leave'], (_v) => {
+      // TODO: Implement prototype interactions
+    }));
+
+    // Destination
+    section.appendChild(this.createLabeledDropdown('Destination', 'None', ['None', '(Select Frame...)'], (_v) => {
+      // TODO: Implement destination selection
+    }));
+
+    // Animation
+    section.appendChild(this.createLabeledDropdown('Animation', 'Instant', ['Instant', 'Smart Animate', 'Dissolve', 'Move In', 'Move Out', 'Push', 'Slide In', 'Slide Out'], (_v) => {
+      // TODO: Implement animation type
+    }));
+
+    // Easing
+    section.appendChild(this.createLabeledDropdown('Easing', 'Ease In-Out', ['Linear', 'Ease In', 'Ease Out', 'Ease In-Out', 'Spring'], (_v) => {
+      // TODO: Implement easing
+    }));
+
+    // Duration
+    section.appendChild(this.createLabeledNumberField('Duration', 300, 'ms', (_v) => {
+      // TODO: Implement duration
+    }));
+
+    this.contentElement.appendChild(section);
+
+    // Placeholder message
+    const note = document.createElement('div');
+    note.style.cssText = `
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+    note.textContent = 'Prototype interactions will be available in a future update.';
+    this.contentElement.appendChild(note);
+  }
+
+  // =========================================================================
+  // Inspect / Dev Mode Panel
+  // =========================================================================
+
+  private renderInspectPanel(nodes: NodeData[]): void {
+    if (!this.contentElement) return;
+    const node = nodes[0]!;
+
+    this.renderNodeHeader(node);
+
+    // CSS Code section
+    const cssSection = this.createSection('CSS');
+    const cssCode = this.generateCSS(node);
+    cssSection.appendChild(this.createCodeBlock(cssCode, 'css'));
+    this.contentElement.appendChild(cssSection);
+
+    // Measurements section
+    const measureSection = this.createSection('Measurements');
+    if ('x' in node && 'y' in node && 'width' in node && 'height' in node) {
+      const n = node as FrameNodeData;
+      measureSection.appendChild(this.createMeasurementRow('Position', `${n.x ?? 0}, ${n.y ?? 0}`));
+      measureSection.appendChild(this.createMeasurementRow('Size', `${n.width ?? 0} × ${n.height ?? 0}`));
+      if (n.rotation) {
+        measureSection.appendChild(this.createMeasurementRow('Rotation', `${n.rotation}°`));
+      }
+    }
+    this.contentElement.appendChild(measureSection);
+
+    // Export section
+    const exportSection = this.createSection('Export');
+    const exportButtons = document.createElement('div');
+    exportButtons.style.cssText = `display: flex; gap: 8px; flex-wrap: wrap;`;
+
+    const formats = ['PNG', 'JPG', 'SVG', 'PDF'];
+    for (const format of formats) {
+      const btn = document.createElement('button');
+      btn.style.cssText = `
+        flex: 1;
+        min-width: 60px;
+        padding: 8px 12px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+      `;
+      btn.textContent = format;
+      btn.addEventListener('click', async () => {
+        try {
+          if (format === 'PNG') {
+            await this.runtime.downloadPNG(this.selectedNodeIds[0]!);
+          } else if (format === 'SVG') {
+            await this.runtime.downloadSVG(this.selectedNodeIds[0]!);
+          }
+          showCopyFeedback(btn, true);
+        } catch (e) {
+          console.error('Export failed:', e);
+        }
+      });
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'var(--designlibre-accent, #4dabff)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      });
+      exportButtons.appendChild(btn);
+    }
+    exportSection.appendChild(exportButtons);
+    this.contentElement.appendChild(exportSection);
+  }
+
+  private generateCSS(node: NodeData): string {
+    const lines: string[] = [];
+
+    if ('width' in node && 'height' in node) {
+      const n = node as FrameNodeData;
+      lines.push(`width: ${n.width}px;`);
+      lines.push(`height: ${n.height}px;`);
+    }
+
+    if ('rotation' in node && (node as FrameNodeData).rotation) {
+      lines.push(`transform: rotate(${(node as FrameNodeData).rotation}deg);`);
+    }
+
+    if ('fills' in node) {
+      const fills = (node as FrameNodeData).fills ?? [];
+      const solidFill = fills.find(f => f.type === 'SOLID');
+      if (solidFill && solidFill.type === 'SOLID') {
+        const color = (solidFill as SolidPaint).color;
+        lines.push(`background-color: ${rgbaToHex(color)};`);
+      }
+    }
+
+    if ('strokes' in node) {
+      const strokes = (node as VectorNodeData).strokes ?? [];
+      const solidStroke = strokes.find(s => s.type === 'SOLID');
+      if (solidStroke && solidStroke.type === 'SOLID') {
+        const weight = (node as VectorNodeData).strokeWeight ?? 1;
+        const color = (solidStroke as SolidPaint).color;
+        lines.push(`border: ${weight}px solid ${rgbaToHex(color)};`);
+      }
+    }
+
+    // Check for cornerRadius using 'in' operator since it may not be in the base type
+    if ('cornerRadius' in node) {
+      const radius = (node as { cornerRadius?: number }).cornerRadius;
+      if (radius) {
+        lines.push(`border-radius: ${radius}px;`);
+      }
+    }
+
+    if ('opacity' in node && (node as FrameNodeData).opacity !== undefined && (node as FrameNodeData).opacity !== 1) {
+      lines.push(`opacity: ${(node as FrameNodeData).opacity};`);
+    }
+
+    return lines.join('\n') || '/* No styles */';
+  }
+
+  private createCodeBlock(code: string, _language: string): HTMLElement {
+    const container = document.createElement('div');
+    container.style.cssText = `position: relative;`;
+
+    const pre = document.createElement('pre');
+    pre.style.cssText = `
+      margin: 0;
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    `;
+    pre.textContent = code;
+    container.appendChild(pre);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.style.cssText = `
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      font-size: 10px;
+      cursor: pointer;
+    `;
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', async () => {
+      const result = await copyToClipboard(code);
+      showCopyFeedback(copyBtn, result.success);
+    });
+    container.appendChild(copyBtn);
+
+    return container;
+  }
+
+  private createMeasurementRow(label: string, value: string): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    `;
+
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary, #a0a0a0);`;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const valueEl = document.createElement('span');
+    valueEl.style.cssText = `font-family: 'SF Mono', monospace; font-size: 11px;`;
+    valueEl.textContent = value;
+    row.appendChild(valueEl);
+
+    return row;
+  }
+
+  // =========================================================================
+  // UI Helper Methods
+  // =========================================================================
+
+  private createSection(title: string): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `margin-bottom: 20px;`;
+
     const header = document.createElement('div');
     header.style.cssText = `
       font-weight: 600;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: var(--designlibre-text-secondary, #666666);
-      margin-bottom: 8px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 10px;
     `;
-    header.textContent = this.formatCategoryName(category);
+    header.textContent = title;
     section.appendChild(header);
-
-    // Properties
-    for (const prop of properties) {
-      const row = this.createPropertyRow(prop);
-      section.appendChild(row);
-    }
 
     return section;
   }
 
-  private createPropertyRow(prop: PropertyDisplay): HTMLElement {
+  private createPropertyRow(): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'designlibre-inspector-row';
-    row.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 4px 0;
-      gap: 8px;
-    `;
-
-    // Label
-    const label = document.createElement('span');
-    label.style.cssText = `
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      flex-shrink: 0;
-      font-size: 12px;
-    `;
-    label.textContent = prop.label;
-    row.appendChild(label);
-
-    // Value container
-    const valueContainer = document.createElement('div');
-    valueContainer.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex: 1;
-      justify-content: flex-end;
-    `;
-
-    // Create editable or read-only value based on property
-    if (prop.editable && this.selectedNodeIds.length === 1) {
-      this.createEditableValue(prop, valueContainer);
-    } else {
-      this.createReadOnlyValue(prop, valueContainer);
-    }
-
-    row.appendChild(valueContainer);
-
+    row.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
     return row;
   }
 
-  private createReadOnlyValue(prop: PropertyDisplay, container: HTMLElement): void {
-    // Color swatch for color type
-    if (prop.type === 'color' && typeof prop.value === 'object') {
-      const swatch = document.createElement('div');
-      swatch.style.cssText = `
-        width: 14px;
-        height: 14px;
-        border-radius: 3px;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        background: ${prop.displayValue};
-        cursor: pointer;
-      `;
-      swatch.title = `Click to copy: ${prop.displayValue}`;
-      swatch.addEventListener('click', async () => {
-        const result = await copyToClipboard(prop.displayValue);
-        if (result.success) {
-          swatch.style.transform = 'scale(1.1)';
-          setTimeout(() => { swatch.style.transform = ''; }, 150);
-        }
-      });
-      container.appendChild(swatch);
-    }
-
-    const value = document.createElement('span');
-    value.style.cssText = `
-      font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
-      font-size: 12px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      cursor: pointer;
-    `;
-    value.textContent = prop.displayValue;
-    if (prop.unit) {
-      value.textContent += prop.unit;
-    }
-    value.title = `Click to copy: ${prop.copyValue}`;
-    value.addEventListener('click', async () => {
-      const result = await copyToClipboard(prop.copyValue);
-      if (result.success) {
-        value.style.color = 'var(--designlibre-accent, #4dabff)';
-        setTimeout(() => { value.style.color = ''; }, 300);
-      }
-    });
-    container.appendChild(value);
+  private createPropertyRow2Col(): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `display: flex; gap: 8px; margin-bottom: 8px;`;
+    return row;
   }
 
-  private createEditableValue(prop: PropertyDisplay, container: HTMLElement): void {
-    const nodeId = this.selectedNodeIds[0];
-    if (!nodeId) return;
+  private createNumberField(label: string, value: number, onChange: (v: number) => void): HTMLElement {
+    const container = document.createElement('div');
+    container.style.cssText = `flex: 1; display: flex; align-items: center; gap: 4px;`;
 
-    switch (prop.type) {
-      case 'number':
-        this.createNumberInput(prop, container, nodeId);
-        break;
-      case 'color':
-        this.createColorInput(prop, container, nodeId);
-        break;
-      case 'boolean':
-        this.createBooleanInput(prop, container, nodeId);
-        break;
-      case 'string':
-        this.createStringInput(prop, container, nodeId);
-        break;
-      case 'enum':
-        this.createEnumInput(prop, container, nodeId);
-        break;
-      default:
-        this.createReadOnlyValue(prop, container);
-    }
-  }
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; width: 14px;`;
+    labelEl.textContent = label;
+    container.appendChild(labelEl);
 
-  private createNumberInput(prop: PropertyDisplay, container: HTMLElement, nodeId: NodeId): void {
     const input = document.createElement('input');
     input.type = 'number';
-    input.value = String(prop.value);
+    input.value = String(Math.round(value * 100) / 100);
     input.style.cssText = `
-      width: 60px;
-      height: 24px;
+      flex: 1;
+      width: 100%;
+      height: 26px;
       padding: 0 6px;
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
-      font-size: 12px;
-      text-align: right;
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
     `;
-
     input.addEventListener('change', () => {
-      const newValue = parseFloat(input.value);
-      if (!isNaN(newValue)) {
-        this.updateNodeProperty(nodeId, prop.name, newValue);
-      }
+      const v = parseFloat(input.value);
+      if (!isNaN(v)) onChange(v);
     });
-
-    input.addEventListener('focus', () => {
-      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
-    });
-
-    input.addEventListener('blur', () => {
-      input.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-    });
-
     container.appendChild(input);
 
-    if (prop.unit) {
-      const unit = document.createElement('span');
-      unit.style.cssText = `
-        font-size: 11px;
-        color: var(--designlibre-text-secondary, #a0a0a0);
-      `;
-      unit.textContent = prop.unit;
-      container.appendChild(unit);
-    }
+    return container;
   }
 
-  private createColorInput(prop: PropertyDisplay, container: HTMLElement, nodeId: NodeId): void {
-    const colorValue = prop.value as { r: number; g: number; b: number; a: number };
-    const hexColor = prop.displayValue;
+  private createLabeledNumberField(label: string, value: number, unit: string, onChange: (v: number) => void): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
 
-    // Color swatch (clickable for picker)
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 12px;`;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const inputWrap = document.createElement('div');
+    inputWrap.style.cssText = `display: flex; align-items: center; gap: 4px;`;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = String(Math.round(value * 100) / 100);
+    input.style.cssText = `
+      width: 60px;
+      height: 26px;
+      padding: 0 6px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
+      text-align: right;
+    `;
+    input.addEventListener('change', () => {
+      const v = parseFloat(input.value);
+      if (!isNaN(v)) onChange(v);
+    });
+    inputWrap.appendChild(input);
+
+    if (unit) {
+      const unitEl = document.createElement('span');
+      unitEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px;`;
+      unitEl.textContent = unit;
+      inputWrap.appendChild(unitEl);
+    }
+
+    row.appendChild(inputWrap);
+    return row;
+  }
+
+  private createLabeledDropdown(label: string, value: string, options: string[], onChange: (v: string) => void): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
+
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 12px;`;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const select = document.createElement('select');
+    select.style.cssText = `
+      width: 100px;
+      height: 26px;
+      padding: 0 6px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 11px;
+      cursor: pointer;
+    `;
+    for (const opt of options) {
+      const optEl = document.createElement('option');
+      optEl.value = opt;
+      optEl.textContent = opt;
+      optEl.selected = opt === value;
+      select.appendChild(optEl);
+    }
+    select.addEventListener('change', () => onChange(select.value));
+    row.appendChild(select);
+
+    return row;
+  }
+
+  private createColorField(color: RGBA, onChange: (c: RGBA) => void): HTMLElement {
+    const container = document.createElement('div');
+    container.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+
+    const hex = rgbaToHex(color);
+
     const swatch = document.createElement('input');
     swatch.type = 'color';
-    swatch.value = hexColor.slice(0, 7); // Remove alpha for color input
+    swatch.value = hex.slice(0, 7);
     swatch.style.cssText = `
-      width: 24px;
-      height: 24px;
+      width: 32px;
+      height: 26px;
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       cursor: pointer;
       padding: 0;
-      background: transparent;
     `;
-
     swatch.addEventListener('change', () => {
-      const hex = swatch.value;
-      const r = parseInt(hex.slice(1, 3), 16) / 255;
-      const g = parseInt(hex.slice(3, 5), 16) / 255;
-      const b = parseInt(hex.slice(5, 7), 16) / 255;
-      this.updateNodeColor(nodeId, prop.name, { r, g, b, a: colorValue.a });
+      const h = swatch.value;
+      const r = parseInt(h.slice(1, 3), 16) / 255;
+      const g = parseInt(h.slice(3, 5), 16) / 255;
+      const b = parseInt(h.slice(5, 7), 16) / 255;
+      onChange({ r, g, b, a: color.a });
     });
-
     container.appendChild(swatch);
 
-    // Hex display
-    const hexDisplay = document.createElement('span');
-    hexDisplay.style.cssText = `
-      font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
-      font-size: 11px;
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.value = hex;
+    hexInput.style.cssText = `
+      flex: 1;
+      height: 26px;
+      padding: 0 6px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
+      font-family: 'SF Mono', monospace;
+      font-size: 11px;
     `;
-    hexDisplay.textContent = hexColor;
-    container.appendChild(hexDisplay);
+    container.appendChild(hexInput);
+
+    return container;
   }
 
-  private createBooleanInput(prop: PropertyDisplay, container: HTMLElement, nodeId: NodeId): void {
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = prop.value as boolean;
-    checkbox.style.cssText = `
+  private createSliderField(label: string, value: number, min: number, max: number, unit: string, onChange: (v: number) => void): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; width: 50px;`;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.value = String(value);
+    slider.style.cssText = `flex: 1; accent-color: var(--designlibre-accent, #4dabff);`;
+    row.appendChild(slider);
+
+    const valueEl = document.createElement('span');
+    valueEl.style.cssText = `font-size: 11px; width: 40px; text-align: right;`;
+    valueEl.textContent = `${Math.round(value)}${unit}`;
+    row.appendChild(valueEl);
+
+    slider.addEventListener('input', () => {
+      const v = parseFloat(slider.value);
+      valueEl.textContent = `${Math.round(v)}${unit}`;
+      onChange(v);
+    });
+
+    return row;
+  }
+
+  private createToggleWithFields(label: string, enabled: boolean, onChange: (enabled: boolean) => void): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
+
+    const labelEl = document.createElement('span');
+    labelEl.style.cssText = `color: var(--designlibre-text-primary); font-size: 12px;`;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.checked = enabled;
+    toggle.style.cssText = `
       width: 16px;
       height: 16px;
       cursor: pointer;
       accent-color: var(--designlibre-accent, #4dabff);
     `;
+    toggle.addEventListener('change', () => onChange(toggle.checked));
+    row.appendChild(toggle);
 
-    checkbox.addEventListener('change', () => {
-      this.updateNodeProperty(nodeId, prop.name, checkbox.checked);
-    });
-
-    container.appendChild(checkbox);
+    return row;
   }
 
-  private createStringInput(prop: PropertyDisplay, container: HTMLElement, nodeId: NodeId): void {
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = String(prop.value);
-    input.style.cssText = `
-      width: 100px;
-      height: 24px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
+  private createButton(text: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
-    `;
-
-    input.addEventListener('change', () => {
-      this.updateNodeProperty(nodeId, prop.name, input.value);
-    });
-
-    input.addEventListener('focus', () => {
-      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
-    });
-
-    input.addEventListener('blur', () => {
-      input.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-    });
-
-    container.appendChild(input);
-  }
-
-  private createEnumInput(prop: PropertyDisplay, container: HTMLElement, nodeId: NodeId): void {
-    const select = document.createElement('select');
-    select.style.cssText = `
-      height: 24px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      font-size: 11px;
       cursor: pointer;
+      transition: all 0.15s;
     `;
-
-    if (prop.options) {
-      for (const option of prop.options) {
-        const opt = document.createElement('option');
-        opt.value = option;
-        opt.textContent = option;
-        opt.selected = option === prop.value;
-        select.appendChild(opt);
-      }
-    }
-
-    select.addEventListener('change', () => {
-      this.updateNodeProperty(nodeId, prop.name, select.value);
+    btn.textContent = text;
+    btn.addEventListener('click', onClick);
+    btn.addEventListener('mouseenter', () => {
+      btn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      btn.style.color = 'var(--designlibre-accent, #4dabff)';
     });
-
-    container.appendChild(select);
-  }
-
-  private updateNodeProperty(nodeId: NodeId, propName: string, value: unknown): void {
-    const sceneGraph = this.runtime.getSceneGraph();
-    sceneGraph.updateNode(nodeId, { [propName]: value });
-  }
-
-  private updateNodeColor(nodeId: NodeId, propName: string, color: { r: number; g: number; b: number; a: number }): void {
-    const sceneGraph = this.runtime.getSceneGraph();
-    const node = sceneGraph.getNode(nodeId);
-    if (!node) return;
-
-    // Parse property name like "fills[0].color" or "strokes[1].color"
-    const fillMatch = propName.match(/^fills\[(\d+)\]\.color$/);
-    const strokeMatch = propName.match(/^strokes\[(\d+)\]\.color$/);
-
-    if (fillMatch && 'fills' in node) {
-      const index = parseInt(fillMatch[1]!, 10);
-      const fills = [...(node.fills || [])];
-      if (fills[index]?.type === 'SOLID') {
-        fills[index] = { ...fills[index], color };
-        sceneGraph.updateNode(nodeId, { fills });
-      }
-    } else if (strokeMatch && 'strokes' in node) {
-      const index = parseInt(strokeMatch[1]!, 10);
-      const strokes = [...(node.strokes || [])];
-      if (strokes[index]?.type === 'SOLID') {
-        strokes[index] = { ...strokes[index], color };
-        sceneGraph.updateNode(nodeId, { strokes });
-      }
-    }
-  }
-
-  private createColorSwatch(hex: string, _color: { r: number; g: number; b: number; a: number }): HTMLElement {
-    const swatch = document.createElement('div');
-    swatch.style.cssText = `
-      width: 24px;
-      height: 24px;
-      border-radius: 4px;
-      border: 1px solid var(--designlibre-border, #e0e0e0);
-      background: ${hex};
-      cursor: pointer;
-    `;
-    swatch.title = `Click to copy: ${hex}`;
-
-    swatch.addEventListener('click', async () => {
-      const result = await copyToClipboard(hex);
-      if (result.success) {
-        swatch.style.transform = 'scale(1.1)';
-        setTimeout(() => {
-          swatch.style.transform = '';
-        }, 150);
-      }
+    btn.addEventListener('mouseleave', () => {
+      btn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      btn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
     });
-
-    return swatch;
+    return btn;
   }
 
-  private formatCategoryName(category: PropertyCategory): string {
-    const names: Record<PropertyCategory, string> = {
-      identity: 'Identity',
-      transform: 'Transform',
-      appearance: 'Appearance',
-      layout: 'Layout',
-      typography: 'Typography',
-      effects: 'Effects',
-    };
-    return names[category];
-  }
-
-  private formatAllProperties(props: ExtractedProperties): string {
-    const lines: string[] = [];
-    lines.push(`/* ${props.nodeName} (${props.nodeType}) */`);
-
-    for (const [category, properties] of Object.entries(props.categories)) {
-      if (properties.length === 0) continue;
-
-      lines.push('');
-      lines.push(`/* ${this.formatCategoryName(category as PropertyCategory)} */`);
-
-      for (const prop of properties) {
-        lines.push(`${prop.label}: ${prop.copyValue};`);
-      }
-    }
-
-    return lines.join('\n');
+  private updateNode(nodeId: NodeId, props: Record<string, unknown>): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    sceneGraph.updateNode(nodeId, props);
   }
 
   /** Show the panel */

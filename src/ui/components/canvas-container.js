@@ -14,11 +14,12 @@ export class CanvasContainer {
     options;
     animationFrameId = null;
     isRunning = false;
+    resizeObserver = null;
     constructor(runtime, container, options = {}) {
         this.runtime = runtime;
         this.container = container;
         this.options = {
-            backgroundColor: options.backgroundColor ?? '#141414',
+            backgroundColor: options.backgroundColor ?? '#0a0a0a',
             showPixelGrid: options.showPixelGrid ?? true,
             gridColor: options.gridColor ?? 'rgba(255, 255, 255, 0.1)',
             showOrigin: options.showOrigin ?? true, // Default ON for debugging
@@ -45,9 +46,12 @@ export class CanvasContainer {
         this.overlayCanvas.style.left = '0';
         this.overlayCanvas.style.pointerEvents = 'none';
         this.container.appendChild(this.overlayCanvas);
-        // Handle resize
+        // Handle resize using ResizeObserver to catch sidebar collapse/expand
         this.handleResize();
-        window.addEventListener('resize', this.handleResize);
+        this.resizeObserver = new ResizeObserver(() => {
+            this.handleResize();
+        });
+        this.resizeObserver.observe(this.container);
         // Start render loop
         this.startRenderLoop();
     }
@@ -85,6 +89,11 @@ export class CanvasContainer {
         this.overlayCanvas.height = rect.height * dpr;
         this.overlayCanvas.style.width = `${rect.width}px`;
         this.overlayCanvas.style.height = `${rect.height}px`;
+        // Also trigger the WebGL renderer's resize to update viewport
+        const renderer = this.runtime.getRenderer();
+        if (renderer) {
+            renderer.resize();
+        }
         this.render();
     };
     /**
@@ -315,7 +324,10 @@ export class CanvasContainer {
      */
     dispose() {
         this.stopRenderLoop();
-        window.removeEventListener('resize', this.handleResize);
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
         if (this.overlayCanvas) {
             this.container.removeChild(this.overlayCanvas);
         }

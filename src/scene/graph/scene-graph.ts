@@ -82,8 +82,8 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
     const doc = createDocument(name ? { name } : {});
     this.registry.addNode(doc, generateFirstIndex());
 
-    // Create first page
-    const page = createPage({ name: 'Page 1' });
+    // Create first page (called "Leaf" in the UI)
+    const page = createPage({ name: 'Leaf 1' });
     insertNode(this.registry, page, doc.id, 0);
 
     this.emit('node:created', { nodeId: doc.id, nodeType: 'DOCUMENT' });

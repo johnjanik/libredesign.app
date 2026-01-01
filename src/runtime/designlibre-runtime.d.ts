@@ -6,6 +6,7 @@
 import type { NodeId } from '@core/types/common';
 import { EventEmitter } from '@core/events/event-emitter';
 import { SceneGraph } from '@scene/graph/scene-graph';
+import { Renderer } from '@renderer/core/renderer';
 import { Viewport } from '@renderer/core/viewport';
 import { ToolManager } from '@tools/base/tool-manager';
 import { SelectionManager } from '@scene/selection/selection-manager';
@@ -192,6 +193,10 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      * Get the selection manager.
      */
     getSelectionManager(): SelectionManager;
+    /**
+     * Get the renderer.
+     */
+    getRenderer(): Renderer | null;
     /**
      * Dispose of the runtime.
      */

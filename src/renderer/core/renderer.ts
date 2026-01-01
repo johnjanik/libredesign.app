@@ -78,7 +78,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
     super();
 
     this.canvas = canvas;
-    this.clearColor = options.clearColor ?? { r: 1, g: 1, b: 1, a: 1 };
+    this.clearColor = options.clearColor ?? { r: 0.039, g: 0.039, b: 0.039, a: 1 };
     this.pixelRatio = options.pixelRatio ?? window.devicePixelRatio ?? 1;
 
     // Initialize WebGL
@@ -241,10 +241,74 @@ export class Renderer extends EventEmitter<RendererEvents> {
     if (pageIds.length === 0) return;
 
     const pageId = pageIds[0]!;
+    const page = this.sceneGraph.getNode(pageId);
+
+    // Check if page is visible
+    const pageVisible = page ? (page as { visible?: boolean }).visible !== false : true;
+
+    if (!pageVisible) {
+      // Page is hidden - show transparency grid
+      this.renderTransparencyGrid();
+      return;
+    }
 
     // Render page and its children
     const viewProjection = this.viewport.getViewProjectionMatrix();
     this.renderNode(pageId, identity(), viewProjection);
+  }
+
+  /**
+   * Render transparency checkerboard grid.
+   */
+  private renderTransparencyGrid(): void {
+    const gl = this.ctx.gl;
+    const viewProjection = this.viewport.getViewProjectionMatrix();
+
+    // Get visible world bounds
+    const bounds = this.viewport.getVisibleBounds();
+    const zoom = this.viewport.getZoom();
+
+    const minX = bounds.minX;
+    const minY = bounds.minY;
+    const maxX = bounds.maxX;
+    const maxY = bounds.maxY;
+
+    // Create fullscreen quad covering the visible area
+    const vertices = new Float32Array([
+      minX, minY,
+      maxX, minY,
+      maxX, maxY,
+      minX, maxY,
+    ]);
+    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+
+    // Use transparency grid shader
+    const shader = this.shaders.use('transparencyGrid');
+
+    // Upload geometry
+    this.ctx.bindVertexArray(this.fillVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
+
+    // Set uniforms
+    this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+
+    // Grid size adjusts with zoom - aim for ~10 pixel squares on screen
+    const gridSize = 10 / zoom;
+    gl.uniform1f(shader.uniforms.get('uGridSize')!, gridSize);
+
+    // Checkerboard colors (light and medium gray)
+    gl.uniform4f(shader.uniforms.get('uColor1')!, 0.3, 0.3, 0.3, 1.0);
+    gl.uniform4f(shader.uniforms.get('uColor2')!, 0.2, 0.2, 0.2, 1.0);
+
+    // Draw
+    this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    this.drawCallCount++;
+    this.triangleCount += 2;
+
+    this.ctx.bindVertexArray(null);
   }
 
   /**

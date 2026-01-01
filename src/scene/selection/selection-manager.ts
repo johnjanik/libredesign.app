@@ -454,8 +454,8 @@ export class SelectionManager extends EventEmitter<SelectionManagerEvents> {
     return ids.filter(id => {
       const node = this.sceneGraph.getNode(id);
       if (!node) return false;
-      // Don't allow selecting document or page nodes
-      return node.type !== 'DOCUMENT' && node.type !== 'PAGE';
+      // Don't allow selecting document nodes (but PAGE/Leaf nodes are allowed)
+      return node.type !== 'DOCUMENT';
     });
   }
 

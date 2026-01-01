@@ -21,7 +21,7 @@ interface ToolDefinition {
  */
 export interface ToolbarOptions {
   /** Position of toolbar */
-  position?: 'top' | 'left' | 'right' | undefined;
+  position?: 'top' | 'left' | 'right' | 'bottom' | undefined;
   /** Show tool labels */
   showLabels?: boolean | undefined;
 }
@@ -151,6 +151,8 @@ export class Toolbar {
         return `${base} position: absolute; top: 12px; left: 50%; transform: translateX(-50%); flex-direction: row;`;
       case 'right':
         return `${base} position: absolute; right: 12px; top: 50%; transform: translateY(-50%); flex-direction: column;`;
+      case 'bottom':
+        return `${base} position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); flex-direction: row;`;
       case 'left':
       default:
         return `${base} position: absolute; left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column;`;
@@ -158,7 +160,7 @@ export class Toolbar {
   }
 
   private getSeparatorStyles(): string {
-    return this.options.position === 'top'
+    return this.options.position === 'top' || this.options.position === 'bottom'
       ? 'width: 1px; height: 24px; background: var(--designlibre-border, #3d3d3d); margin: 0 4px;'
       : 'width: 24px; height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 4px 0;';
   }

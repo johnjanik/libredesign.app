@@ -95,6 +95,10 @@ export declare class Renderer extends EventEmitter<RendererEvents> {
      */
     private renderScene;
     /**
+     * Render transparency checkerboard grid.
+     */
+    private renderTransparencyGrid;
+    /**
      * Render a node and its children.
      */
     private renderNode;

@@ -7,6 +7,7 @@ import { createDesignLibreRuntime } from '@runtime/designlibre-runtime';
 import { createToolbar } from '@ui/components/toolbar';
 import { createCanvasContainer } from '@ui/components/canvas-container';
 import { createInspectorPanel } from '@ui/components/inspector-panel';
+import { createLeftSidebar } from '@ui/components/left-sidebar';
 // Available for UI toggle - currently hidden by default
 import { createCodePanel as _createCodePanel } from '@ui/components/code-panel';
 import { createTokensPanel as _createTokensPanel } from '@ui/components/tokens-panel';
@@ -31,22 +32,7 @@ async function initializeApp(config) {
     const appContainer = document.createElement('div');
     appContainer.className = 'designlibre-app';
     appContainer.style.cssText = 'width: 100%; height: 100%; display: flex; flex-direction: column;';
-    // Header
-    const header = document.createElement('header');
-    header.className = 'designlibre-header';
-    header.innerHTML = `
-    <div class="designlibre-header-left">
-      <span class="designlibre-logo">DesignLibre</span>
-    </div>
-    <div class="designlibre-header-center">
-      <span class="designlibre-document-title">${config.documentName ?? 'Untitled'}</span>
-    </div>
-    <div class="designlibre-header-right">
-      <button class="designlibre-button" id="btn-save">Save</button>
-      <button class="designlibre-button" id="btn-export">Export</button>
-    </div>
-  `;
-    // Main content area
+    // Main content area (full height, no header)
     const main = document.createElement('main');
     main.className = 'designlibre-main';
     // Canvas container
@@ -64,7 +50,6 @@ async function initializeApp(config) {
     </div>
   `;
     main.appendChild(canvasContainer);
-    appContainer.appendChild(header);
     appContainer.appendChild(main);
     appContainer.appendChild(statusBar);
     container.appendChild(appContainer);
@@ -79,8 +64,11 @@ async function initializeApp(config) {
     runtime.createDocument(config.documentName ?? 'Untitled');
     // Create canvas container UI
     createCanvasContainer(runtime, canvasContainer);
-    // Create toolbar
-    createToolbar(runtime, canvasContainer, { position: 'left' });
+    // Create left sidebar
+    const leftSidebar = createLeftSidebar(runtime, main, { width: 240 });
+    leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
+    // Create toolbar (positioned at bottom of canvas)
+    createToolbar(runtime, canvasContainer, { position: 'bottom' });
     // Create design token system (available for TokensPanel when enabled)
     const tokenRegistry = createTokenRegistry();
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -93,34 +81,6 @@ async function initializeApp(config) {
     // Uncomment below to show them:
     // _createCodePanel(runtime, main, { position: 'right' });
     // _createTokensPanel(runtime, tokenRegistry, tokenExporter, main, { position: 'right' });
-    // Wire up header buttons
-    const saveBtn = document.getElementById('btn-save');
-    saveBtn?.addEventListener('click', async () => {
-        try {
-            await runtime.saveDocument();
-            showNotification('Document saved');
-        }
-        catch (err) {
-            console.error('Save failed:', err);
-            showNotification('Save failed', 'error');
-        }
-    });
-    const exportBtn = document.getElementById('btn-export');
-    exportBtn?.addEventListener('click', async () => {
-        const selection = runtime.getSelection();
-        if (selection.length === 0) {
-            showNotification('Select something to export', 'warning');
-            return;
-        }
-        try {
-            await runtime.downloadPNG(selection[0]);
-            showNotification('Export complete');
-        }
-        catch (err) {
-            console.error('Export failed:', err);
-            showNotification('Export failed', 'error');
-        }
-    });
     // Update status bar
     runtime.on('selection:changed', ({ nodeIds }) => {
         const statusSelection = document.getElementById('status-selection');
@@ -134,32 +94,6 @@ async function initializeApp(config) {
     if (config.debug) {
         console.log('DesignLibre initialized', { runtime });
     }
-}
-/**
- * Show notification.
- */
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-    position: fixed;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 20px;
-    background: ${type === 'error' ? '#ff1744' : type === 'warning' ? '#ffab00' : '#00c853'};
-    color: white;
-    border-radius: 4px;
-    font-size: 14px;
-    z-index: 1000;
-    animation: slideUp 0.3s ease;
-  `;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s';
-        setTimeout(() => notification.remove(), 300);
-    }, 2000);
 }
 // Auto-initialize if #app exists
 document.addEventListener('DOMContentLoaded', () => {
