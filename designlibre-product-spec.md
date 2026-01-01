@@ -1,4 +1,4 @@
-# Freema Product Specification
+# DesignLibre Product Specification
 
 **Version:** 1.0.0  
 **Status:** Draft  
@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-Freema is a **distributed, GPU-accelerated vector CAD system** implemented in TypeScript, running in the browser, with a **CRDT-backed retained scene graph**. It is designed for collaborative design workflows where multiple users edit vector graphics simultaneously with sub-100ms synchronization latency.
+DesignLibre is a **distributed, GPU-accelerated vector CAD system** implemented in TypeScript, running in the browser, with a **CRDT-backed retained scene graph**. It is designed for collaborative design workflows where multiple users edit vector graphics simultaneously with sub-100ms synchronization latency.
 
-### What Freema Is
+### What DesignLibre Is
 
 - A browser-native vector graphics editor
 - A real-time collaborative design tool
@@ -18,7 +18,7 @@ Freema is a **distributed, GPU-accelerated vector CAD system** implemented in Ty
 - A declarative constraint-based layout system
 - A platform for design-to-code translation
 
-### What Freema Is Not
+### What DesignLibre Is Not
 
 - A web page builder
 - A React component editor
@@ -43,7 +43,7 @@ Traditional approaches using DOM-based rendering or retained-mode graphics witho
 
 ### 1.2 Solution Overview
 
-Freema addresses these challenges through:
+DesignLibre addresses these challenges through:
 
 1. **WebGL-based rendering**: Direct GPU access bypassing DOM overhead
 2. **CRDT synchronization**: Conflict-free replicated data types for real-time collaboration
@@ -277,7 +277,7 @@ interface PropertyDefinition {
 
 ### 4.1 Constraint Model
 
-Freema uses a **Cassowary-inspired constraint solver** for declarative layout:
+DesignLibre uses a **Cassowary-inspired constraint solver** for declarative layout:
 
 ```typescript
 interface LayoutConstraints {
@@ -464,7 +464,7 @@ interface TextStyleRange {
 
 ### 7.1 CRDT Architecture
 
-Freema uses a **hybrid CRDT/OT system** optimized for vector graphics:
+DesignLibre uses a **hybrid CRDT/OT system** optimized for vector graphics:
 
 ```typescript
 interface Operation {
@@ -573,7 +573,7 @@ interface PluginAPI {
 
 ### 8.3 Code Generation Plugins
 
-Plugins translate Freema's internal model to framework-specific output:
+Plugins translate DesignLibre's internal model to framework-specific output:
 
 ```typescript
 // Example: React export
@@ -694,7 +694,7 @@ interface LLMNode {
 
 ```typescript
 // Document operations
-interface FreemaRuntime {
+interface DesignLibreRuntime {
   // Lifecycle
   loadDocument(data: DocumentData): Document;
   saveDocument(): DocumentData;
@@ -934,7 +934,7 @@ type BlendMode =
 
 ## Appendix C: Color Spaces
 
-Freema supports multiple color spaces:
+DesignLibre supports multiple color spaces:
 
 | Color Space | Use Case |
 |-------------|----------|
