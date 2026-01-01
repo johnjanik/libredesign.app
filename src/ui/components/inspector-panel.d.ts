@@ -39,6 +39,26 @@ export declare class InspectorPanel {
      */
     private renderPageStylesSection;
     /**
+     * Create a style button for the styles list.
+     */
+    private createStyleButton;
+    /**
+     * Create an applied style item with detach option.
+     */
+    private createAppliedStyleItem;
+    /**
+     * Show dialog to create a new style.
+     */
+    private showCreateStyleDialog;
+    /**
+     * Apply a color style to a node.
+     */
+    private applyColorStyle;
+    /**
+     * Detach a color style from a node (keeps the color but removes style link).
+     */
+    private detachColorStyle;
+    /**
      * Render page export section.
      */
     private renderPageExportSection;

@@ -32,6 +32,7 @@ import { PNGExporter, createPNGExporter } from '@persistence/export/png-exporter
 import { SVGExporter, createSVGExporter } from '@persistence/export/svg-exporter';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
+import { StyleManager, createStyleManager } from '@core/styles/style-manager';
 
 /**
  * Runtime events
@@ -77,6 +78,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private selectionManager: SelectionManager;
   private layoutEngine: LayoutEngine;
   private undoManager: UndoManager;
+  private styleManager: StyleManager;
 
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
@@ -123,6 +125,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.selectionManager = createSelectionManager(this.sceneGraph);
     this.layoutEngine = createLayoutEngine(this.sceneGraph);
     this.undoManager = createUndoManager({ maxHistory: 100 });
+    this.styleManager = createStyleManager();
 
     // Initialize persistence
     this.serializer = createDocumentSerializer();
@@ -469,6 +472,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   getRenderer(): Renderer | null {
     return this.renderer;
+  }
+
+  /**
+   * Get the style manager.
+   */
+  getStyleManager(): StyleManager {
+    return this.styleManager;
   }
 
   // =========================================================================

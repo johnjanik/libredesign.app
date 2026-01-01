@@ -382,9 +382,13 @@ export class InspectorPanel {
     /**
      * Render page styles section.
      */
-    renderPageStylesSection(_nodeId) {
+    renderPageStylesSection(nodeId) {
         if (!this.contentElement)
             return;
+        const styleManager = this.runtime.getStyleManager();
+        const colorStyles = styleManager.getColorStyles();
+        const node = this.runtime.getSceneGraph().getNode(nodeId);
+        const appliedStyleId = node?.colorStyleId;
         const section = document.createElement('div');
         section.style.cssText = `margin-bottom: 16px;`;
         const header = document.createElement('div');
@@ -405,7 +409,7 @@ export class InspectorPanel {
     `;
         const addBtn = document.createElement('button');
         addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
-        addBtn.title = 'Add style';
+        addBtn.title = 'Create style from current color';
         addBtn.style.cssText = `
       width: 24px;
       height: 24px;
@@ -425,24 +429,176 @@ export class InspectorPanel {
             addBtn.style.backgroundColor = 'transparent';
         });
         addBtn.addEventListener('click', () => {
-            // TODO: Open style picker
+            this.showCreateStyleDialog(nodeId);
         });
         header.appendChild(title);
         header.appendChild(addBtn);
         section.appendChild(header);
-        // Placeholder for styles list
-        const placeholder = document.createElement('div');
-        placeholder.style.cssText = `
-      padding: 12px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--designlibre-text-muted, #6a6a6a);
+        // Show applied style or style picker
+        if (appliedStyleId) {
+            const appliedStyle = styleManager.getStyle(appliedStyleId);
+            if (appliedStyle) {
+                const styleItem = this.createAppliedStyleItem(appliedStyle, nodeId);
+                section.appendChild(styleItem);
+            }
+        }
+        // Show existing color styles
+        if (colorStyles.length > 0) {
+            const stylesLabel = document.createElement('div');
+            stylesLabel.textContent = 'Color Styles';
+            stylesLabel.style.cssText = `
+        font-size: 10px;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        margin: 8px 0 4px 0;
+      `;
+            section.appendChild(stylesLabel);
+            const stylesList = document.createElement('div');
+            stylesList.style.cssText = `
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      `;
+            for (const style of colorStyles) {
+                const styleBtn = this.createStyleButton(style, nodeId, appliedStyleId === style.id);
+                stylesList.appendChild(styleBtn);
+            }
+            section.appendChild(stylesList);
+        }
+        else if (!appliedStyleId) {
+            // Placeholder when no styles exist
+            const placeholder = document.createElement('div');
+            placeholder.style.cssText = `
+        padding: 12px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border-radius: 4px;
+      `;
+            placeholder.textContent = 'No styles yet. Click + to create one.';
+            section.appendChild(placeholder);
+        }
+        this.contentElement.appendChild(section);
+    }
+    /**
+     * Create a style button for the styles list.
+     */
+    createStyleButton(style, nodeId, isApplied) {
+        const btn = document.createElement('button');
+        btn.title = style.name;
+        btn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: 2px solid ${isApplied ? 'var(--designlibre-accent, #4dabff)' : 'transparent'};
+      background: ${rgbaToHex(style.color)};
+      cursor: pointer;
+      border-radius: 4px;
+      transition: border-color 0.15s;
+    `;
+        btn.addEventListener('mouseenter', () => {
+            if (!isApplied) {
+                btn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+            }
+        });
+        btn.addEventListener('mouseleave', () => {
+            if (!isApplied) {
+                btn.style.borderColor = 'transparent';
+            }
+        });
+        btn.addEventListener('click', () => {
+            // Apply this style to the node
+            this.applyColorStyle(style, nodeId);
+        });
+        return btn;
+    }
+    /**
+     * Create an applied style item with detach option.
+     */
+    createAppliedStyleItem(style, nodeId) {
+        const item = document.createElement('div');
+        item.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       border-radius: 4px;
+      margin-bottom: 8px;
     `;
-        placeholder.textContent = 'No styles applied';
-        section.appendChild(placeholder);
-        this.contentElement.appendChild(section);
+        const colorSwatch = document.createElement('div');
+        colorSwatch.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: ${rgbaToHex(style.color)};
+      border-radius: 4px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+        const name = document.createElement('span');
+        name.textContent = style.name;
+        name.style.cssText = `
+      flex: 1;
+      font-size: 12px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+        const detachBtn = document.createElement('button');
+        detachBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+        detachBtn.title = 'Detach style';
+        detachBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    `;
+        detachBtn.addEventListener('mouseenter', () => {
+            detachBtn.style.backgroundColor = 'var(--designlibre-bg-tertiary, #252525)';
+            detachBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+        });
+        detachBtn.addEventListener('mouseleave', () => {
+            detachBtn.style.backgroundColor = 'transparent';
+            detachBtn.style.color = 'var(--designlibre-text-muted, #6a6a6a)';
+        });
+        detachBtn.addEventListener('click', () => {
+            this.detachColorStyle(nodeId);
+        });
+        item.appendChild(colorSwatch);
+        item.appendChild(name);
+        item.appendChild(detachBtn);
+        return item;
+    }
+    /**
+     * Show dialog to create a new style.
+     */
+    showCreateStyleDialog(nodeId) {
+        const node = this.runtime.getSceneGraph().getNode(nodeId);
+        const bgColor = node?.backgroundColor ?? { r: 0.102, g: 0.102, b: 0.102, a: 1 };
+        const name = prompt('Enter style name:', `Color ${this.runtime.getStyleManager().getColorStyles().length + 1}`);
+        if (!name)
+            return;
+        const styleManager = this.runtime.getStyleManager();
+        const style = styleManager.createColorStyle(name, bgColor);
+        // Apply the style to the node
+        this.applyColorStyle(style, nodeId);
+    }
+    /**
+     * Apply a color style to a node.
+     */
+    applyColorStyle(style, nodeId) {
+        this.updateNode(nodeId, {
+            backgroundColor: style.color,
+            colorStyleId: style.id,
+        });
+    }
+    /**
+     * Detach a color style from a node (keeps the color but removes style link).
+     */
+    detachColorStyle(nodeId) {
+        this.updateNode(nodeId, { colorStyleId: undefined });
     }
     /**
      * Render page export section.

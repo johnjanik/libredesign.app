@@ -11,6 +11,7 @@ import { Viewport } from '@renderer/core/viewport';
 import { ToolManager } from '@tools/base/tool-manager';
 import { SelectionManager } from '@scene/selection/selection-manager';
 import { LayoutEngine } from '@layout/layout-engine';
+import { StyleManager } from '@core/styles/style-manager';
 /**
  * Runtime events
  */
@@ -56,6 +57,7 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     private selectionManager;
     private layoutEngine;
     private undoManager;
+    private styleManager;
     private pointerHandler;
     private keyboardHandler;
     private canvas;
@@ -197,6 +199,10 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      * Get the renderer.
      */
     getRenderer(): Renderer | null;
+    /**
+     * Get the style manager.
+     */
+    getStyleManager(): StyleManager;
     /**
      * Dispose of the runtime.
      */

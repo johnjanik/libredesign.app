@@ -1,17 +1,16 @@
 /**
  * Toolbar
  *
- * UI component for tool selection and common actions.
+ * UI component for tool selection with popup menus for tool groups.
  */
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 /**
- * Tool definition
+ * Tool options for configurable tools
  */
-interface ToolDefinition {
-    id: string;
-    name: string;
-    icon: string;
-    shortcut: string;
+interface ToolOptions {
+    sides?: number;
+    points?: number;
+    innerRadius?: number;
 }
 /**
  * Toolbar options
@@ -30,24 +29,29 @@ export declare class Toolbar {
     private container;
     private element;
     private options;
-    private tools;
     private buttons;
+    private activePopup;
+    private selectedGroupTools;
+    private toolOptions;
     constructor(runtime: DesignLibreRuntime, container: HTMLElement, options?: ToolbarOptions);
     private setup;
     private getToolbarStyles;
     private getSeparatorStyles;
     private createToolButton;
+    private createToolGroupButton;
+    private togglePopup;
+    private createPopupMenu;
+    private createPopupMenuItem;
+    private createToolOptionsRow;
+    private selectGroupTool;
+    private closePopup;
     private addActionButtons;
     private createActionButton;
     private setActiveButton;
     /**
-     * Add a custom tool.
+     * Get tool options for a specific tool.
      */
-    addTool(tool: ToolDefinition): void;
-    /**
-     * Remove a tool.
-     */
-    removeTool(toolId: string): void;
+    getToolOptions(toolId: string): ToolOptions | undefined;
     /**
      * Show the toolbar.
      */
