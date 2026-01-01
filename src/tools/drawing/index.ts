@@ -19,3 +19,12 @@ export type { LineToolOptions } from './line-tool';
 
 export { PolygonTool, createPolygonTool } from './polygon-tool';
 export type { PolygonToolOptions, PolygonData } from './polygon-tool';
+
+export { StarTool, createStarTool } from './star-tool';
+export type { StarToolOptions, StarData } from './star-tool';
+
+export { PencilTool, createPencilTool } from './pencil-tool';
+export type { PencilToolOptions, FreehandData } from './pencil-tool';
+
+export { ImageTool, createImageTool } from './image-tool';
+export type { ImageToolOptions, ImagePlacementData } from './image-tool';

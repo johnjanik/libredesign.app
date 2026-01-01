@@ -19,6 +19,10 @@ import { RectangleTool, createRectangleTool } from '@tools/drawing/rectangle-too
 import { EllipseTool, createEllipseTool } from '@tools/drawing/ellipse-tool';
 import { LineTool, createLineTool } from '@tools/drawing/line-tool';
 import { PenTool, createPenTool } from '@tools/drawing/pen-tool';
+import { PolygonTool, createPolygonTool } from '@tools/drawing/polygon-tool';
+import { StarTool, createStarTool } from '@tools/drawing/star-tool';
+import { PencilTool, createPencilTool } from '@tools/drawing/pencil-tool';
+import { ImageTool, createImageTool } from '@tools/drawing/image-tool';
 import { HandTool, createHandTool } from '@tools/navigation/hand-tool';
 import { PointerHandler, createPointerHandler } from '@tools/input/pointer-handler';
 import { KeyboardHandler, createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -105,6 +109,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private ellipseTool: EllipseTool | null = null;
   private lineTool: LineTool | null = null;
   private penTool: PenTool | null = null;
+  private polygonTool: PolygonTool | null = null;
+  private starTool: StarTool | null = null;
+  private pencilTool: PencilTool | null = null;
+  private imageTool: ImageTool | null = null;
   private handTool: HandTool | null = null;
 
   // State
@@ -481,6 +489,20 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     return this.styleManager;
   }
 
+  /**
+   * Get the polygon tool.
+   */
+  getPolygonTool(): PolygonTool | null {
+    return this.polygonTool;
+  }
+
+  /**
+   * Get the star tool.
+   */
+  getStarTool(): StarTool | null {
+    return this.starTool;
+  }
+
   // =========================================================================
   // Cleanup
   // =========================================================================
@@ -702,6 +724,164 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Polygon tool
+    this.polygonTool = createPolygonTool();
+    this.polygonTool.setOnPolygonComplete((polygon) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      // Create path from polygon vertices
+      const commands: PathCommand[] = [];
+      if (polygon.vertices.length > 0) {
+        // Translate vertices to local coordinates
+        const minX = polygon.bounds.x;
+        const minY = polygon.bounds.y;
+
+        commands.push({ type: 'M', x: polygon.vertices[0]!.x - minX, y: polygon.vertices[0]!.y - minY });
+        for (let i = 1; i < polygon.vertices.length; i++) {
+          commands.push({ type: 'L', x: polygon.vertices[i]!.x - minX, y: polygon.vertices[i]!.y - minY });
+        }
+        commands.push({ type: 'Z' });
+      }
+
+      const path: VectorPath = { windingRule: 'NONZERO', commands };
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: `Polygon (${polygon.sides} sides)`,
+        x: polygon.bounds.x,
+        y: polygon.bounds.y,
+        width: polygon.bounds.width,
+        height: polygon.bounds.height,
+        vectorPaths: [path],
+        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      return nodeId;
+    });
+
+    // Star tool
+    this.starTool = createStarTool();
+    this.starTool.setOnStarComplete((star) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      // Create path from star vertices
+      const commands: PathCommand[] = [];
+      if (star.vertices.length > 0) {
+        // Translate vertices to local coordinates
+        const minX = star.bounds.x;
+        const minY = star.bounds.y;
+
+        commands.push({ type: 'M', x: star.vertices[0]!.x - minX, y: star.vertices[0]!.y - minY });
+        for (let i = 1; i < star.vertices.length; i++) {
+          commands.push({ type: 'L', x: star.vertices[i]!.x - minX, y: star.vertices[i]!.y - minY });
+        }
+        commands.push({ type: 'Z' });
+      }
+
+      const path: VectorPath = { windingRule: 'NONZERO', commands };
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: `Star (${star.points} points)`,
+        x: star.bounds.x,
+        y: star.bounds.y,
+        width: star.bounds.width,
+        height: star.bounds.height,
+        vectorPaths: [path],
+        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      return nodeId;
+    });
+
+    // Pencil tool (freehand drawing)
+    this.pencilTool = createPencilTool();
+    this.pencilTool.setOnPathComplete((data) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      // Translate path to local coordinates
+      const minX = data.bounds.x;
+      const minY = data.bounds.y;
+
+      const translatedCommands = data.path.commands.map((cmd) => {
+        const newCmd = { ...cmd };
+        if ('x' in newCmd && 'y' in newCmd) {
+          newCmd.x -= minX;
+          newCmd.y -= minY;
+        }
+        if ('x1' in newCmd && 'y1' in newCmd) {
+          (newCmd as { x1: number; y1: number }).x1 -= minX;
+          (newCmd as { x1: number; y1: number }).y1 -= minY;
+        }
+        if ('x2' in newCmd && 'y2' in newCmd) {
+          (newCmd as { x2: number; y2: number }).x2 -= minX;
+          (newCmd as { x2: number; y2: number }).y2 -= minY;
+        }
+        return newCmd as PathCommand;
+      });
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: 'Freehand',
+        x: minX,
+        y: minY,
+        width: data.bounds.width,
+        height: data.bounds.height,
+        vectorPaths: [{ windingRule: data.path.windingRule, commands: translatedCommands }],
+        fills: [],
+        strokes: [solidPaint(rgba(0, 0, 0, 1))],
+        strokeWeight: 2,
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      return nodeId;
+    });
+
+    // Image tool
+    this.imageTool = createImageTool();
+    this.imageTool.setOnImagePlace((data) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      // For now, create a rectangle placeholder with the image dimensions
+      // Full image support requires texture management
+      const width = data.naturalWidth ?? 200;
+      const height = data.naturalHeight ?? 200;
+
+      // Create a rectangle path for the image bounds
+      const path: VectorPath = {
+        windingRule: 'NONZERO',
+        commands: [
+          { type: 'M', x: 0, y: 0 },
+          { type: 'L', x: width, y: 0 },
+          { type: 'L', x: width, y: height },
+          { type: 'L', x: 0, y: height },
+          { type: 'Z' },
+        ] as PathCommand[],
+      };
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: data.file.name,
+        x: data.position.x,
+        y: data.position.y,
+        width,
+        height,
+        vectorPaths: [path],
+        fills: [solidPaint(rgba(0.9, 0.9, 0.9, 1))],
+        strokes: [solidPaint(rgba(0.7, 0.7, 0.7, 1))],
+        strokeWeight: 1,
+      });
+
+      // Store the image data URL in a custom property for later rendering
+      // This would be handled by the image rendering system
+      console.log('Image placed:', data.file.name, 'Data URL length:', data.dataUrl.length);
+
+      this.selectionManager.select([nodeId], 'replace');
+      return nodeId;
+    });
+
     // Hand tool for panning
     this.handTool = createHandTool();
 
@@ -714,6 +894,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.ellipseTool);
     this.toolManager.registerTool(this.lineTool);
     this.toolManager.registerTool(this.penTool);
+    this.toolManager.registerTool(this.polygonTool);
+    this.toolManager.registerTool(this.starTool);
+    this.toolManager.registerTool(this.pencilTool);
+    this.toolManager.registerTool(this.imageTool);
     this.toolManager.registerTool(this.handTool);
 
     // Set default tool
