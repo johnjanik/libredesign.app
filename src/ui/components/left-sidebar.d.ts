@@ -36,6 +36,7 @@ export declare class LeftSidebar {
     private handleDelete;
     private handleDuplicate;
     private handleCopy;
+    private handleCut;
     private handlePaste;
     private triggerLayerRename;
     /**

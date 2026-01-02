@@ -166,6 +166,11 @@ export class LeftSidebar {
       return;
     }
 
+    if (e.key === 'x' && (e.ctrlKey || e.metaKey)) {
+      this.handleCut(e);
+      return;
+    }
+
     if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
       this.handlePaste(e);
       return;
@@ -392,6 +397,34 @@ export class LeftSidebar {
         props,
       });
     }
+  }
+
+  private handleCut(e: KeyboardEvent): void {
+    // Copy first
+    this.handleCopy(e);
+
+    // Then delete the selected nodes
+    const selectionManager = this.runtime.getSelectionManager();
+    const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
+
+    if (selectedIds.length === 0) return;
+
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Filter out PAGE and DOCUMENT nodes
+    const deletableIds = selectedIds.filter(id => {
+      const node = sceneGraph.getNode(id);
+      return node && node.type !== 'PAGE' && node.type !== 'DOCUMENT';
+    });
+
+    // Delete each node
+    for (const nodeId of deletableIds) {
+      sceneGraph.deleteNode(nodeId);
+    }
+
+    // Clear selection
+    selectionManager?.clear();
   }
 
   private handlePaste(e: KeyboardEvent): void {
