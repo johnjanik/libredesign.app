@@ -347,32 +347,143 @@ function exportSettingToPreserve(setting) {
  * This is used when importing .preserve files.
  */
 export function preserveToNode(preserve) {
-    // Implementation for import - simplified version
-    // Full implementation would reverse all the above transforms
     const base = {
-        id: preserve.id,
         name: preserve.name,
         visible: preserve.visible ?? true,
         locked: preserve.locked ?? false,
     };
-    if (preserve.type === 'FRAME' || preserve.type === 'GROUP') {
-        const frame = preserve;
-        return {
-            ...base,
-            type: preserve.type,
-            x: frame.transform.x,
-            y: frame.transform.y,
-            width: frame.transform.width,
-            height: frame.transform.height,
-            rotation: frame.transform.rotation,
-            opacity: frame.appearance?.opacity ?? 1,
-            fills: frame.appearance?.fills?.map(preserveToPaint) ?? [],
-            strokes: frame.appearance?.strokes?.map(preserveToPaint) ?? [],
-            effects: frame.appearance?.effects?.map(preserveToEffect) ?? [],
-        };
+    // Helper to extract common scene node properties
+    const getSceneProps = (node) => ({
+        x: node.transform.x,
+        y: node.transform.y,
+        width: node.transform.width,
+        height: node.transform.height,
+        rotation: node.transform.rotation,
+        opacity: node.appearance?.opacity ?? 1,
+        fills: node.appearance?.fills?.map(preserveToPaint) ?? [],
+        strokes: node.appearance?.strokes?.map(preserveToPaint) ?? [],
+        strokeWeight: node.appearance?.strokeWeight,
+        effects: node.appearance?.effects?.map(preserveToEffect) ?? [],
+    });
+    switch (preserve.type) {
+        case 'FRAME':
+        case 'GROUP': {
+            const frame = preserve;
+            return {
+                ...base,
+                type: preserve.type,
+                ...getSceneProps(frame),
+                clipsContent: frame.clipContent,
+            };
+        }
+        case 'VECTOR': {
+            const vector = preserve;
+            return {
+                ...base,
+                type: 'VECTOR',
+                ...getSceneProps(vector),
+                vectorPaths: vector.paths?.map(preserveToPath),
+            };
+        }
+        case 'TEXT': {
+            const text = preserve;
+            return {
+                ...base,
+                type: 'TEXT',
+                ...getSceneProps(text),
+                characters: text.characters,
+                textAlignHorizontal: text.textAlignHorizontal,
+                textAlignVertical: text.textAlignVertical,
+                textAutoResize: text.textAutoResize,
+            };
+        }
+        case 'IMAGE': {
+            const image = preserve;
+            return {
+                ...base,
+                type: 'IMAGE',
+                ...getSceneProps(image),
+                imageRef: image.assetRef,
+                scaleMode: image.scaleMode,
+                naturalWidth: image.naturalWidth,
+                naturalHeight: image.naturalHeight,
+            };
+        }
+        case 'COMPONENT': {
+            const comp = preserve;
+            return {
+                ...base,
+                type: 'COMPONENT',
+                ...getSceneProps(comp),
+            };
+        }
+        case 'INSTANCE': {
+            const instance = preserve;
+            return {
+                ...base,
+                type: 'INSTANCE',
+                x: instance.transform.x,
+                y: instance.transform.y,
+                width: instance.transform.width,
+                height: instance.transform.height,
+                rotation: instance.transform.rotation,
+                componentId: instance.componentRef,
+            };
+        }
+        case 'BOOLEAN_OPERATION': {
+            const bool = preserve;
+            return {
+                ...base,
+                type: 'BOOLEAN_OPERATION',
+                ...getSceneProps(bool),
+                booleanOperation: bool.booleanOperation,
+            };
+        }
+        case 'SLICE': {
+            const slice = preserve;
+            return {
+                ...base,
+                type: 'SLICE',
+                x: slice.transform.x,
+                y: slice.transform.y,
+                width: slice.transform.width,
+                height: slice.transform.height,
+                rotation: slice.transform.rotation,
+            };
+        }
+        default:
+            return base;
     }
-    // Add other type conversions as needed...
-    return base;
+}
+function preserveToPath(path) {
+    return {
+        windingRule: path.windingRule,
+        commands: path.commands
+            .filter(cmd => cmd.type !== 'Q') // Skip quadratic curves (not supported internally)
+            .map(cmd => {
+            const type = cmd.type;
+            if (type === 'M') {
+                return { type: 'M', x: cmd.x ?? 0, y: cmd.y ?? 0 };
+            }
+            else if (type === 'L') {
+                return { type: 'L', x: cmd.x ?? 0, y: cmd.y ?? 0 };
+            }
+            else if (type === 'C') {
+                return {
+                    type: 'C',
+                    x1: cmd.x1 ?? 0,
+                    y1: cmd.y1 ?? 0,
+                    x2: cmd.x2 ?? 0,
+                    y2: cmd.y2 ?? 0,
+                    x: cmd.x ?? 0,
+                    y: cmd.y ?? 0,
+                };
+            }
+            else {
+                return { type: 'Z' };
+            }
+        }),
+    };
 }
 function preserveToPaint(paint) {
     if (paint.type === 'SOLID') {

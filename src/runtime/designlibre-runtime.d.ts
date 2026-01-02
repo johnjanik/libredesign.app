@@ -172,12 +172,15 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      */
     getPreserveBlob(options?: PreserveWriteOptions): Promise<Blob>;
     /**
-     * Load a .preserve file and return the parsed archive.
-     * Use importFromPreserve() to actually import into the current document.
+     * Load a .preserve file and replace the current document with its contents.
      */
-    loadPreserve(file: File | Blob): Promise<PreserveArchive>;
+    loadPreserve(file: File | Blob): Promise<void>;
     /**
-     * Import nodes from a .preserve archive into the current page.
+     * Recursively import a preserve node and its children.
+     */
+    private importPreserveNode;
+    /**
+     * Import nodes from a .preserve archive into the current page (append mode).
      */
     importFromPreserve(archive: PreserveArchive): Promise<NodeId[]>;
     private downloadBlob;

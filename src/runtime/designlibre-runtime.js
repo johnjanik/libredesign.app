@@ -30,7 +30,7 @@ import { createIndexedDBStorage } from '@persistence/storage/indexed-db';
 import { createAutosaveManager } from '@persistence/storage/autosave';
 import { createPNGExporter } from '@persistence/export/png-exporter';
 import { createSVGExporter } from '@persistence/export/svg-exporter';
-import { createPreserveArchive, readPreserveArchive } from '@persistence/preserve';
+import { createPreserveArchive, readPreserveArchive, preserveToNode } from '@persistence/preserve';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { createStyleManager } from '@core/styles/style-manager';
@@ -314,14 +314,58 @@ export class DesignLibreRuntime extends EventEmitter {
         return createPreserveArchive(this.sceneGraph, null, options);
     }
     /**
-     * Load a .preserve file and return the parsed archive.
-     * Use importFromPreserve() to actually import into the current document.
+     * Load a .preserve file and replace the current document with its contents.
      */
     async loadPreserve(file) {
-        return readPreserveArchive(file);
+        const archive = await readPreserveArchive(file);
+        // Clear current document and rebuild from archive
+        // First, get the document node
+        const doc = this.sceneGraph.getDocument();
+        if (!doc) {
+            throw new Error('No document');
+        }
+        // Delete all existing pages
+        const existingPageIds = this.sceneGraph.getChildIds(doc.id);
+        for (const pageId of existingPageIds) {
+            this.sceneGraph.deleteNode(pageId);
+        }
+        // Import pages from archive
+        for (const [_pageId, preservePage] of archive.pages) {
+            // Create the page
+            const newPageId = this.sceneGraph.createNode('PAGE', doc.id, -1, {
+                name: preservePage.name,
+                backgroundColor: preservePage.backgroundColor,
+            });
+            // Import nodes into this page
+            for (const preserveNode of preservePage.nodes) {
+                this.importPreserveNode(preserveNode, newPageId);
+            }
+        }
+        // Set current page to the first page
+        const newPageIds = this.sceneGraph.getChildIds(doc.id);
+        if (newPageIds.length > 0) {
+            this.setCurrentPage(newPageIds[0]);
+        }
     }
     /**
-     * Import nodes from a .preserve archive into the current page.
+     * Recursively import a preserve node and its children.
+     */
+    importPreserveNode(preserveNode, parentId) {
+        // Use the converter to get proper internal node format
+        const nodeData = preserveToNode(preserveNode);
+        // Create the node with converted properties
+        const nodeId = this.sceneGraph.createNode(preserveNode.type, parentId, -1, nodeData);
+        // Import children recursively
+        const nodeWithChildren = preserveNode;
+        if (nodeWithChildren.children) {
+            for (const childNode of nodeWithChildren.children) {
+                this.importPreserveNode(childNode, nodeId);
+            }
+        }
+        return nodeId;
+    }
+    /**
+     * Import nodes from a .preserve archive into the current page (append mode).
      */
     async importFromPreserve(archive) {
         const currentPageId = this.getCurrentPageId();
@@ -333,17 +377,7 @@ export class DesignLibreRuntime extends EventEmitter {
         const firstPage = archive.pages.values().next().value;
         if (firstPage) {
             for (const preserveNode of firstPage.nodes) {
-                // Extract transform from preserve node
-                const nodeWithTransform = preserveNode;
-                const transform = nodeWithTransform.transform ?? { x: 0, y: 0, width: 100, height: 100 };
-                // Create node in current page
-                const nodeId = this.sceneGraph.createNode(preserveNode.type, currentPageId, -1, {
-                    name: preserveNode.name,
-                    x: transform.x,
-                    y: transform.y,
-                    width: transform.width,
-                    height: transform.height,
-                });
+                const nodeId = this.importPreserveNode(preserveNode, currentPageId);
                 importedIds.push(nodeId);
             }
         }

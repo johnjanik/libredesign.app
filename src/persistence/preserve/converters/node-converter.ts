@@ -434,34 +434,151 @@ import type { ExportSetting } from '@core/types/common';
  * This is used when importing .preserve files.
  */
 export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
-  // Implementation for import - simplified version
-  // Full implementation would reverse all the above transforms
   const base = {
-    id: preserve.id as NodeData['id'],
     name: preserve.name,
     visible: preserve.visible ?? true,
     locked: preserve.locked ?? false,
   };
 
-  if (preserve.type === 'FRAME' || preserve.type === 'GROUP') {
-    const frame = preserve as PreserveFrameNode;
-    return {
-      ...base,
-      type: preserve.type,
-      x: frame.transform.x,
-      y: frame.transform.y,
-      width: frame.transform.width,
-      height: frame.transform.height,
-      rotation: frame.transform.rotation,
-      opacity: frame.appearance?.opacity ?? 1,
-      fills: frame.appearance?.fills?.map(preserveToPaint) ?? [],
-      strokes: frame.appearance?.strokes?.map(preserveToPaint) ?? [],
-      effects: frame.appearance?.effects?.map(preserveToEffect) ?? [],
-    } as Partial<FrameNodeData>;
-  }
+  // Helper to extract common scene node properties
+  const getSceneProps = (node: { transform: PreserveTransform; appearance?: PreserveAppearance }) => ({
+    x: node.transform.x,
+    y: node.transform.y,
+    width: node.transform.width,
+    height: node.transform.height,
+    rotation: node.transform.rotation,
+    opacity: node.appearance?.opacity ?? 1,
+    fills: node.appearance?.fills?.map(preserveToPaint) ?? [],
+    strokes: node.appearance?.strokes?.map(preserveToPaint) ?? [],
+    strokeWeight: node.appearance?.strokeWeight,
+    effects: node.appearance?.effects?.map(preserveToEffect) ?? [],
+  });
 
-  // Add other type conversions as needed...
-  return base as Partial<NodeData>;
+  switch (preserve.type) {
+    case 'FRAME':
+    case 'GROUP': {
+      const frame = preserve as PreserveFrameNode;
+      return {
+        ...base,
+        type: preserve.type,
+        ...getSceneProps(frame),
+        clipsContent: frame.clipContent,
+      } as Partial<FrameNodeData>;
+    }
+
+    case 'VECTOR': {
+      const vector = preserve as PreserveVectorNode;
+      return {
+        ...base,
+        type: 'VECTOR',
+        ...getSceneProps(vector),
+        vectorPaths: vector.paths?.map(preserveToPath),
+      } as Partial<VectorNodeData>;
+    }
+
+    case 'TEXT': {
+      const text = preserve as PreserveTextNode;
+      return {
+        ...base,
+        type: 'TEXT',
+        ...getSceneProps(text),
+        characters: text.characters,
+        textAlignHorizontal: text.textAlignHorizontal,
+        textAlignVertical: text.textAlignVertical,
+        textAutoResize: text.textAutoResize,
+      } as Partial<TextNodeData>;
+    }
+
+    case 'IMAGE': {
+      const image = preserve as PreserveImageNode;
+      return {
+        ...base,
+        type: 'IMAGE',
+        ...getSceneProps(image),
+        imageRef: image.assetRef,
+        scaleMode: image.scaleMode,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+      } as Partial<ImageNodeData>;
+    }
+
+    case 'COMPONENT': {
+      const comp = preserve as PreserveComponentNode;
+      return {
+        ...base,
+        type: 'COMPONENT',
+        ...getSceneProps(comp),
+      } as Partial<ComponentNodeData>;
+    }
+
+    case 'INSTANCE': {
+      const instance = preserve as PreserveInstanceNode;
+      return {
+        ...base,
+        type: 'INSTANCE',
+        x: instance.transform.x,
+        y: instance.transform.y,
+        width: instance.transform.width,
+        height: instance.transform.height,
+        rotation: instance.transform.rotation,
+        componentId: instance.componentRef,
+      } as Partial<InstanceNodeData>;
+    }
+
+    case 'BOOLEAN_OPERATION': {
+      const bool = preserve as PreserveBooleanNode;
+      return {
+        ...base,
+        type: 'BOOLEAN_OPERATION',
+        ...getSceneProps(bool),
+        booleanOperation: bool.booleanOperation,
+      } as Partial<BooleanOperationNodeData>;
+    }
+
+    case 'SLICE': {
+      const slice = preserve as PreserveSliceNode;
+      return {
+        ...base,
+        type: 'SLICE',
+        x: slice.transform.x,
+        y: slice.transform.y,
+        width: slice.transform.width,
+        height: slice.transform.height,
+        rotation: slice.transform.rotation,
+      } as Partial<SliceNodeData>;
+    }
+
+    default:
+      return base as Partial<NodeData>;
+  }
+}
+
+function preserveToPath(path: PreserveVectorPath): VectorPath {
+  return {
+    windingRule: path.windingRule,
+    commands: path.commands
+      .filter(cmd => cmd.type !== 'Q') // Skip quadratic curves (not supported internally)
+      .map(cmd => {
+        const type = cmd.type as 'M' | 'L' | 'C' | 'Z';
+        if (type === 'M') {
+          return { type: 'M' as const, x: cmd.x ?? 0, y: cmd.y ?? 0 };
+        } else if (type === 'L') {
+          return { type: 'L' as const, x: cmd.x ?? 0, y: cmd.y ?? 0 };
+        } else if (type === 'C') {
+          return {
+            type: 'C' as const,
+            x1: cmd.x1 ?? 0,
+            y1: cmd.y1 ?? 0,
+            x2: cmd.x2 ?? 0,
+            y2: cmd.y2 ?? 0,
+            x: cmd.x ?? 0,
+            y: cmd.y ?? 0,
+          };
+        } else {
+          return { type: 'Z' as const };
+        }
+      }),
+  };
 }
 
 function preserveToPaint(paint: PreservePaint): Paint {

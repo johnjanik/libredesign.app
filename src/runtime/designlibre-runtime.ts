@@ -34,8 +34,8 @@ import { IndexedDBStorage, createIndexedDBStorage } from '@persistence/storage/i
 import { AutosaveManager, createAutosaveManager } from '@persistence/storage/autosave';
 import { PNGExporter, createPNGExporter } from '@persistence/export/png-exporter';
 import { SVGExporter, createSVGExporter } from '@persistence/export/svg-exporter';
-import { createPreserveArchive, readPreserveArchive } from '@persistence/preserve';
-import type { PreserveArchive, PreserveWriteOptions } from '@persistence/preserve';
+import { createPreserveArchive, readPreserveArchive, preserveToNode } from '@persistence/preserve';
+import type { PreserveArchive, PreserveWriteOptions, PreserveNode } from '@persistence/preserve';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
@@ -421,15 +421,73 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
-   * Load a .preserve file and return the parsed archive.
-   * Use importFromPreserve() to actually import into the current document.
+   * Load a .preserve file and replace the current document with its contents.
    */
-  async loadPreserve(file: File | Blob): Promise<PreserveArchive> {
-    return readPreserveArchive(file);
+  async loadPreserve(file: File | Blob): Promise<void> {
+    const archive = await readPreserveArchive(file);
+
+    // Clear current document and rebuild from archive
+    // First, get the document node
+    const doc = this.sceneGraph.getDocument();
+    if (!doc) {
+      throw new Error('No document');
+    }
+
+    // Delete all existing pages
+    const existingPageIds = this.sceneGraph.getChildIds(doc.id);
+    for (const pageId of existingPageIds) {
+      this.sceneGraph.deleteNode(pageId);
+    }
+
+    // Import pages from archive
+    for (const [_pageId, preservePage] of archive.pages) {
+      // Create the page
+      const newPageId = this.sceneGraph.createNode('PAGE', doc.id, -1, {
+        name: preservePage.name,
+        backgroundColor: preservePage.backgroundColor,
+      } as Parameters<typeof this.sceneGraph.createNode>[3]);
+
+      // Import nodes into this page
+      for (const preserveNode of preservePage.nodes) {
+        this.importPreserveNode(preserveNode, newPageId);
+      }
+    }
+
+    // Set current page to the first page
+    const newPageIds = this.sceneGraph.getChildIds(doc.id);
+    if (newPageIds.length > 0) {
+      this.setCurrentPage(newPageIds[0]!);
+    }
   }
 
   /**
-   * Import nodes from a .preserve archive into the current page.
+   * Recursively import a preserve node and its children.
+   */
+  private importPreserveNode(preserveNode: PreserveNode, parentId: NodeId): NodeId {
+    // Use the converter to get proper internal node format
+    const nodeData = preserveToNode(preserveNode);
+
+    // Create the node with converted properties
+    const nodeId = this.sceneGraph.createNode(
+      preserveNode.type as Parameters<typeof this.sceneGraph.createNode>[0],
+      parentId,
+      -1,
+      nodeData as Parameters<typeof this.sceneGraph.createNode>[3]
+    );
+
+    // Import children recursively
+    const nodeWithChildren = preserveNode as { children?: PreserveNode[] };
+    if (nodeWithChildren.children) {
+      for (const childNode of nodeWithChildren.children) {
+        this.importPreserveNode(childNode, nodeId);
+      }
+    }
+
+    return nodeId;
+  }
+
+  /**
+   * Import nodes from a .preserve archive into the current page (append mode).
    */
   async importFromPreserve(archive: PreserveArchive): Promise<NodeId[]> {
     const currentPageId = this.getCurrentPageId();
@@ -443,23 +501,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     const firstPage = archive.pages.values().next().value;
     if (firstPage) {
       for (const preserveNode of firstPage.nodes) {
-        // Extract transform from preserve node
-        const nodeWithTransform = preserveNode as { type: string; name: string; transform?: { x: number; y: number; width: number; height: number } };
-        const transform = nodeWithTransform.transform ?? { x: 0, y: 0, width: 100, height: 100 };
-
-        // Create node in current page
-        const nodeId = this.sceneGraph.createNode(
-          preserveNode.type as Parameters<typeof this.sceneGraph.createNode>[0],
-          currentPageId,
-          -1,
-          {
-            name: preserveNode.name,
-            x: transform.x,
-            y: transform.y,
-            width: transform.width,
-            height: transform.height,
-          } as Parameters<typeof this.sceneGraph.createNode>[3]
-        );
+        const nodeId = this.importPreserveNode(preserveNode, currentPageId);
         importedIds.push(nodeId);
       }
     }
