@@ -30,6 +30,7 @@ import { createIndexedDBStorage } from '@persistence/storage/indexed-db';
 import { createAutosaveManager } from '@persistence/storage/autosave';
 import { createPNGExporter } from '@persistence/export/png-exporter';
 import { createSVGExporter } from '@persistence/export/svg-exporter';
+import { createPreserveArchive, readPreserveArchive } from '@persistence/preserve';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { createStyleManager } from '@core/styles/style-manager';
@@ -295,6 +296,68 @@ export class DesignLibreRuntime extends EventEmitter {
      */
     downloadSVG(nodeId, filename = 'export.svg') {
         this.svgExporter.download(nodeId, filename);
+    }
+    // =========================================================================
+    // .preserve Format (Open Standard)
+    // =========================================================================
+    /**
+     * Save the current document as a .preserve file.
+     */
+    async saveAsPreserve(filename = 'document.preserve', options) {
+        const blob = await createPreserveArchive(this.sceneGraph, null, options);
+        this.downloadBlob(blob, filename);
+    }
+    /**
+     * Get the current document as a .preserve Blob.
+     */
+    async getPreserveBlob(options) {
+        return createPreserveArchive(this.sceneGraph, null, options);
+    }
+    /**
+     * Load a .preserve file and return the parsed archive.
+     * Use importFromPreserve() to actually import into the current document.
+     */
+    async loadPreserve(file) {
+        return readPreserveArchive(file);
+    }
+    /**
+     * Import nodes from a .preserve archive into the current page.
+     */
+    async importFromPreserve(archive) {
+        const currentPageId = this.getCurrentPageId();
+        if (!currentPageId) {
+            throw new Error('No current page');
+        }
+        const importedIds = [];
+        // Import nodes from the first page of the archive
+        const firstPage = archive.pages.values().next().value;
+        if (firstPage) {
+            for (const preserveNode of firstPage.nodes) {
+                // Extract transform from preserve node
+                const nodeWithTransform = preserveNode;
+                const transform = nodeWithTransform.transform ?? { x: 0, y: 0, width: 100, height: 100 };
+                // Create node in current page
+                const nodeId = this.sceneGraph.createNode(preserveNode.type, currentPageId, -1, {
+                    name: preserveNode.name,
+                    x: transform.x,
+                    y: transform.y,
+                    width: transform.width,
+                    height: transform.height,
+                });
+                importedIds.push(nodeId);
+            }
+        }
+        return importedIds;
+    }
+    downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
     // =========================================================================
     // Viewport

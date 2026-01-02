@@ -876,16 +876,64 @@ export class LeftSidebar {
   private showFileMenu(anchor: HTMLElement): void {
     this.showContextMenu(anchor, [
       { label: 'New File', shortcut: 'Ctrl+N', action: () => {} },
-      { label: 'Open...', shortcut: 'Ctrl+O', action: () => {} },
+      { label: 'Open .preserve...', shortcut: 'Ctrl+O', action: () => this.openPreserveFile() },
       { label: 'Open Recent', submenu: true },
       { separator: true },
       { label: 'Save', shortcut: 'Ctrl+S', action: () => this.runtime.saveDocument() },
-      { label: 'Save As...', shortcut: 'Ctrl+Shift+S', action: () => {} },
+      { label: 'Save as .preserve...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsPreserve() },
       { separator: true },
       { label: 'Export...', shortcut: 'Ctrl+E', action: () => {} },
       { separator: true },
       { label: 'Settings', action: () => {} },
     ]);
+  }
+
+  /**
+   * Save the current document as a .preserve file.
+   */
+  private async saveAsPreserve(): Promise<void> {
+    try {
+      const filename = `${this.documentName.replace(/[^a-zA-Z0-9-_ ]/g, '')}.preserve`;
+      await this.runtime.saveAsPreserve(filename);
+    } catch (error) {
+      console.error('Failed to save .preserve file:', error);
+      // Could show an error notification here
+    }
+  }
+
+  /**
+   * Open a .preserve file.
+   */
+  private openPreserveFile(): void {
+    // Create a hidden file input to trigger file selection
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.preserve';
+    fileInput.style.display = 'none';
+
+    fileInput.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const file = target.files?.[0];
+      if (!file) return;
+
+      try {
+        await this.runtime.loadPreserve(file);
+        // Update document name from filename
+        this.documentName = file.name.replace('.preserve', '');
+        // Sync leaves and re-render
+        this.syncLeavesFromSceneGraph();
+        this.render();
+      } catch (error) {
+        console.error('Failed to open .preserve file:', error);
+        // Could show an error notification here
+      }
+
+      // Clean up
+      fileInput.remove();
+    });
+
+    document.body.appendChild(fileInput);
+    fileInput.click();
   }
 
   private showFileOptionsMenu(anchor: HTMLElement): void {

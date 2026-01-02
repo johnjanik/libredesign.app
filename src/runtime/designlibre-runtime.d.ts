@@ -13,6 +13,7 @@ import { PolygonTool } from '@tools/drawing/polygon-tool';
 import { StarTool } from '@tools/drawing/star-tool';
 import { SelectionManager } from '@scene/selection/selection-manager';
 import { LayoutEngine } from '@layout/layout-engine';
+import type { PreserveArchive, PreserveWriteOptions } from '@persistence/preserve';
 import { StyleManager } from '@core/styles/style-manager';
 /**
  * Runtime events
@@ -162,6 +163,24 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      * Download node as SVG.
      */
     downloadSVG(nodeId: NodeId, filename?: string): void;
+    /**
+     * Save the current document as a .preserve file.
+     */
+    saveAsPreserve(filename?: string, options?: PreserveWriteOptions): Promise<void>;
+    /**
+     * Get the current document as a .preserve Blob.
+     */
+    getPreserveBlob(options?: PreserveWriteOptions): Promise<Blob>;
+    /**
+     * Load a .preserve file and return the parsed archive.
+     * Use importFromPreserve() to actually import into the current document.
+     */
+    loadPreserve(file: File | Blob): Promise<PreserveArchive>;
+    /**
+     * Import nodes from a .preserve archive into the current page.
+     */
+    importFromPreserve(archive: PreserveArchive): Promise<NodeId[]>;
+    private downloadBlob;
     /**
      * Get current zoom level.
      */

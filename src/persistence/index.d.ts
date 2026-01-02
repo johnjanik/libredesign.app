@@ -20,4 +20,5 @@ export * from './import/designlibre-bundler';
 export * from './import/image-importer';
 export * from './import/font-handler';
 export * from './assets/asset-manager';
+export * from './preserve';
 //# sourceMappingURL=index.d.ts.map

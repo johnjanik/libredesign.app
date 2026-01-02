@@ -52,6 +52,14 @@ export declare class LeftSidebar {
     private addLeaf;
     private renameLeaf;
     private showFileMenu;
+    /**
+     * Save the current document as a .preserve file.
+     */
+    private saveAsPreserve;
+    /**
+     * Open a .preserve file.
+     */
+    private openPreserveFile;
     private showFileOptionsMenu;
     private showContextMenu;
     /**

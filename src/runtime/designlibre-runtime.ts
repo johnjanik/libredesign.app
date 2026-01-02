@@ -34,6 +34,8 @@ import { IndexedDBStorage, createIndexedDBStorage } from '@persistence/storage/i
 import { AutosaveManager, createAutosaveManager } from '@persistence/storage/autosave';
 import { PNGExporter, createPNGExporter } from '@persistence/export/png-exporter';
 import { SVGExporter, createSVGExporter } from '@persistence/export/svg-exporter';
+import { createPreserveArchive, readPreserveArchive } from '@persistence/preserve';
+import type { PreserveArchive, PreserveWriteOptions } from '@persistence/preserve';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
@@ -397,6 +399,83 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   downloadSVG(nodeId: NodeId, filename: string = 'export.svg'): void {
     this.svgExporter.download(nodeId, filename);
+  }
+
+  // =========================================================================
+  // .preserve Format (Open Standard)
+  // =========================================================================
+
+  /**
+   * Save the current document as a .preserve file.
+   */
+  async saveAsPreserve(filename: string = 'document.preserve', options?: PreserveWriteOptions): Promise<void> {
+    const blob = await createPreserveArchive(this.sceneGraph, null, options);
+    this.downloadBlob(blob, filename);
+  }
+
+  /**
+   * Get the current document as a .preserve Blob.
+   */
+  async getPreserveBlob(options?: PreserveWriteOptions): Promise<Blob> {
+    return createPreserveArchive(this.sceneGraph, null, options);
+  }
+
+  /**
+   * Load a .preserve file and return the parsed archive.
+   * Use importFromPreserve() to actually import into the current document.
+   */
+  async loadPreserve(file: File | Blob): Promise<PreserveArchive> {
+    return readPreserveArchive(file);
+  }
+
+  /**
+   * Import nodes from a .preserve archive into the current page.
+   */
+  async importFromPreserve(archive: PreserveArchive): Promise<NodeId[]> {
+    const currentPageId = this.getCurrentPageId();
+    if (!currentPageId) {
+      throw new Error('No current page');
+    }
+
+    const importedIds: NodeId[] = [];
+
+    // Import nodes from the first page of the archive
+    const firstPage = archive.pages.values().next().value;
+    if (firstPage) {
+      for (const preserveNode of firstPage.nodes) {
+        // Extract transform from preserve node
+        const nodeWithTransform = preserveNode as { type: string; name: string; transform?: { x: number; y: number; width: number; height: number } };
+        const transform = nodeWithTransform.transform ?? { x: 0, y: 0, width: 100, height: 100 };
+
+        // Create node in current page
+        const nodeId = this.sceneGraph.createNode(
+          preserveNode.type as Parameters<typeof this.sceneGraph.createNode>[0],
+          currentPageId,
+          -1,
+          {
+            name: preserveNode.name,
+            x: transform.x,
+            y: transform.y,
+            width: transform.width,
+            height: transform.height,
+          } as Parameters<typeof this.sceneGraph.createNode>[3]
+        );
+        importedIds.push(nodeId);
+      }
+    }
+
+    return importedIds;
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   // =========================================================================
