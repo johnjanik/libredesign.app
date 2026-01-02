@@ -62,8 +62,8 @@ export declare class KeyboardManager {
     pasteFromClipboard(): NodeId[];
     hasClipboardContent(): boolean;
     private registerAllShortcuts;
-    private actionUndo;
-    private actionRedo;
+    actionUndo(): void;
+    actionRedo(): void;
     private actionSelectAll;
     private actionEscape;
     actionCopy(): void;

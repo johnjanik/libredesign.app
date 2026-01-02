@@ -1033,12 +1033,12 @@ export class KeyboardManager {
   // Action Implementations
   // =========================================================================
 
-  private actionUndo(): void {
+  actionUndo(): void {
     // TODO: Implement undo system
     this.runtime.emit('command:undo', {});
   }
 
-  private actionRedo(): void {
+  actionRedo(): void {
     // TODO: Implement redo system
     this.runtime.emit('command:redo', {});
   }

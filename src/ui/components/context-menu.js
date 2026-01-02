@@ -74,6 +74,53 @@ const MENU_ICONS = {
     zoomFit: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
   </svg>`,
+    undo: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+  </svg>`,
+    redo: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+  </svg>`,
+    flipH: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 3v18M16 7l5 5-5 5M8 7l-5 5 5 5"/>
+  </svg>`,
+    flipV: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 12h18M7 8l5-5 5 5M7 16l5 5 5-5"/>
+  </svg>`,
+    component: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+    <line x1="12" y1="22" x2="12" y2="15.5"/><line x1="22" y1="8.5" x2="12" y2="15.5"/>
+    <line x1="2" y1="8.5" x2="12" y2="15.5"/>
+  </svg>`,
+    detach: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+  </svg>`,
+    frame: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+    <line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/>
+    <line x1="3" y1="15" x2="21" y2="15"/>
+  </svg>`,
+    copyProps: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+    <path d="M12 16h6" stroke-width="1.5"/><path d="M12 19h4" stroke-width="1.5"/>
+  </svg>`,
+    pasteProps: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+    <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 14h6" stroke-width="1.5"/>
+    <path d="M9 17h4" stroke-width="1.5"/>
+  </svg>`,
+    boolean: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="9" cy="9" r="6"/><circle cx="15" cy="15" r="6"/>
+  </svg>`,
+    flatten: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+  </svg>`,
+    outline: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 3L2 12h3v9h14v-9h3L12 3z"/>
+  </svg>`,
+    mask: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="5" fill="currentColor" opacity="0.3"/>
+  </svg>`,
 };
 /**
  * Context Menu Component
@@ -302,14 +349,30 @@ export class ContextMenu {
      * Get menu items for canvas context (no selection).
      */
     getCanvasMenuItems(hasClipboard) {
+        const keyboardManager = this.runtime.getKeyboardManager();
         return [
+            {
+                id: 'undo',
+                label: 'Undo',
+                shortcut: 'Ctrl+Z',
+                icon: MENU_ICONS['undo'],
+                action: () => { keyboardManager?.actionUndo(); },
+            },
+            {
+                id: 'redo',
+                label: 'Redo',
+                shortcut: 'Ctrl+Shift+Z',
+                icon: MENU_ICONS['redo'],
+                action: () => { keyboardManager?.actionRedo(); },
+            },
+            { id: 'sep0', label: '', separator: true },
             {
                 id: 'paste',
                 label: 'Paste',
                 shortcut: 'Ctrl+V',
                 icon: MENU_ICONS['paste'],
                 disabled: !hasClipboard,
-                action: () => { this.runtime.getKeyboardManager()?.pasteFromClipboard(); },
+                action: () => { keyboardManager?.pasteFromClipboard(); },
             },
             { id: 'sep1', label: '', separator: true },
             {
@@ -339,7 +402,7 @@ export class ContextMenu {
                 label: 'Zoom to Fit',
                 shortcut: 'Home',
                 icon: MENU_ICONS['zoomFit'],
-                action: () => { this.runtime.getKeyboardManager()?.actionZoomToFit(); },
+                action: () => { keyboardManager?.actionZoomToFit(); },
             },
             {
                 id: 'zoom100',
@@ -386,6 +449,20 @@ export class ContextMenu {
             },
             { id: 'sep1', label: '', separator: true },
             {
+                id: 'copyProperties',
+                label: 'Copy Properties',
+                icon: MENU_ICONS['copyProps'],
+                action: () => { this.runtime.emit('command:copyProperties', {}); },
+            },
+            {
+                id: 'pasteProperties',
+                label: 'Paste Properties',
+                icon: MENU_ICONS['pasteProps'],
+                disabled: true, // TODO: Enable when properties are in clipboard
+                action: () => { this.runtime.emit('command:pasteProperties', {}); },
+            },
+            { id: 'sep2', label: '', separator: true },
+            {
                 id: 'delete',
                 label: 'Delete',
                 shortcut: 'Delete',
@@ -400,7 +477,22 @@ export class ContextMenu {
                 disabled: isMultiple,
                 action: () => this.runtime.emit('command:rename', {}),
             },
-            { id: 'sep2', label: '', separator: true },
+            { id: 'sep3', label: '', separator: true },
+            {
+                id: 'flipHorizontal',
+                label: 'Flip Horizontal',
+                shortcut: 'Shift+H',
+                icon: MENU_ICONS['flipH'],
+                action: () => { this.runtime.emit('command:flipHorizontal', {}); },
+            },
+            {
+                id: 'flipVertical',
+                label: 'Flip Vertical',
+                shortcut: 'Shift+V',
+                icon: MENU_ICONS['flipV'],
+                action: () => { this.runtime.emit('command:flipVertical', {}); },
+            },
+            { id: 'sep4', label: '', separator: true },
             {
                 id: 'group',
                 label: 'Group',
@@ -416,7 +508,57 @@ export class ContextMenu {
                 icon: MENU_ICONS['ungroup'],
                 action: () => { keyboardManager?.actionUngroup(); },
             },
-            { id: 'sep3', label: '', separator: true },
+            {
+                id: 'frameSelection',
+                label: 'Frame Selection',
+                shortcut: 'Ctrl+Alt+G',
+                icon: MENU_ICONS['frame'],
+                action: () => { this.runtime.emit('command:frameSelection', {}); },
+            },
+            { id: 'sep5', label: '', separator: true },
+            {
+                id: 'createComponent',
+                label: 'Create Component',
+                shortcut: 'Ctrl+Alt+K',
+                icon: MENU_ICONS['component'],
+                action: () => { this.runtime.emit('command:createComponent', {}); },
+            },
+            {
+                id: 'detachInstance',
+                label: 'Detach Instance',
+                icon: MENU_ICONS['detach'],
+                action: () => { this.runtime.emit('command:detachInstance', {}); },
+            },
+            { id: 'sep6', label: '', separator: true },
+            {
+                id: 'booleanUnion',
+                label: 'Union',
+                icon: MENU_ICONS['boolean'],
+                disabled: !isMultiple,
+                action: () => { this.runtime.emit('command:booleanUnion', {}); },
+            },
+            {
+                id: 'booleanSubtract',
+                label: 'Subtract',
+                icon: MENU_ICONS['boolean'],
+                disabled: !isMultiple,
+                action: () => { this.runtime.emit('command:booleanSubtract', {}); },
+            },
+            {
+                id: 'booleanIntersect',
+                label: 'Intersect',
+                icon: MENU_ICONS['boolean'],
+                disabled: !isMultiple,
+                action: () => { this.runtime.emit('command:booleanIntersect', {}); },
+            },
+            {
+                id: 'booleanExclude',
+                label: 'Exclude',
+                icon: MENU_ICONS['boolean'],
+                disabled: !isMultiple,
+                action: () => { this.runtime.emit('command:booleanExclude', {}); },
+            },
+            { id: 'sep7', label: '', separator: true },
             {
                 id: 'bringToFront',
                 label: 'Bring to Front',
@@ -443,7 +585,7 @@ export class ContextMenu {
                 icon: MENU_ICONS['sendBack'],
                 action: () => { keyboardManager?.actionSendToBack(); },
             },
-            { id: 'sep4', label: '', separator: true },
+            { id: 'sep8', label: '', separator: true },
             {
                 id: 'lock',
                 label: 'Lock',
