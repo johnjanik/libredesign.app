@@ -333,7 +333,11 @@ export class LeftSidebar {
     menuBtn.innerHTML = ICONS.menu;
     menuBtn.title = 'File Menu';
     menuBtn.style.cssText = this.getIconButtonStyles();
-    menuBtn.addEventListener('click', () => this.showFileMenu(menuBtn));
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.showFileMenu(menuBtn);
+    });
     this.addHoverEffect(menuBtn);
 
     // Minimize button
@@ -410,7 +414,11 @@ export class LeftSidebar {
       color: var(--designlibre-text-secondary, #a0a0a0);
       border-radius: 4px;
     `;
-    dropdownBtn.addEventListener('click', () => this.showFileOptionsMenu(dropdownBtn));
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.showFileOptionsMenu(dropdownBtn);
+    });
     this.addHoverEffect(dropdownBtn);
 
     section.appendChild(input);
@@ -999,10 +1007,35 @@ export class LeftSidebar {
   }
 
   private showFileMenu(anchor: HTMLElement): void {
-    this.showContextMenu(anchor, [
-      { label: 'New File', shortcut: 'Ctrl+N', action: () => {} },
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-file-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-file-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.bottom + 4}px;
+      min-width: 220px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    const menuItems = [
+      { label: 'New File', shortcut: 'Ctrl+N', action: () => this.createNewFile() },
       { label: 'Open .preserve...', shortcut: 'Ctrl+O', action: () => this.openPreserveFile() },
-      { label: 'Open Recent', submenu: true },
       { separator: true },
       { label: 'Save', shortcut: 'Ctrl+S', action: () => this.runtime.saveDocument() },
       { label: 'Save as .preserve...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsPreserve() },
@@ -1010,7 +1043,85 @@ export class LeftSidebar {
       { label: 'Export...', shortcut: 'Ctrl+E', action: () => {} },
       { separator: true },
       { label: 'Settings', action: () => {} },
-    ]);
+    ];
+
+    for (const item of menuItems) {
+      if (item.separator) {
+        const sep = document.createElement('div');
+        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
+        menu.appendChild(sep);
+      } else {
+        const menuItem = document.createElement('div');
+        menuItem.style.cssText = `
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        `;
+
+        const label = document.createElement('span');
+        label.textContent = item.label ?? '';
+        menuItem.appendChild(label);
+
+        if (item.shortcut) {
+          const shortcut = document.createElement('span');
+          shortcut.textContent = item.shortcut;
+          shortcut.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+          menuItem.appendChild(shortcut);
+        }
+
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.background = '#2d2d2d';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.background = 'transparent';
+        });
+        menuItem.addEventListener('click', () => {
+          menu.remove();
+          item.action?.();
+        });
+
+        menu.appendChild(menuItem);
+      }
+    }
+
+    document.body.appendChild(menu);
+
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closeMenu);
+      }
+    };
+    // Delay adding the listener to avoid immediate close
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
+  }
+
+  /**
+   * Create a new empty document.
+   */
+  private createNewFile(): void {
+    // Clear selection first
+    const selectionManager = this.runtime.getSelectionManager();
+    if (selectionManager) {
+      selectionManager.clear();
+    }
+
+    // Create new document (this clears the scene graph and creates fresh doc + page)
+    this.runtime.createDocument('Untitled');
+
+    // Update document name
+    this.documentName = 'Untitled';
+
+    // Sync leaves from the new scene graph
+    this.syncLeavesFromSceneGraph();
+
+    // Re-render the sidebar
+    this.render();
   }
 
   /**
@@ -1062,7 +1173,33 @@ export class LeftSidebar {
   }
 
   private showFileOptionsMenu(anchor: HTMLElement): void {
-    this.showContextMenu(anchor, [
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-file-options-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-file-options-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.bottom + 4}px;
+      min-width: 180px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    const menuItems = [
       { label: 'Rename', action: () => {} },
       { label: 'Duplicate', action: () => {} },
       { separator: true },
@@ -1070,96 +1207,31 @@ export class LeftSidebar {
       { label: 'Share...', action: () => {} },
       { separator: true },
       { label: 'Version History', action: () => {} },
-    ]);
-  }
+    ];
 
-  private showContextMenu(
-    anchor: HTMLElement,
-    items: Array<{
-      label?: string;
-      shortcut?: string;
-      action?: () => void;
-      separator?: boolean;
-      submenu?: boolean;
-    }>
-  ): void {
-    // Remove any existing menu
-    document.querySelector('.designlibre-context-menu')?.remove();
-
-    const menu = document.createElement('div');
-    menu.className = 'designlibre-context-menu';
-    menu.style.cssText = `
-      position: fixed;
-      min-width: 200px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      padding: 4px;
-      z-index: 1000;
-    `;
-
-    const rect = anchor.getBoundingClientRect();
-    menu.style.left = `${rect.left}px`;
-    menu.style.top = `${rect.bottom + 4}px`;
-
-    for (const item of items) {
+    for (const item of menuItems) {
       if (item.separator) {
         const sep = document.createElement('div');
-        sep.style.cssText = `
-          height: 1px;
-          background: var(--designlibre-border, #3d3d3d);
-          margin: 4px 0;
-        `;
+        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
         menu.appendChild(sep);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.className = 'designlibre-context-menu-item';
         menuItem.style.cssText = `
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
           padding: 8px 12px;
           border-radius: 4px;
           cursor: pointer;
-          font-size: 13px;
-          color: var(--designlibre-text-primary, #e4e4e4);
         `;
-
-        const label = document.createElement('span');
-        label.textContent = item.label ?? '';
-
-        menuItem.appendChild(label);
-
-        if (item.shortcut) {
-          const shortcut = document.createElement('span');
-          shortcut.textContent = item.shortcut;
-          shortcut.style.cssText = `
-            font-size: 11px;
-            color: var(--designlibre-text-muted, #6a6a6a);
-          `;
-          menuItem.appendChild(shortcut);
-        }
-
-        if (item.submenu) {
-          const arrow = document.createElement('span');
-          arrow.textContent = '▸';
-          arrow.style.cssText = `
-            font-size: 10px;
-            color: var(--designlibre-text-muted, #6a6a6a);
-          `;
-          menuItem.appendChild(arrow);
-        }
+        menuItem.textContent = item.label ?? '';
 
         menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+          menuItem.style.background = '#2d2d2d';
         });
         menuItem.addEventListener('mouseleave', () => {
-          menuItem.style.backgroundColor = 'transparent';
+          menuItem.style.background = 'transparent';
         });
         menuItem.addEventListener('click', () => {
-          item.action?.();
           menu.remove();
+          item.action?.();
         });
 
         menu.appendChild(menuItem);
@@ -1168,14 +1240,16 @@ export class LeftSidebar {
 
     document.body.appendChild(menu);
 
-    // Close on click outside
-    const closeHandler = (e: MouseEvent) => {
-      if (!menu.contains(e.target as Node)) {
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
         menu.remove();
-        document.removeEventListener('click', closeHandler);
+        document.removeEventListener('mousedown', closeMenu);
       }
     };
-    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
   }
 
   /**

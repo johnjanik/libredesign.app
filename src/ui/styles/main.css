@@ -167,6 +167,20 @@ body {
   flex-direction: column;
 }
 
+/* Left Sidebar - positioned first in flex order */
+.designlibre-left-sidebar {
+  order: 0;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Inspector Panel - positioned last in flex order */
+.designlibre-inspector-panel {
+  order: 2;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
 .designlibre-sidebar-section {
   padding: 12px;
   border-bottom: 1px solid var(--designlibre-border);
@@ -614,4 +628,244 @@ body {
 
 .designlibre-code-property {
   color: #9932cc;
+}
+
+/* ============================================================================
+   View Switcher - Design/Code Split View
+   ============================================================================ */
+
+/* View Switcher Container */
+.view-switcher {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: var(--designlibre-bg-canvas);
+  order: 1; /* Position between left sidebar (order: 0) and inspector (order: 2) */
+}
+
+/* View Switcher Toolbar */
+.view-switcher-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  background: var(--designlibre-bg-primary);
+  border-bottom: 1px solid var(--designlibre-border);
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.view-switcher-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--designlibre-bg-secondary);
+  border-radius: var(--designlibre-radius);
+  padding: 3px;
+}
+
+.view-switcher-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--designlibre-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--designlibre-text-secondary);
+  cursor: pointer;
+  transition: all var(--designlibre-transition);
+}
+
+.view-switcher-tab:hover {
+  color: var(--designlibre-text-primary);
+  background: var(--designlibre-bg-tertiary);
+}
+
+.view-switcher-tab.active {
+  color: var(--designlibre-accent);
+  background: var(--designlibre-bg-primary);
+  box-shadow: var(--designlibre-shadow-light);
+}
+
+.view-switcher-tab svg {
+  opacity: 0.7;
+}
+
+.view-switcher-tab.active svg {
+  opacity: 1;
+}
+
+/* View Switcher Content */
+.view-switcher-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.view-switcher-design,
+.view-switcher-code {
+  overflow: hidden;
+  transition: width 0.05s ease;
+}
+
+.view-switcher-design {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Ensure canvas container fills the design area */
+.view-switcher-design .designlibre-canvas-container {
+  flex: 1;
+  position: relative;
+}
+
+/* Divider */
+.view-switcher-divider {
+  display: none;
+  width: 8px;
+  background: var(--designlibre-bg-primary);
+  border-left: 1px solid var(--designlibre-border);
+  border-right: 1px solid var(--designlibre-border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  transition: background-color var(--designlibre-transition);
+}
+
+.view-switcher-divider:hover {
+  background: var(--designlibre-accent-light);
+}
+
+.view-switcher-divider-handle {
+  width: 4px;
+  height: 40px;
+  background: var(--designlibre-border);
+  border-radius: 2px;
+  transition: background-color var(--designlibre-transition);
+}
+
+.view-switcher-divider:hover .view-switcher-divider-handle {
+  background: var(--designlibre-accent);
+}
+
+.view-switcher.dragging .view-switcher-divider {
+  background: var(--designlibre-accent-light);
+}
+
+.view-switcher.dragging {
+  user-select: none;
+}
+
+/* ============================================================================
+   Code View
+   ============================================================================ */
+
+.code-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--designlibre-bg-primary);
+}
+
+.code-view-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--designlibre-bg-secondary);
+  border-bottom: 1px solid var(--designlibre-border);
+  flex-shrink: 0;
+}
+
+.code-view-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--designlibre-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.code-view-language {
+  flex: 1;
+  max-width: 200px;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--designlibre-bg-primary);
+  border: 1px solid var(--designlibre-border);
+  border-radius: var(--designlibre-radius-sm);
+  font-size: 12px;
+  color: var(--designlibre-text-primary);
+  cursor: pointer;
+  outline: none;
+}
+
+.code-view-language:focus {
+  border-color: var(--designlibre-accent);
+}
+
+.code-view-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  background: var(--designlibre-bg-primary);
+  border: 1px solid var(--designlibre-border);
+  border-radius: var(--designlibre-radius-sm);
+  color: var(--designlibre-text-secondary);
+  cursor: pointer;
+  transition: all var(--designlibre-transition);
+}
+
+.code-view-copy:hover {
+  background: var(--designlibre-accent-light);
+  border-color: var(--designlibre-accent);
+  color: var(--designlibre-accent);
+}
+
+.code-view-copy.copied {
+  background: var(--designlibre-success);
+  border-color: var(--designlibre-success);
+  color: white;
+}
+
+.code-view-content {
+  flex: 1;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  background: var(--designlibre-bg-primary);
+  font-family: 'SF Mono', Monaco, 'Fira Code', Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-view-content code {
+  display: block;
+  color: var(--designlibre-text-primary);
+}
+
+/* Syntax highlighting for code view */
+.code-view-content .language-tsx,
+.code-view-content .language-typescript {
+  color: var(--designlibre-text-primary);
+}
+
+.code-view-content .language-swift {
+  color: var(--designlibre-text-primary);
+}
+
+.code-view-content .language-kotlin {
+  color: var(--designlibre-text-primary);
 }

@@ -9,6 +9,7 @@ import { createToolbar } from '@ui/components/toolbar';
 import { createCanvasContainer } from '@ui/components/canvas-container';
 import { createInspectorPanel } from '@ui/components/inspector-panel';
 import { createLeftSidebar } from '@ui/components/left-sidebar';
+import { createViewSwitcher } from '@ui/components/view-switcher';
 // Available for UI toggle - currently hidden by default
 import { createCodePanel as _createCodePanel } from '@ui/components/code-panel';
 import { createTokensPanel as _createTokensPanel } from '@ui/components/tokens-panel';
@@ -17,6 +18,7 @@ import './ui/styles/main.css';
 
 // Re-export for external use
 export { _createCodePanel as createCodePanel, _createTokensPanel as createTokensPanel };
+export { createViewSwitcher } from '@ui/components/view-switcher';
 
 /**
  * Application configuration
@@ -95,21 +97,25 @@ async function initializeApp(config: AppConfig): Promise<void> {
   // Create canvas container UI
   createCanvasContainer(runtime, canvasContainer);
 
-  // Create left sidebar
+  // Create toolbar FIRST (before view switcher captures canvas)
+  createToolbar(runtime, canvasContainer, { position: 'bottom' });
+
+  // Create left sidebar (added to main first for proper ordering)
   const leftSidebar = createLeftSidebar(runtime, main, { width: 240 });
   leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
 
-  // Create toolbar (positioned at bottom of canvas)
-  createToolbar(runtime, canvasContainer, { position: 'bottom' });
+  // Create view switcher (captures canvasContainer and adds code view)
+  const viewSwitcher = createViewSwitcher(runtime, main);
+  void viewSwitcher; // Mounted to DOM, reference not needed
+
+  // Create inspector panel (right side)
+  createInspectorPanel(runtime, main, { position: 'right', width: 280 });
 
   // Create design token system (available for TokensPanel when enabled)
   const tokenRegistry = createTokenRegistry();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const tokenExporter = createTokenExporter(tokenRegistry);
   void tokenExporter; // Available for TokensPanel toggle
-
-  // Create inspector panel (right side)
-  createInspectorPanel(runtime, main, { position: 'right', width: 280 });
 
   // Note: CodePanel and TokensPanel can be toggled via UI buttons
   // They're available but hidden by default to avoid cluttering the interface
