@@ -32,6 +32,7 @@ export declare class LeftSidebar {
     private setup;
     private handleKeyDown;
     private handleDelete;
+    private handleDuplicate;
     private triggerLayerRename;
     /**
      * Sync leaves with actual PAGE nodes from scene graph.

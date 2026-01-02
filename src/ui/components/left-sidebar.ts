@@ -149,6 +149,11 @@ export class LeftSidebar {
       return;
     }
 
+    if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
+      this.handleDuplicate(e);
+      return;
+    }
+
     if (e.key !== 'F2') return;
 
     const selectionManager = this.runtime.getSelectionManager();
@@ -213,6 +218,82 @@ export class LeftSidebar {
 
     // Clear selection
     selectionManager?.clear();
+  }
+
+  private handleDuplicate(e: KeyboardEvent): void {
+    const selectionManager = this.runtime.getSelectionManager();
+    const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
+
+    if (selectedIds.length === 0) return;
+
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Filter out PAGE and DOCUMENT nodes - don't allow duplicating those
+    const duplicatableIds = selectedIds.filter(id => {
+      const node = sceneGraph.getNode(id);
+      return node && node.type !== 'PAGE' && node.type !== 'DOCUMENT';
+    });
+
+    if (duplicatableIds.length === 0) return;
+
+    e.preventDefault();
+
+    const newNodeIds: NodeId[] = [];
+    const offset = 10; // Offset for duplicated nodes
+
+    // Duplicate each selected node
+    for (const nodeId of duplicatableIds) {
+      const node = sceneGraph.getNode(nodeId);
+      if (!node) continue;
+
+      const parent = sceneGraph.getParent(nodeId);
+      if (!parent) continue;
+      const parentId = parent.id;
+
+      // Create a copy of the node properties with offset position
+      const props: Record<string, unknown> = {
+        name: `${node.name} copy`,
+      };
+
+      // Copy position with offset if node has x/y
+      if ('x' in node && typeof node.x === 'number') {
+        props['x'] = node.x + offset;
+      }
+      if ('y' in node && typeof node.y === 'number') {
+        props['y'] = node.y + offset;
+      }
+
+      // Copy other visual properties
+      if ('width' in node) props['width'] = node.width;
+      if ('height' in node) props['height'] = node.height;
+      if ('rotation' in node) props['rotation'] = node.rotation;
+      if ('opacity' in node) props['opacity'] = node.opacity;
+      if ('fills' in node) props['fills'] = node.fills;
+      if ('strokes' in node) props['strokes'] = node.strokes;
+      if ('strokeWeight' in node) props['strokeWeight'] = node.strokeWeight;
+      if ('cornerRadius' in node) props['cornerRadius'] = node.cornerRadius;
+      if ('effects' in node) props['effects'] = node.effects;
+
+      // Copy type-specific properties
+      if ('characters' in node) props['characters'] = node.characters;
+      if ('pathData' in node) props['pathData'] = node.pathData;
+      if ('imageRef' in node) props['imageRef'] = node.imageRef;
+
+      const newNodeId = sceneGraph.createNode(
+        node.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
+        parentId,
+        -1,
+        props as Parameters<typeof sceneGraph.createNode>[3]
+      );
+
+      newNodeIds.push(newNodeId);
+    }
+
+    // Select the new duplicated nodes
+    if (newNodeIds.length > 0) {
+      selectionManager?.select(newNodeIds, 'replace');
+    }
   }
 
   private triggerLayerRename(nodeId: NodeId, currentName: string): void {
