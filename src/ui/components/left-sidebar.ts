@@ -6,7 +6,12 @@
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { NodeId } from '@core/types/common';
-import { downloadiOS26Template } from '@templates/index';
+import { downloadiOS26Template, downloadKotlinMaterial3Template } from '@templates/index';
+import {
+  downloadAndroidProject,
+  downloadIOSProject,
+  downloadTypeScriptProject,
+} from '@persistence/export/project-export';
 
 /**
  * Leaf (page) definition
@@ -711,7 +716,7 @@ export class LeftSidebar {
     `;
 
     // iOS 26 Template
-    const templateItem = this.createTemplateItem(
+    const iOSTemplate = this.createTemplateItem(
       'iOS 26 Liquid Glass',
       'Complete iOS 26 design system with Liquid Glass components',
       'iOS/iPadOS',
@@ -719,7 +724,18 @@ export class LeftSidebar {
         await downloadiOS26Template();
       }
     );
-    list.appendChild(templateItem);
+    list.appendChild(iOSTemplate);
+
+    // Kotlin Material Design 3 Template
+    const kotlinTemplate = this.createTemplateItem(
+      'Kotlin Material Design 3',
+      'Complete Material 3 system with Compose components, typography, and colors',
+      'Android',
+      async () => {
+        await downloadKotlinMaterial3Template();
+      }
+    );
+    list.appendChild(kotlinTemplate);
 
     // Placeholder for more templates
     const moreTemplates = document.createElement('div');
@@ -1222,7 +1238,7 @@ export class LeftSidebar {
       { separator: true },
       { label: 'Templates', submenu: true, action: () => this.showTemplatesMenu(anchor) },
       { separator: true },
-      { label: 'Export...', shortcut: 'Ctrl+E', action: () => {} },
+      { label: 'Export Project...', submenu: true, action: () => this.showExportMenu(anchor) },
       { separator: true },
       { label: 'Settings', action: () => this.showSettingsMenu(anchor) },
     ];
@@ -1322,6 +1338,14 @@ export class LeftSidebar {
           await downloadiOS26Template();
         },
       },
+      {
+        label: 'Kotlin Material Design 3',
+        description: 'Complete Material 3 system for Android',
+        action: async () => {
+          menu.remove();
+          await downloadKotlinMaterial3Template();
+        },
+      },
     ];
 
     // Header
@@ -1378,6 +1402,206 @@ export class LeftSidebar {
     requestAnimationFrame(() => {
       document.addEventListener('mousedown', closeMenu);
     });
+  }
+
+  /**
+   * Show export project menu.
+   */
+  private showExportMenu(anchor: HTMLElement): void {
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-export-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-export-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 280px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    const exportItems = [
+      {
+        label: 'Export Android Project',
+        description: 'Gradle + Kotlin/Compose (.zip)',
+        action: () => this.exportAndroid(),
+      },
+      {
+        label: 'Export iOS Project',
+        description: 'Xcode + SwiftUI (.zip)',
+        action: () => this.exportIOS(),
+      },
+      {
+        label: 'Export TypeScript Project',
+        description: 'React + Vite (.zip)',
+        action: () => this.exportTypeScript(),
+      },
+    ];
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.textContent = 'Export as Project';
+    menu.appendChild(header);
+
+    for (const item of exportItems) {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      label.style.fontWeight = '500';
+      menuItem.appendChild(label);
+
+      if (item.description) {
+        const desc = document.createElement('span');
+        desc.textContent = item.description;
+        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+        menuItem.appendChild(desc);
+      }
+
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
+      menuItem.addEventListener('click', () => {
+        menu.remove();
+        item.action();
+      });
+
+      menu.appendChild(menuItem);
+    }
+
+    document.body.appendChild(menu);
+
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closeMenu);
+      }
+    };
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
+  }
+
+  /**
+   * Export to Android project.
+   */
+  private async exportAndroid(): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Get all top-level nodes from the current page
+    const currentPageId = this.runtime.getCurrentPageId();
+    if (!currentPageId) return;
+
+    const nodeIds = sceneGraph.getChildIds(currentPageId);
+    if (nodeIds.length === 0) {
+      alert('No nodes to export. Add some elements to the canvas first.');
+      return;
+    }
+
+    const projectName = this.documentName.replace(/[^a-zA-Z0-9]/g, '') || 'DesignLibreProject';
+    const packageName = `com.designlibre.${projectName.toLowerCase()}`;
+
+    try {
+      await downloadAndroidProject(sceneGraph, nodeIds, {
+        projectName,
+        packageName,
+        useCompose: true,
+        includeTests: true,
+      });
+    } catch (error) {
+      console.error('Failed to export Android project:', error);
+      alert('Failed to export Android project. Check console for details.');
+    }
+  }
+
+  /**
+   * Export to iOS project.
+   */
+  private async exportIOS(): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Get all top-level nodes from the current page
+    const currentPageId = this.runtime.getCurrentPageId();
+    if (!currentPageId) return;
+
+    const nodeIds = sceneGraph.getChildIds(currentPageId);
+    if (nodeIds.length === 0) {
+      alert('No nodes to export. Add some elements to the canvas first.');
+      return;
+    }
+
+    const projectName = this.documentName.replace(/[^a-zA-Z0-9]/g, '') || 'DesignLibreProject';
+    const bundleId = `com.designlibre.${projectName.toLowerCase()}`;
+
+    try {
+      await downloadIOSProject(sceneGraph, nodeIds, {
+        projectName,
+        bundleId,
+      });
+    } catch (error) {
+      console.error('Failed to export iOS project:', error);
+      alert('Failed to export iOS project. Check console for details.');
+    }
+  }
+
+  /**
+   * Export to TypeScript/React project.
+   */
+  private async exportTypeScript(): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Get all top-level nodes from the current page
+    const currentPageId = this.runtime.getCurrentPageId();
+    if (!currentPageId) return;
+
+    const nodeIds = sceneGraph.getChildIds(currentPageId);
+    if (nodeIds.length === 0) {
+      alert('No nodes to export. Add some elements to the canvas first.');
+      return;
+    }
+
+    const projectName = this.documentName.replace(/[^a-zA-Z0-9]/g, '') || 'DesignLibreProject';
+
+    try {
+      await downloadTypeScriptProject(sceneGraph, nodeIds, {
+        projectName,
+        useVite: true,
+        includeCss: true,
+      });
+    } catch (error) {
+      console.error('Failed to export TypeScript project:', error);
+      alert('Failed to export TypeScript project. Check console for details.');
+    }
   }
 
   /**

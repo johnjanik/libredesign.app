@@ -5,11 +5,13 @@
  */
 
 export { generateiOS26Template, iOS26Colors, iOS26Typography, iOS26Spacing, iOS26Radius, iOS26Devices, iOS26SwiftMappings } from './ios26-liquid-glass-template';
+export { generateKotlinMaterial3Template, M3Colors, M3ColorsDark, M3Typography, M3Spacing, M3Shape, AndroidDevices, KotlinComposeMappings } from './kotlin-material3-template';
 
 import JSZip from 'jszip';
 import type { PreserveArchive } from '../persistence/preserve/preserve-types';
 import { PRESERVE_MIMETYPE, PRESERVE_FORMAT_VERSION } from '../persistence/preserve/preserve-types';
 import { generateiOS26Template } from './ios26-liquid-glass-template';
+import { generateKotlinMaterial3Template } from './kotlin-material3-template';
 
 /**
  * Create a downloadable .preserve file from a template archive
@@ -108,6 +110,24 @@ export async function downloadiOS26Template(): Promise<void> {
 }
 
 /**
+ * Download the Kotlin Material Design 3 template as a .preserve file
+ */
+export async function downloadKotlinMaterial3Template(): Promise<void> {
+  const archive = generateKotlinMaterial3Template();
+  const blob = await exportTemplateAsPreserve(archive);
+
+  // Create download link
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'Kotlin-Material3-Template.preserve';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Available templates
  */
 export const templates = {
@@ -118,6 +138,14 @@ export const templates = {
     version: '26.0',
     generate: generateiOS26Template,
     download: downloadiOS26Template,
+  },
+  'kotlin-material3': {
+    name: 'Kotlin Material Design 3',
+    description: 'Complete Material Design 3 system with Compose components, typography, and colors',
+    platform: 'Android',
+    version: 'M3',
+    generate: generateKotlinMaterial3Template,
+    download: downloadKotlinMaterial3Template,
   },
 } as const;
 
