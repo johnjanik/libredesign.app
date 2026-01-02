@@ -557,18 +557,34 @@ export class LeftSidebar {
     item.appendChild(icon);
     item.appendChild(name);
 
+    // Double-click to rename (must be registered before click to work properly)
+    item.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.renameLeaf(leaf, name);
+    });
+
     item.addEventListener('click', () => {
-      this.activeLeafId = leaf.id;
-      // Switch to this page in the runtime and select it to show properties
-      if (leaf.nodeId) {
-        this.runtime.setCurrentPage(leaf.nodeId);
-        // Select the page node so inspector shows page properties
+      // Only re-render if switching to a different leaf
+      if (this.activeLeafId !== leaf.id) {
+        this.activeLeafId = leaf.id;
+        // Switch to this page in the runtime and select it to show properties
+        if (leaf.nodeId) {
+          this.runtime.setCurrentPage(leaf.nodeId);
+          // Select the page node so inspector shows page properties
+          const selectionManager = this.runtime.getSelectionManager();
+          if (selectionManager) {
+            selectionManager.select([leaf.nodeId], 'replace');
+          }
+        }
+        this.render();
+      } else if (leaf.nodeId) {
+        // If clicking the active leaf, just ensure it's selected
         const selectionManager = this.runtime.getSelectionManager();
         if (selectionManager) {
           selectionManager.select([leaf.nodeId], 'replace');
         }
       }
-      this.render();
     });
 
     item.addEventListener('mouseenter', () => {
@@ -581,11 +597,6 @@ export class LeftSidebar {
       if (leaf.id !== this.activeLeafId) {
         item.style.backgroundColor = 'transparent';
       }
-    });
-
-    // Double-click to rename
-    item.addEventListener('dblclick', () => {
-      this.renameLeaf(leaf, name);
     });
 
     return item;
@@ -765,7 +776,57 @@ export class LeftSidebar {
       }
     });
 
+    // Double-click to rename
+    item.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.renameLayer(node.id, node.name, name);
+    });
+
     return item;
+  }
+
+  private renameLayer(nodeId: NodeId, currentName: string, nameElement: HTMLElement): void {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.style.cssText = `
+      flex: 1;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-accent, #4dabff);
+      border-radius: 2px;
+      padding: 2px 4px;
+      font-size: 12px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      outline: none;
+    `;
+
+    const finishRename = (): void => {
+      const newName = input.value || currentName;
+
+      // Update the scene graph node name
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (sceneGraph) {
+        sceneGraph.updateNode(nodeId, { name: newName });
+      }
+
+      this.renderLayersSection();
+    };
+
+    input.addEventListener('blur', finishRename);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        finishRename();
+      } else if (e.key === 'Escape') {
+        this.renderLayersSection();
+      }
+    });
+
+    // Prevent click from bubbling up and selecting
+    input.addEventListener('click', (e) => e.stopPropagation());
+
+    nameElement.replaceWith(input);
+    input.focus();
+    input.select();
   }
 
   private renderLayersSection(): void {
@@ -855,7 +916,17 @@ export class LeftSidebar {
     `;
 
     const finishRename = (): void => {
-      leaf.name = input.value || leaf.name;
+      const newName = input.value || leaf.name;
+      leaf.name = newName;
+
+      // Update the scene graph node name
+      if (leaf.nodeId) {
+        const sceneGraph = this.runtime.getSceneGraph();
+        if (sceneGraph) {
+          sceneGraph.updateNode(leaf.nodeId, { name: newName });
+        }
+      }
+
       this.render();
     };
 

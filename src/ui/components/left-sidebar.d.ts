@@ -45,6 +45,7 @@ export declare class LeftSidebar {
     private createLeafItem;
     private createLayersSection;
     private createLayerItem;
+    private renameLayer;
     private renderLayersSection;
     private getIconButtonStyles;
     private addHoverEffect;
