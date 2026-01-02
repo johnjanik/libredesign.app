@@ -123,8 +123,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     currentPageId: null,
   };
 
-  // Last used fill color for shapes (default: #707070)
-  private lastUsedFillColor = { r: 0.439, g: 0.439, b: 0.439, a: 1 };
+  // Last used fill color for shapes (default: #D4D2D0)
+  private lastUsedFillColor = { r: 0.831, g: 0.824, b: 0.816, a: 1 };
 
   // Options
   private options: RuntimeOptions;
