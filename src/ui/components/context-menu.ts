@@ -270,6 +270,10 @@ export class ContextMenu {
           left: 0;
           width: 100%;
           height: 100%;
+          pointer-events: none;
+        }
+
+        .designlibre-context-menu-backdrop.active {
           pointer-events: auto;
         }
       </style>
@@ -344,6 +348,10 @@ export class ContextMenu {
     this.menuElement.style.left = `${Math.max(8, menuX)}px`;
     this.menuElement.style.top = `${Math.max(8, menuY)}px`;
 
+    // Activate backdrop to capture clicks outside menu
+    const backdrop = this.container.querySelector('.designlibre-context-menu-backdrop');
+    backdrop?.classList.add('active');
+
     // Trigger animation
     requestAnimationFrame(() => {
       this.menuElement?.classList.add('visible');
@@ -363,6 +371,11 @@ export class ContextMenu {
         this.menuElement = null;
       }, this.options.animationDuration);
     }
+
+    // Deactivate backdrop
+    const backdrop = this.container?.querySelector('.designlibre-context-menu-backdrop');
+    backdrop?.classList.remove('active');
+
     this.isVisible = false;
   }
 

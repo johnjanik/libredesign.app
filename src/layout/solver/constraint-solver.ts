@@ -261,8 +261,14 @@ export class ConstraintSolver {
     // Remove existing constraint with same ID
     this.removeConstraint(id);
 
-    this.constraints.set(id, constraint);
-    this.solver.addConstraint(constraint);
+    try {
+      this.constraints.set(id, constraint);
+      this.solver.addConstraint(constraint);
+    } catch (e) {
+      // Constraint may be unsatisfiable - remove it and continue
+      this.constraints.delete(id);
+      console.warn(`Unsatisfiable constraint: ${id}`, e);
+    }
   }
 
   // =========================================================================

@@ -34,6 +34,7 @@ export type LayoutEngineEvents = {
   'layout:updated': { nodeIds: NodeId[] };
   'layout:started': undefined;
   'layout:completed': { duration: number };
+  'layout:error': { error: unknown };
   [key: string]: unknown;
 };
 
@@ -306,45 +307,51 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     const startTime = performance.now();
     this.emit('layout:started');
 
-    // Collect all dirty nodes and their ancestors/descendants
-    const nodesToProcess = this.collectNodesToProcess();
+    try {
+      // Collect all dirty nodes and their ancestors/descendants
+      const nodesToProcess = this.collectNodesToProcess();
 
-    // Reset solver for affected nodes
-    this.solver.clear();
+      // Reset solver for affected nodes
+      this.solver.clear();
 
-    // Process nodes in order (parents before children)
-    const sortedNodes = this.topologicalSort(nodesToProcess);
+      // Process nodes in order (parents before children)
+      const sortedNodes = this.topologicalSort(nodesToProcess);
 
-    // Apply constraints and calculate layout
-    for (const nodeId of sortedNodes) {
-      this.processNode(nodeId);
-    }
-
-    // Solve the system
-    this.solver.solve();
-
-    // Update layout data with solved values
-    const updatedNodes: NodeId[] = [];
-    for (const nodeId of sortedNodes) {
-      const result = this.solver.getNodeLayout(nodeId);
-      const current = this.layoutData.get(nodeId);
-      if (current) {
-        this.layoutData.set(nodeId, {
-          ...current,
-          x: result.x,
-          y: result.y,
-          width: result.width,
-          height: result.height,
-        });
-        updatedNodes.push(nodeId);
+      // Apply constraints and calculate layout
+      for (const nodeId of sortedNodes) {
+        this.processNode(nodeId);
       }
+
+      // Solve the system
+      this.solver.solve();
+
+      // Update layout data with solved values
+      const updatedNodes: NodeId[] = [];
+      for (const nodeId of sortedNodes) {
+        const result = this.solver.getNodeLayout(nodeId);
+        const current = this.layoutData.get(nodeId);
+        if (current) {
+          this.layoutData.set(nodeId, {
+            ...current,
+            x: result.x,
+            y: result.y,
+            width: result.width,
+            height: result.height,
+          });
+          updatedNodes.push(nodeId);
+        }
+      }
+
+      this.dirtyNodes.clear();
+
+      const duration = performance.now() - startTime;
+      this.emit('layout:updated', { nodeIds: updatedNodes });
+      this.emit('layout:completed', { duration });
+    } catch (e) {
+      console.error('Layout error:', e);
+      this.dirtyNodes.clear();
+      this.emit('layout:error', { error: e });
     }
-
-    this.dirtyNodes.clear();
-
-    const duration = performance.now() - startTime;
-    this.emit('layout:updated', { nodeIds: updatedNodes });
-    this.emit('layout:completed', { duration });
   }
 
   /**

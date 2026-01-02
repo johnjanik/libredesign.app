@@ -34,6 +34,7 @@ export default defineConfig({
       '@devtools': resolve(__dirname, 'src/devtools'),
       '@animation': resolve(__dirname, 'src/animation'),
       '@prototype': resolve(__dirname, 'src/prototype'),
+      '@ai': resolve(__dirname, 'src/ai'),
     },
   },
 

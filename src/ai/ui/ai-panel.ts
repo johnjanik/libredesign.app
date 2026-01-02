@@ -1,0 +1,677 @@
+/**
+ * AI Chat Panel
+ *
+ * Collapsible side panel for AI chat interface.
+ */
+
+import type { AIController } from '../ai-controller';
+import type { AIStreamChunk } from '../providers/ai-provider';
+
+/**
+ * AI Panel options
+ */
+export interface AIPanelOptions {
+  /** Initial width */
+  width?: number | undefined;
+  /** Initially collapsed */
+  collapsed?: boolean | undefined;
+  /** Position */
+  position?: 'left' | 'right' | undefined;
+}
+
+/**
+ * Required AI Panel options (internal)
+ */
+interface RequiredAIPanelOptions {
+  width: number;
+  collapsed: boolean;
+  position: 'left' | 'right';
+}
+
+/**
+ * Message in the chat
+ */
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  hasScreenshot?: boolean | undefined;
+}
+
+/**
+ * SVG Icons
+ */
+const ICONS = {
+  send: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+  </svg>`,
+  screenshot: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>`,
+  collapse: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/>
+  </svg>`,
+  expand: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/>
+  </svg>`,
+  ai: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/>
+    <path d="M2 12l10 5 10-5"/>
+  </svg>`,
+  clear: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+  </svg>`,
+  settings: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>`,
+};
+
+/**
+ * AI Chat Panel
+ */
+export class AIPanel {
+  private aiController: AIController;
+  private container: HTMLElement;
+  private element: HTMLElement | null = null;
+  private messagesContainer: HTMLElement | null = null;
+  private inputField: HTMLTextAreaElement | null = null;
+  private options: RequiredAIPanelOptions;
+  private collapsed = false;
+  private includeScreenshot = false;
+  private messages: ChatMessage[] = [];
+  private isStreaming = false;
+  private currentStreamContent = '';
+  private unsubscribers: Array<() => void> = [];
+
+  constructor(
+    aiController: AIController,
+    container: HTMLElement,
+    options: AIPanelOptions = {}
+  ) {
+    this.aiController = aiController;
+    this.container = container;
+    this.options = {
+      width: options.width ?? 320,
+      collapsed: options.collapsed ?? false,
+      position: options.position ?? 'right',
+    };
+    this.collapsed = this.options.collapsed;
+
+    this.setup();
+  }
+
+  private setup(): void {
+    this.element = document.createElement('div');
+    this.element.className = 'designlibre-ai-panel';
+    this.updateStyles();
+    this.render();
+    this.container.appendChild(this.element);
+
+    // Subscribe to AI events
+    const unsubChunk = this.aiController.on('ai:stream:chunk', ({ chunk }) => {
+      this.handleStreamChunk(chunk);
+    });
+    this.unsubscribers.push(unsubChunk);
+
+    const unsubComplete = this.aiController.on('ai:message:complete', () => {
+      this.handleMessageComplete();
+    });
+    this.unsubscribers.push(unsubComplete);
+
+    const unsubError = this.aiController.on('ai:message:error', ({ error }) => {
+      this.handleError(error);
+    });
+    this.unsubscribers.push(unsubError);
+
+    const unsubStatus = this.aiController.on('ai:status:change', ({ status }) => {
+      this.updateStatusIndicator(status);
+    });
+    this.unsubscribers.push(unsubStatus);
+  }
+
+  private updateStyles(): void {
+    if (!this.element) return;
+
+    const position = this.options.position === 'right' ? 'right: 0;' : 'left: 0;';
+    const borderSide = this.options.position === 'right' ? 'left' : 'right';
+
+    this.element.style.cssText = `
+      position: absolute;
+      top: 0;
+      ${position}
+      width: ${this.collapsed ? '48px' : `${this.options.width}px`};
+      height: 100%;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border-${borderSide}: 1px solid var(--designlibre-border, #3d3d3d);
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      z-index: 100;
+      transition: width 0.2s ease;
+    `;
+  }
+
+  private render(): void {
+    if (!this.element) return;
+    this.element.innerHTML = '';
+
+    if (this.collapsed) {
+      this.renderCollapsedState();
+    } else {
+      this.renderExpandedState();
+    }
+  }
+
+  private renderCollapsedState(): void {
+    if (!this.element) return;
+
+    const expandBtn = document.createElement('button');
+    expandBtn.className = 'designlibre-ai-expand-btn';
+    expandBtn.innerHTML = ICONS.ai;
+    expandBtn.title = 'Open AI Chat';
+    expandBtn.style.cssText = `
+      width: 100%;
+      height: 48px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-accent, #a855f7);
+    `;
+    expandBtn.addEventListener('click', () => this.toggleCollapse());
+    this.addHoverEffect(expandBtn);
+
+    this.element.appendChild(expandBtn);
+  }
+
+  private renderExpandedState(): void {
+    if (!this.element) return;
+
+    // Header
+    this.element.appendChild(this.createHeader());
+
+    // Messages area
+    this.messagesContainer = document.createElement('div');
+    this.messagesContainer.className = 'designlibre-ai-messages';
+    this.messagesContainer.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    `;
+    this.renderMessages();
+    this.element.appendChild(this.messagesContainer);
+
+    // Input area
+    this.element.appendChild(this.createInputArea());
+  }
+
+  private createHeader(): HTMLElement {
+    const header = document.createElement('div');
+    header.className = 'designlibre-ai-header';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+    `;
+
+    // Title with AI icon
+    const titleArea = document.createElement('div');
+    titleArea.style.cssText = `display: flex; align-items: center; gap: 8px;`;
+
+    const icon = document.createElement('span');
+    icon.innerHTML = ICONS.ai;
+    icon.style.cssText = `display: flex; color: var(--designlibre-accent, #a855f7);`;
+    titleArea.appendChild(icon);
+
+    const title = document.createElement('span');
+    title.textContent = 'AI Assistant';
+    title.style.cssText = `font-weight: 600; font-size: 13px;`;
+    titleArea.appendChild(title);
+
+    // Status indicator
+    const status = document.createElement('span');
+    status.className = 'ai-status-indicator';
+    status.style.cssText = `
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--designlibre-text-muted, #6a6a6a);
+      margin-left: 8px;
+    `;
+    titleArea.appendChild(status);
+
+    header.appendChild(titleArea);
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.style.cssText = `display: flex; gap: 4px;`;
+
+    // Provider selector
+    const providerSelect = document.createElement('select');
+    providerSelect.style.cssText = `
+      padding: 4px 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 11px;
+      cursor: pointer;
+    `;
+    const providers = this.aiController.getProviderNames();
+    const activeProvider = this.aiController.getProviderName();
+    for (const name of providers) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      option.selected = name === activeProvider;
+      providerSelect.appendChild(option);
+    }
+    providerSelect.addEventListener('change', () => {
+      this.aiController.setProvider(providerSelect.value);
+    });
+    actions.appendChild(providerSelect);
+
+    // Clear button
+    const clearBtn = this.createIconButton(ICONS.clear, 'Clear conversation', () => {
+      this.messages = [];
+      this.aiController.clearConversation();
+      this.renderMessages();
+    });
+    actions.appendChild(clearBtn);
+
+    // Collapse button
+    const collapseBtn = this.createIconButton(ICONS.collapse, 'Collapse panel', () => {
+      this.toggleCollapse();
+    });
+    actions.appendChild(collapseBtn);
+
+    header.appendChild(actions);
+
+    return header;
+  }
+
+  private createInputArea(): HTMLElement {
+    const inputArea = document.createElement('div');
+    inputArea.className = 'designlibre-ai-input-area';
+    inputArea.style.cssText = `
+      padding: 12px;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+    `;
+
+    // Options row
+    const optionsRow = document.createElement('div');
+    optionsRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    `;
+
+    // Screenshot toggle
+    const screenshotBtn = document.createElement('button');
+    screenshotBtn.className = 'screenshot-toggle';
+    screenshotBtn.innerHTML = ICONS.screenshot;
+    screenshotBtn.title = 'Include screenshot';
+    screenshotBtn.style.cssText = `
+      width: 28px;
+      height: 28px;
+      border: 1px solid ${this.includeScreenshot ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-border, #3d3d3d)'};
+      background: ${this.includeScreenshot ? 'var(--designlibre-accent-light, #3b1f5c)' : 'transparent'};
+      color: ${this.includeScreenshot ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    `;
+    screenshotBtn.addEventListener('click', () => {
+      this.includeScreenshot = !this.includeScreenshot;
+      screenshotBtn.style.borderColor = this.includeScreenshot ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-border, #3d3d3d)';
+      screenshotBtn.style.background = this.includeScreenshot ? 'var(--designlibre-accent-light, #3b1f5c)' : 'transparent';
+      screenshotBtn.style.color = this.includeScreenshot ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+    optionsRow.appendChild(screenshotBtn);
+
+    const hint = document.createElement('span');
+    hint.textContent = 'Include canvas screenshot';
+    hint.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #6a6a6a);`;
+    optionsRow.appendChild(hint);
+
+    inputArea.appendChild(optionsRow);
+
+    // Input row
+    const inputRow = document.createElement('div');
+    inputRow.style.cssText = `display: flex; gap: 8px;`;
+
+    // Text input
+    this.inputField = document.createElement('textarea');
+    this.inputField.placeholder = 'Ask the AI to help with your design...';
+    this.inputField.style.cssText = `
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      font-family: inherit;
+      resize: none;
+      min-height: 60px;
+      max-height: 120px;
+      outline: none;
+    `;
+    this.inputField.addEventListener('focus', () => {
+      this.inputField!.style.borderColor = 'var(--designlibre-accent, #a855f7)';
+    });
+    this.inputField.addEventListener('blur', () => {
+      this.inputField!.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+    });
+    this.inputField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        this.sendMessage();
+      }
+    });
+    inputRow.appendChild(this.inputField);
+
+    // Send button
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'send-btn';
+    sendBtn.innerHTML = ICONS.send;
+    sendBtn.title = 'Send message';
+    sendBtn.style.cssText = `
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: var(--designlibre-accent, #a855f7);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      align-self: flex-end;
+      transition: background 0.15s;
+    `;
+    sendBtn.addEventListener('click', () => this.sendMessage());
+    sendBtn.addEventListener('mouseenter', () => {
+      sendBtn.style.background = '#9333ea';
+    });
+    sendBtn.addEventListener('mouseleave', () => {
+      sendBtn.style.background = 'var(--designlibre-accent, #a855f7)';
+    });
+    inputRow.appendChild(sendBtn);
+
+    inputArea.appendChild(inputRow);
+
+    return inputArea;
+  }
+
+  private renderMessages(): void {
+    if (!this.messagesContainer) return;
+    this.messagesContainer.innerHTML = '';
+
+    if (this.messages.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = `
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--designlibre-text-muted, #6a6a6a);
+      `;
+      empty.innerHTML = `
+        <div style="font-size: 32px; margin-bottom: 12px;">${ICONS.ai}</div>
+        <div style="font-size: 14px; font-weight: 500; margin-bottom: 4px;">AI Design Assistant</div>
+        <div style="font-size: 12px;">Ask me to create shapes, modify elements, or help with your design.</div>
+      `;
+      this.messagesContainer.appendChild(empty);
+      return;
+    }
+
+    for (const msg of this.messages) {
+      this.messagesContainer.appendChild(this.createMessageBubble(msg));
+    }
+
+    // Scroll to bottom
+    this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+  }
+
+  private createMessageBubble(message: ChatMessage): HTMLElement {
+    const bubble = document.createElement('div');
+    bubble.className = `message-bubble ${message.role}`;
+    const isUser = message.role === 'user';
+
+    bubble.style.cssText = `
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: ${isUser ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-bg-secondary, #2d2d2d)'};
+      color: ${isUser ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      align-self: ${isUser ? 'flex-end' : 'flex-start'};
+      word-wrap: break-word;
+    `;
+
+    // Content
+    const content = document.createElement('div');
+    content.style.cssText = `font-size: 12px; line-height: 1.5; white-space: pre-wrap;`;
+    content.textContent = message.content;
+    bubble.appendChild(content);
+
+    // Metadata
+    const meta = document.createElement('div');
+    meta.style.cssText = `
+      font-size: 10px;
+      opacity: 0.7;
+      margin-top: 4px;
+      text-align: ${isUser ? 'right' : 'left'};
+    `;
+    const time = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    meta.textContent = time + (message.hasScreenshot ? ' (with screenshot)' : '');
+    bubble.appendChild(meta);
+
+    return bubble;
+  }
+
+  private async sendMessage(): Promise<void> {
+    if (!this.inputField || this.isStreaming) return;
+
+    const content = this.inputField.value.trim();
+    if (!content) return;
+
+    // Add user message
+    this.messages.push({
+      role: 'user',
+      content,
+      timestamp: new Date(),
+      hasScreenshot: this.includeScreenshot,
+    });
+
+    // Clear input
+    this.inputField.value = '';
+    this.renderMessages();
+
+    // Send to AI
+    this.isStreaming = true;
+    this.currentStreamContent = '';
+
+    try {
+      // Use streaming
+      for await (const _chunk of this.aiController.streamChat(content, {
+        screenshot: this.includeScreenshot,
+        stream: true,
+      })) {
+        // Chunks are handled by event listener
+      }
+    } catch (error) {
+      console.error('AI chat error:', error);
+    }
+  }
+
+  private handleStreamChunk(chunk: AIStreamChunk): void {
+    if (chunk.type === 'text' && chunk.text) {
+      this.currentStreamContent += chunk.text;
+
+      // Update or add streaming message
+      const lastMsg = this.messages[this.messages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant' && this.isStreaming) {
+        lastMsg.content = this.currentStreamContent;
+      } else {
+        this.messages.push({
+          role: 'assistant',
+          content: this.currentStreamContent,
+          timestamp: new Date(),
+        });
+      }
+      this.renderMessages();
+    }
+  }
+
+  private handleMessageComplete(): void {
+    this.isStreaming = false;
+    this.currentStreamContent = '';
+    this.renderMessages();
+  }
+
+  private handleError(error: Error): void {
+    this.isStreaming = false;
+    this.messages.push({
+      role: 'assistant',
+      content: `Error: ${error.message}`,
+      timestamp: new Date(),
+    });
+    this.renderMessages();
+  }
+
+  private updateStatusIndicator(status: string): void {
+    const indicator = this.element?.querySelector('.ai-status-indicator') as HTMLElement;
+    if (!indicator) return;
+
+    const colors: Record<string, string> = {
+      idle: 'var(--designlibre-text-muted, #6a6a6a)',
+      thinking: 'var(--designlibre-warning, #f59e0b)',
+      executing: 'var(--designlibre-accent, #a855f7)',
+      error: 'var(--designlibre-error, #ef4444)',
+    };
+
+    indicator.style.background = colors[status] ?? colors['idle']!;
+
+    // Add pulse animation for active states
+    if (status === 'thinking' || status === 'executing') {
+      indicator.style.animation = 'pulse 1s infinite';
+    } else {
+      indicator.style.animation = 'none';
+    }
+  }
+
+  private createIconButton(icon: string, title: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.innerHTML = icon;
+    btn.title = title;
+    btn.style.cssText = `
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 4px;
+    `;
+    btn.addEventListener('click', onClick);
+    this.addHoverEffect(btn);
+    return btn;
+  }
+
+  private addHoverEffect(button: HTMLElement): void {
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+  }
+
+  private toggleCollapse(): void {
+    this.collapsed = !this.collapsed;
+    this.updateStyles();
+    this.render();
+  }
+
+  /**
+   * Show the panel.
+   */
+  show(): void {
+    if (this.collapsed) {
+      this.toggleCollapse();
+    }
+    if (this.element) {
+      this.element.style.display = 'flex';
+    }
+  }
+
+  /**
+   * Hide the panel.
+   */
+  hide(): void {
+    if (this.element) {
+      this.element.style.display = 'none';
+    }
+  }
+
+  /**
+   * Focus the input field.
+   */
+  focus(): void {
+    this.inputField?.focus();
+  }
+
+  /**
+   * Check if panel is collapsed.
+   */
+  isCollapsed(): boolean {
+    return this.collapsed;
+  }
+
+  /**
+   * Dispose of the panel.
+   */
+  dispose(): void {
+    for (const unsub of this.unsubscribers) {
+      unsub();
+    }
+    this.unsubscribers = [];
+
+    if (this.element && this.element.parentNode) {
+      this.element.parentNode.removeChild(this.element);
+    }
+    this.element = null;
+    this.messagesContainer = null;
+    this.inputField = null;
+  }
+}
+
+/**
+ * Create an AI panel.
+ */
+export function createAIPanel(
+  aiController: AIController,
+  container: HTMLElement,
+  options?: AIPanelOptions
+): AIPanel {
+  return new AIPanel(aiController, container, options);
+}

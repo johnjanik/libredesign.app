@@ -21,9 +21,7 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
 
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+    "noEmit": true,
 
     "baseUrl": ".",
     "paths": {
@@ -41,7 +39,8 @@
       "@collaboration/*": ["src/collaboration/*"],
       "@devtools/*": ["src/devtools/*"],
       "@animation/*": ["src/animation/*"],
-      "@prototype/*": ["src/prototype/*"]
+      "@prototype/*": ["src/prototype/*"],
+      "@ai/*": ["src/ai/*"]
     },
 
     "types": ["vitest/globals"]

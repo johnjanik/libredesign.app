@@ -103,6 +103,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
   private keyboardHandler: KeyboardHandler | null = null;
+  private browserZoomHandler: ((e: WheelEvent) => void) | null = null;
   private keyboardManager: KeyboardManager | null = null;
   private contextMenu: ContextMenu | null = null;
 
@@ -209,6 +210,14 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.pointerHandler = createPointerHandler(this.canvas, this.viewport);
       this.keyboardHandler = createKeyboardHandler();
       this.keyboardHandler.registerDefaultShortcuts();
+
+      // Prevent browser zoom on Ctrl+wheel (must be at document level with passive: false)
+      this.browserZoomHandler = (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+        }
+      };
+      document.addEventListener('wheel', this.browserZoomHandler, { passive: false });
 
       // Initialize keyboard manager for shortcuts
       this.keyboardManager = createKeyboardManager(this);
@@ -689,6 +698,12 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   dispose(): void {
     window.removeEventListener('resize', this.handleResize);
+
+    // Remove browser zoom prevention listener
+    if (this.browserZoomHandler) {
+      document.removeEventListener('wheel', this.browserZoomHandler);
+      this.browserZoomHandler = null;
+    }
 
     this.autosaveManager?.dispose();
     this.pointerHandler?.dispose();
