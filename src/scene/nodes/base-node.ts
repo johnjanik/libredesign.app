@@ -106,6 +106,26 @@ export interface VectorNodeData extends SceneNodeData {
 }
 
 /**
+ * Image scale mode
+ */
+export type ImageScaleMode = 'FILL' | 'FIT' | 'CROP' | 'TILE';
+
+/**
+ * Image node - raster image
+ */
+export interface ImageNodeData extends SceneNodeData {
+  readonly type: 'IMAGE';
+  /** Data URL or image reference */
+  readonly imageRef: string;
+  /** Original image width */
+  readonly naturalWidth: number;
+  /** Original image height */
+  readonly naturalHeight: number;
+  /** Scale mode for the image */
+  readonly scaleMode: ImageScaleMode;
+}
+
+/**
  * Text style range
  */
 export interface TextStyleRange {
@@ -193,6 +213,7 @@ export type NodeData =
   | FrameNodeData
   | GroupNodeData
   | VectorNodeData
+  | ImageNodeData
   | TextNodeData
   | ComponentNodeData
   | InstanceNodeData
@@ -204,7 +225,7 @@ export type NodeData =
  */
 export function isSceneNode(
   node: NodeData
-): node is FrameNodeData | GroupNodeData | VectorNodeData | TextNodeData | ComponentNodeData | InstanceNodeData | BooleanOperationNodeData {
+): node is FrameNodeData | GroupNodeData | VectorNodeData | ImageNodeData | TextNodeData | ComponentNodeData | InstanceNodeData | BooleanOperationNodeData {
   return (
     node.type !== 'DOCUMENT' &&
     node.type !== 'PAGE' &&

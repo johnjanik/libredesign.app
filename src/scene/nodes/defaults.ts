@@ -80,6 +80,8 @@ export function getDefaultNodeName(type: NodeType): string {
       return 'Group';
     case 'VECTOR':
       return 'Vector';
+    case 'IMAGE':
+      return 'Image';
     case 'TEXT':
       return 'Text';
     case 'COMPONENT':

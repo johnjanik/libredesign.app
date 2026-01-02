@@ -4,7 +4,7 @@
 import type { NodeId, NodeType, PropertyPath } from '@core/types/common';
 import { EventEmitter } from '@core/events/event-emitter';
 import type { NodeData } from '../nodes/base-node';
-import { createFrame, createVector, createText } from '../nodes/factory';
+import { createFrame, createVector, createImage, createText } from '../nodes/factory';
 /**
  * Scene graph events
  */
@@ -122,6 +122,10 @@ export declare class SceneGraph extends EventEmitter<SceneGraphEvents> {
      * Create a text node.
      */
     createText(parentId: NodeId, options?: Parameters<typeof createText>[0]): NodeId;
+    /**
+     * Create an image node.
+     */
+    createImage(parentId: NodeId, options: Parameters<typeof createImage>[0]): NodeId;
     /**
      * Update a node's properties.
      */

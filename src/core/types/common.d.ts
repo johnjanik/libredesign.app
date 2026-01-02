@@ -19,6 +19,7 @@ export declare const NodeType: {
     readonly GROUP: "GROUP";
     readonly VECTOR: "VECTOR";
     readonly TEXT: "TEXT";
+    readonly IMAGE: "IMAGE";
     readonly COMPONENT: "COMPONENT";
     readonly INSTANCE: "INSTANCE";
     readonly BOOLEAN_OPERATION: "BOOLEAN_OPERATION";

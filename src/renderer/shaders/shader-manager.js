@@ -385,7 +385,7 @@ void main() {
 const IMAGE_VERTEX_SHADER = `#version 300 es
 precision highp float;
 
-uniform mat4 uViewProjection;
+uniform mat3 uViewProjection;
 uniform mat3 uTransform;
 
 in vec2 aPosition;
@@ -394,11 +394,13 @@ in vec2 aTexCoord;
 out vec2 vTexCoord;
 
 void main() {
-  // Apply image transform to texture coordinates
-  vec3 transformedCoord = uTransform * vec3(aTexCoord, 1.0);
-  vTexCoord = transformedCoord.xy;
+  // Transform position
+  vec3 worldPos = uTransform * vec3(aPosition, 1.0);
+  vec3 clipPos = uViewProjection * worldPos;
+  gl_Position = vec4(clipPos.xy, 0.0, 1.0);
 
-  gl_Position = uViewProjection * vec4(aPosition, 0.0, 1.0);
+  // Pass texture coordinates
+  vTexCoord = aTexCoord;
 }
 `;
 const IMAGE_FRAGMENT_SHADER = `#version 300 es

@@ -11,6 +11,7 @@ import {
   createFrame,
   createGroup,
   createVector,
+  createImage,
   createText,
   createComponent,
   createInstance,
@@ -228,6 +229,12 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
       case 'VECTOR':
         node = createVector(options as Parameters<typeof createVector>[0]);
         break;
+      case 'IMAGE':
+        if (!('imageRef' in options)) {
+          throw new Error('imageRef required for IMAGE');
+        }
+        node = createImage(options as Parameters<typeof createImage>[0]);
+        break;
       case 'TEXT':
         node = createText(options as Parameters<typeof createText>[0]);
         break;
@@ -291,6 +298,16 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
     options: Parameters<typeof createText>[0] = {}
   ): NodeId {
     return this.createNode('TEXT', parentId, -1, options);
+  }
+
+  /**
+   * Create an image node.
+   */
+  createImage(
+    parentId: NodeId,
+    options: Parameters<typeof createImage>[0]
+  ): NodeId {
+    return this.createNode('IMAGE', parentId, -1, options);
   }
 
   // =========================================================================

@@ -68,6 +68,7 @@ export interface RuntimeOptions {
 interface RuntimeState {
   initialized: boolean;
   currentDocumentId: string | null;
+  currentPageId: NodeId | null;
 }
 
 /**
@@ -119,7 +120,11 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private state: RuntimeState = {
     initialized: false,
     currentDocumentId: null,
+    currentPageId: null,
   };
+
+  // Last used fill color for shapes (default: #707070)
+  private lastUsedFillColor = { r: 0.439, g: 0.439, b: 0.439, a: 1 };
 
   // Options
   private options: RuntimeOptions;
@@ -503,6 +508,20 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     return this.starTool;
   }
 
+  /**
+   * Get the last used fill color for shapes.
+   */
+  getLastUsedFillColor(): { r: number; g: number; b: number; a: number } {
+    return { ...this.lastUsedFillColor };
+  }
+
+  /**
+   * Set the last used fill color for shapes.
+   */
+  setLastUsedFillColor(color: { r: number; g: number; b: number; a: number }): void {
+    this.lastUsedFillColor = { ...color };
+  }
+
   // =========================================================================
   // Cleanup
   // =========================================================================
@@ -590,7 +609,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         width: rect.width,
         height: rect.height,
         vectorPaths: [path],
-        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+        fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -610,7 +629,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         width: bounds.width,
         height: bounds.height,
         vectorPaths: [path],
-        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+        fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -753,7 +772,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         width: polygon.bounds.width,
         height: polygon.bounds.height,
         vectorPaths: [path],
-        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+        fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -789,7 +808,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         width: star.bounds.width,
         height: star.bounds.height,
         vectorPaths: [path],
-        fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+        fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -845,38 +864,21 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       const parentId = this.getCurrentPageId();
       if (!parentId) return null;
 
-      // For now, create a rectangle placeholder with the image dimensions
-      // Full image support requires texture management
       const width = data.naturalWidth ?? 200;
       const height = data.naturalHeight ?? 200;
 
-      // Create a rectangle path for the image bounds
-      const path: VectorPath = {
-        windingRule: 'NONZERO',
-        commands: [
-          { type: 'M', x: 0, y: 0 },
-          { type: 'L', x: width, y: 0 },
-          { type: 'L', x: width, y: height },
-          { type: 'L', x: 0, y: height },
-          { type: 'Z' },
-        ] as PathCommand[],
-      };
-
-      const nodeId = this.sceneGraph.createVector(parentId, {
+      // Create an IMAGE node with the data URL
+      const nodeId = this.sceneGraph.createImage(parentId, {
         name: data.file.name,
         x: data.position.x,
         y: data.position.y,
         width,
         height,
-        vectorPaths: [path],
-        fills: [solidPaint(rgba(0.9, 0.9, 0.9, 1))],
-        strokes: [solidPaint(rgba(0.7, 0.7, 0.7, 1))],
-        strokeWeight: 1,
+        imageRef: data.dataUrl,
+        naturalWidth: width,
+        naturalHeight: height,
+        scaleMode: 'FILL',
       });
-
-      // Store the image data URL in a custom property for later rendering
-      // This would be handled by the image rendering system
-      console.log('Image placed:', data.file.name, 'Data URL length:', data.dataUrl.length);
 
       this.selectionManager.select([nodeId], 'replace');
       return nodeId;
@@ -905,13 +907,48 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
-   * Get the current page ID (first page of document).
+   * Get the current page ID.
    */
-  private getCurrentPageId(): NodeId | null {
+  getCurrentPageId(): NodeId | null {
+    // Return tracked page if valid
+    if (this.state.currentPageId) {
+      const page = this.sceneGraph.getNode(this.state.currentPageId);
+      if (page && page.type === 'PAGE') {
+        return this.state.currentPageId;
+      }
+    }
+
+    // Fallback to first page
     const doc = this.sceneGraph.getDocument();
     if (!doc) return null;
     const pageIds = this.sceneGraph.getChildIds(doc.id);
-    return pageIds.length > 0 ? pageIds[0]! : null;
+    if (pageIds.length > 0) {
+      this.state.currentPageId = pageIds[0]!;
+      return pageIds[0]!;
+    }
+    return null;
+  }
+
+  /**
+   * Set the current page.
+   */
+  setCurrentPage(pageId: NodeId): void {
+    const page = this.sceneGraph.getNode(pageId);
+    if (!page || page.type !== 'PAGE') {
+      throw new Error(`Invalid page ID: ${pageId}`);
+    }
+    this.state.currentPageId = pageId;
+    // Update renderer to show the new page
+    this.renderer?.setCurrentPageId(pageId);
+  }
+
+  /**
+   * Get all page IDs in the document.
+   */
+  getPageIds(): NodeId[] {
+    const doc = this.sceneGraph.getDocument();
+    if (!doc) return [];
+    return this.sceneGraph.getChildIds(doc.id);
   }
 
   private wireInputHandlers(): void {

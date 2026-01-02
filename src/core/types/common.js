@@ -9,6 +9,7 @@ export const NodeType = {
     GROUP: 'GROUP',
     VECTOR: 'VECTOR',
     TEXT: 'TEXT',
+    IMAGE: 'IMAGE',
     COMPONENT: 'COMPONENT',
     INSTANCE: 'INSTANCE',
     BOOLEAN_OPERATION: 'BOOLEAN_OPERATION',

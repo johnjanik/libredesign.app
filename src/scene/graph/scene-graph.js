@@ -2,7 +2,7 @@
  * Scene graph - main API for managing the document tree
  */
 import { EventEmitter } from '@core/events/event-emitter';
-import { createDocument, createPage, createFrame, createGroup, createVector, createText, createComponent, createInstance, createBooleanOperation, createSlice, } from '../nodes/factory';
+import { createDocument, createPage, createFrame, createGroup, createVector, createImage, createText, createComponent, createInstance, createBooleanOperation, createSlice, } from '../nodes/factory';
 import { NodeRegistry } from './node-registry';
 import { insertNode, deleteNode, moveNode, reorderNode, wouldCreateCycle, isValidParentChild, getNodeDepth, findCommonAncestor, } from './tree-operations';
 import { generateFirstIndex } from './fractional-index';
@@ -146,6 +146,12 @@ export class SceneGraph extends EventEmitter {
             case 'VECTOR':
                 node = createVector(options);
                 break;
+            case 'IMAGE':
+                if (!('imageRef' in options)) {
+                    throw new Error('imageRef required for IMAGE');
+                }
+                node = createImage(options);
+                break;
             case 'TEXT':
                 node = createText(options);
                 break;
@@ -191,6 +197,12 @@ export class SceneGraph extends EventEmitter {
      */
     createText(parentId, options = {}) {
         return this.createNode('TEXT', parentId, -1, options);
+    }
+    /**
+     * Create an image node.
+     */
+    createImage(parentId, options) {
+        return this.createNode('IMAGE', parentId, -1, options);
     }
     // =========================================================================
     // Node Modification

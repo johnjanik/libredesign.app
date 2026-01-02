@@ -102,6 +102,33 @@ export function createVector(options = {}) {
         vectorPaths: options.vectorPaths ?? [],
     };
 }
+/** Create an image node */
+export function createImage(options) {
+    return {
+        id: options.id ?? generateNodeId(),
+        type: 'IMAGE',
+        name: options.name ?? getDefaultNodeName('IMAGE'),
+        visible: true,
+        locked: false,
+        parentId: null,
+        childIds: [],
+        pluginData: {},
+        ...DEFAULT_TRANSFORM,
+        x: options.x ?? 0,
+        y: options.y ?? 0,
+        width: options.width ?? options.naturalWidth ?? 100,
+        height: options.height ?? options.naturalHeight ?? 100,
+        ...DEFAULT_APPEARANCE,
+        fills: [],
+        strokes: [],
+        constraints: DEFAULT_CONSTRAINTS,
+        clipsContent: false,
+        imageRef: options.imageRef,
+        naturalWidth: options.naturalWidth ?? options.width ?? 100,
+        naturalHeight: options.naturalHeight ?? options.height ?? 100,
+        scaleMode: options.scaleMode ?? 'FILL',
+    };
+}
 /** Create a text node */
 export function createText(options = {}) {
     const characters = options.characters ?? '';

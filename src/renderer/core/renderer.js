@@ -8,6 +8,7 @@ import { EventEmitter } from '@core/events/event-emitter';
 import { createWebGLContext } from './webgl-context';
 import { createViewport } from './viewport';
 import { createShaderManager } from '../shaders/shader-manager';
+import { createTextureManager } from '../textures/texture-manager';
 import { createBatchBuilder } from '../batching/batch-generator';
 import { tessellateRect, tessellateRoundedRect, tessellateFill } from '../geometry/path-tessellation';
 /**
@@ -18,12 +19,18 @@ export class Renderer extends EventEmitter {
     ctx;
     viewport;
     shaders;
+    textures;
     // WebGL resources
     fillVAO = null;
     fillVBO = null;
     fillIBO = null;
+    // Image rendering resources (position + texcoord interleaved)
+    imageVAO = null;
+    imageVBO = null;
+    imageIBO = null;
     // State
     sceneGraph = null;
+    currentPageId = null;
     clearColor;
     pixelRatio;
     animationFrameId = null;
@@ -42,6 +49,7 @@ export class Renderer extends EventEmitter {
         this.ctx = createWebGLContext(canvas, { antialias: options.antialias ?? true });
         this.viewport = createViewport();
         this.shaders = createShaderManager(this.ctx);
+        this.textures = createTextureManager(this.ctx);
         // Batch builder reserved for future batching optimization
         void createBatchBuilder;
         // Set up resources
@@ -65,13 +73,30 @@ export class Renderer extends EventEmitter {
         this.fillVAO = this.ctx.createVertexArray();
         this.fillVBO = this.ctx.createBuffer();
         this.fillIBO = this.ctx.createBuffer();
-        // Set up VAO
+        // Set up fill VAO
         this.ctx.bindVertexArray(this.fillVAO);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
         // Position attribute
         gl.enableVertexAttribArray(0);
         gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+        this.ctx.bindVertexArray(null);
+        // Create VAO for images (position + texcoord interleaved)
+        this.imageVAO = this.ctx.createVertexArray();
+        this.imageVBO = this.ctx.createBuffer();
+        this.imageIBO = this.ctx.createBuffer();
+        // Set up image VAO
+        this.ctx.bindVertexArray(this.imageVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageVBO);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.imageIBO);
+        // Position attribute (location 0): 2 floats
+        // TexCoord attribute (location 1): 2 floats
+        // Stride = 4 floats = 16 bytes
+        const stride = 4 * 4; // 4 floats * 4 bytes
+        gl.enableVertexAttribArray(0);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
+        gl.enableVertexAttribArray(1);
+        gl.vertexAttribPointer(1, 2, gl.FLOAT, false, stride, 2 * 4);
         this.ctx.bindVertexArray(null);
     }
     // =========================================================================
@@ -88,6 +113,19 @@ export class Renderer extends EventEmitter {
         sceneGraph.on('node:propertyChanged', () => this.requestRender());
         sceneGraph.on('node:parentChanged', () => this.requestRender());
         this.requestRender();
+    }
+    /**
+     * Set the current page to render.
+     */
+    setCurrentPageId(pageId) {
+        this.currentPageId = pageId;
+        this.requestRender();
+    }
+    /**
+     * Get the current page ID.
+     */
+    getCurrentPageId() {
+        return this.currentPageId;
     }
     // =========================================================================
     // Viewport
@@ -171,7 +209,12 @@ export class Renderer extends EventEmitter {
         const pageIds = this.sceneGraph.getChildIds(doc.id);
         if (pageIds.length === 0)
             return;
-        const pageId = pageIds[0];
+        // Use currentPageId if set and valid, otherwise use first page
+        let pageId = this.currentPageId;
+        if (!pageId || !pageIds.includes(pageId)) {
+            pageId = pageIds[0];
+            this.currentPageId = pageId;
+        }
         const page = this.sceneGraph.getNode(pageId);
         // Check if page is visible
         const pageVisible = page ? page.visible !== false : true;
@@ -325,6 +368,9 @@ export class Renderer extends EventEmitter {
             case 'VECTOR':
                 this.renderVector(node, worldTransform, viewProjection);
                 break;
+            case 'IMAGE':
+                this.renderImage(node, worldTransform, viewProjection);
+                break;
             case 'TEXT':
                 this.renderText(node, worldTransform, viewProjection);
                 break;
@@ -401,6 +447,99 @@ export class Renderer extends EventEmitter {
         // Note: Stroke rendering skipped for now - would require stroke VAO with normals
     }
     /**
+     * Render an image node.
+     */
+    renderImage(node, worldTransform, viewProjection) {
+        const gl = this.ctx.gl;
+        const opacity = node.opacity ?? 1;
+        // Get or load texture
+        const textureEntry = this.textures.getTexture(node.imageRef);
+        if (!textureEntry) {
+            // Start loading the texture if not already loading
+            if (!this.textures.hasTexture(node.imageRef)) {
+                // Load image from data URL
+                const img = new Image();
+                img.onload = () => {
+                    this.textures.loadFromImage(node.imageRef, img, {
+                        generateMipmaps: true,
+                        flipY: true,
+                    });
+                    // Trigger re-render once loaded
+                    this.requestRender();
+                };
+                img.onerror = () => {
+                    console.error('Failed to load image:', node.imageRef.slice(0, 50));
+                };
+                img.src = node.imageRef;
+                // Create a placeholder entry to avoid repeated load attempts
+                this.textures.loadFromData(node.imageRef + '_placeholder', 1, 1, new Uint8Array([200, 200, 200, 255]));
+            }
+            // Render placeholder rectangle
+            this.renderImagePlaceholder(node, worldTransform, viewProjection, opacity);
+            return;
+        }
+        // Create quad vertices with position + texcoord interleaved
+        // Format: x, y, u, v for each vertex
+        const vertices = new Float32Array([
+            // Bottom-left
+            0, 0, 0, 1,
+            // Bottom-right
+            node.width, 0, 1, 1,
+            // Top-right
+            node.width, node.height, 1, 0,
+            // Top-left
+            0, node.height, 0, 0,
+        ]);
+        const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+        // Use image shader
+        const shader = this.shaders.use('image');
+        // Upload geometry
+        this.ctx.bindVertexArray(this.imageVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.imageVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.imageIBO);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
+        // Enable blending
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // Bind texture
+        this.textures.bindTextureEntry(textureEntry, 0);
+        gl.uniform1i(shader.uniforms.get('uTexture'), 0);
+        // Set uniforms
+        this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+        this.setMatrixUniform(shader, 'uTransform', worldTransform);
+        gl.uniform1f(shader.uniforms.get('uOpacity'), opacity);
+        gl.uniform1i(shader.uniforms.get('uTiling'), node.scaleMode === 'TILE' ? 1 : 0);
+        // Draw
+        this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+        this.drawCallCount++;
+        this.triangleCount += 2;
+        this.ctx.bindVertexArray(null);
+    }
+    /**
+     * Render a placeholder rectangle for images that are loading.
+     */
+    renderImagePlaceholder(node, worldTransform, viewProjection, opacity) {
+        const gl = this.ctx.gl;
+        // Simple rectangle
+        const tess = tessellateRect(0, 0, node.width, node.height);
+        const shader = this.shaders.use('fill');
+        this.ctx.bindVertexArray(this.fillVAO);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
+        gl.bufferData(gl.ARRAY_BUFFER, tess.vertices, gl.DYNAMIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tess.indices, gl.DYNAMIC_DRAW);
+        this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+        this.setMatrixUniform(shader, 'uTransform', worldTransform);
+        // Light gray placeholder color
+        gl.uniform4f(shader.uniforms.get('uColor'), 0.8, 0.8, 0.8, 1);
+        gl.uniform1f(shader.uniforms.get('uOpacity'), opacity);
+        this.ctx.drawElements(gl.TRIANGLES, tess.indices.length, gl.UNSIGNED_SHORT, 0);
+        this.drawCallCount++;
+        this.triangleCount += tess.indices.length / 3;
+        this.ctx.bindVertexArray(null);
+    }
+    /**
      * Render a text node.
      */
     renderText(_node, _worldTransform, _viewProjection) {
@@ -467,7 +606,7 @@ export class Renderer extends EventEmitter {
      */
     dispose() {
         this.stopRenderLoop();
-        // Clean up resources
+        // Clean up fill resources
         if (this.fillVAO) {
             this.ctx.deleteVertexArray(this.fillVAO);
         }
@@ -477,6 +616,17 @@ export class Renderer extends EventEmitter {
         if (this.fillIBO) {
             this.ctx.deleteBuffer(this.fillIBO);
         }
+        // Clean up image resources
+        if (this.imageVAO) {
+            this.ctx.deleteVertexArray(this.imageVAO);
+        }
+        if (this.imageVBO) {
+            this.ctx.deleteBuffer(this.imageVBO);
+        }
+        if (this.imageIBO) {
+            this.ctx.deleteBuffer(this.imageIBO);
+        }
+        this.textures.dispose();
         this.shaders.dispose();
     }
 }

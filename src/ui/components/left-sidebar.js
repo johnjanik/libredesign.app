@@ -59,7 +59,7 @@ export class LeftSidebar {
     // State
     collapsed = false;
     documentName = 'Untitled';
-    activeTab = 'file';
+    activeTab = 'assets';
     leaves = [{ id: 'leaf-1', name: 'Leaf 1' }];
     activeLeafId = 'leaf-1';
     leafCounter = 1;
@@ -122,8 +122,14 @@ export class LeftSidebar {
         if (this.leaves.length === 0) {
             this.leaves = [{ id: 'leaf-1', name: 'Leaf 1' }];
         }
-        // Set active leaf to first if current is not in list
-        if (!this.leaves.find(l => l.id === this.activeLeafId)) {
+        // Sync active leaf with runtime's current page
+        const currentPageId = this.runtime.getCurrentPageId();
+        const currentLeaf = this.leaves.find(l => l.nodeId === currentPageId);
+        if (currentLeaf) {
+            this.activeLeafId = currentLeaf.id;
+        }
+        else if (!this.leaves.find(l => l.id === this.activeLeafId)) {
+            // Set active leaf to first if current is not in list
             this.activeLeafId = this.leaves[0].id;
         }
         this.leafCounter = this.leaves.length;
@@ -314,7 +320,7 @@ export class LeftSidebar {
       margin-bottom: 8px;
     `;
         const tabs = [
-            { id: 'file', label: 'File' },
+            { id: 'assets', label: 'Assets' },
             { id: 'library', label: 'Library' },
         ];
         for (const tab of tabs) {
@@ -468,11 +474,13 @@ export class LeftSidebar {
         item.appendChild(name);
         item.addEventListener('click', () => {
             this.activeLeafId = leaf.id;
-            // Select the page node if it exists
+            // Switch to this page in the runtime and select it to show properties
             if (leaf.nodeId) {
+                this.runtime.setCurrentPage(leaf.nodeId);
+                // Select the page node so inspector shows page properties
                 const selectionManager = this.runtime.getSelectionManager();
                 if (selectionManager) {
-                    selectionManager.select([leaf.nodeId]);
+                    selectionManager.select([leaf.nodeId], 'replace');
                 }
             }
             this.render();
@@ -530,23 +538,20 @@ export class LeftSidebar {
       overflow-y: auto;
       padding: 0 4px;
     `;
-        // Get layers from scene graph
+        // Get layers from scene graph for the current page
         const sceneGraph = this.runtime.getSceneGraph();
         const selectionManager = this.runtime.getSelectionManager();
         const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
         if (sceneGraph) {
-            const doc = sceneGraph.getDocument();
-            if (doc) {
-                const pageIds = sceneGraph.getChildIds(doc.id);
-                if (pageIds.length > 0) {
-                    const pageId = pageIds[0];
-                    const childIds = sceneGraph.getChildIds(pageId);
-                    for (const childId of childIds) {
-                        const node = sceneGraph.getNode(childId);
-                        if (node) {
-                            const layerItem = this.createLayerItem(node, selectedIds.includes(childId), 0);
-                            list.appendChild(layerItem);
-                        }
+            // Get current page ID from runtime
+            const currentPageId = this.runtime.getCurrentPageId();
+            if (currentPageId) {
+                const childIds = sceneGraph.getChildIds(currentPageId);
+                for (const childId of childIds) {
+                    const node = sceneGraph.getNode(childId);
+                    if (node) {
+                        const layerItem = this.createLayerItem(node, selectedIds.includes(childId), 0);
+                        list.appendChild(layerItem);
                     }
                 }
             }
@@ -687,13 +692,28 @@ export class LeftSidebar {
         this.onCollapseChange?.(this.collapsed);
     }
     addLeaf() {
+        const sceneGraph = this.runtime.getSceneGraph();
+        if (!sceneGraph)
+            return;
+        const doc = sceneGraph.getDocument();
+        if (!doc)
+            return;
         this.leafCounter++;
-        const newLeaf = {
-            id: `leaf-${Date.now()}`,
-            name: `Leaf ${this.leafCounter}`,
-        };
-        this.leaves.push(newLeaf);
-        this.activeLeafId = newLeaf.id;
+        const pageName = `Leaf ${this.leafCounter}`;
+        // Create a new page in the scene graph
+        const pageId = sceneGraph.createNode('PAGE', doc.id, -1, { name: pageName });
+        // Sync leaves from scene graph and switch to new page
+        this.syncLeavesFromSceneGraph();
+        const newLeaf = this.leaves.find(l => l.nodeId === pageId);
+        if (newLeaf) {
+            this.activeLeafId = newLeaf.id;
+            this.runtime.setCurrentPage(pageId);
+            // Select the new page so inspector shows page properties
+            const selectionManager = this.runtime.getSelectionManager();
+            if (selectionManager) {
+                selectionManager.select([pageId], 'replace');
+            }
+        }
         this.render();
     }
     renameLeaf(leaf, nameElement) {

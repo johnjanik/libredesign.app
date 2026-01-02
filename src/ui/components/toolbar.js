@@ -434,6 +434,11 @@ export class Toolbar {
                 const sides = Math.max(3, Math.min(12, parseInt(input.value) || 5));
                 input.value = String(sides);
                 this.toolOptions.set(tool.id, { ...options, sides });
+                // Apply to actual tool
+                const polygonTool = this.runtime.getPolygonTool();
+                if (polygonTool) {
+                    polygonTool.setSides(sides);
+                }
             });
             input.addEventListener('click', (e) => e.stopPropagation());
             row.appendChild(label);
@@ -460,6 +465,11 @@ export class Toolbar {
                 const points = Math.max(3, Math.min(12, parseInt(pointsInput.value) || 5));
                 pointsInput.value = String(points);
                 this.toolOptions.set(tool.id, { ...this.toolOptions.get(tool.id), points });
+                // Apply to actual tool
+                const starTool = this.runtime.getStarTool();
+                if (starTool) {
+                    starTool.setPoints(points);
+                }
             });
             pointsInput.addEventListener('click', (e) => e.stopPropagation());
             row.appendChild(pointsLabel);
@@ -478,9 +488,28 @@ export class Toolbar {
             }
             button.title = `${tool.name} (${tool.shortcut}) - Click and hold for more`;
         }
+        // Apply tool options before activating
+        this.applyToolOptions(tool.id);
         // Activate the tool
         this.runtime.setTool(tool.id);
         this.closePopup();
+    }
+    applyToolOptions(toolId) {
+        const options = this.toolOptions.get(toolId);
+        if (!options)
+            return;
+        if (toolId === 'polygon' && options.sides) {
+            const polygonTool = this.runtime.getPolygonTool();
+            if (polygonTool) {
+                polygonTool.setSides(options.sides);
+            }
+        }
+        else if (toolId === 'star' && options.points) {
+            const starTool = this.runtime.getStarTool();
+            if (starTool) {
+                starTool.setPoints(options.points);
+            }
+        }
     }
     closePopup() {
         if (this.activePopup) {

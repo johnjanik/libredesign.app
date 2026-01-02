@@ -7,4 +7,7 @@ export { RectangleTool, createRectangleTool } from './rectangle-tool';
 export { EllipseTool, createEllipseTool } from './ellipse-tool';
 export { LineTool, createLineTool } from './line-tool';
 export { PolygonTool, createPolygonTool } from './polygon-tool';
+export { StarTool, createStarTool } from './star-tool';
+export { PencilTool, createPencilTool } from './pencil-tool';
+export { ImageTool, createImageTool } from './image-tool';
 //# sourceMappingURL=index.js.map

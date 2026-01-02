@@ -964,6 +964,8 @@ export class InspectorPanel {
               const newFills = [...fills];
               newFills[i] = { ...solidFill, color } as SolidPaint;
               this.updateNode(nodeId, { fills: newFills });
+              // Update last used fill color for new shapes
+              this.runtime.setLastUsedFillColor(color);
             }
           ));
 
@@ -986,7 +988,8 @@ export class InspectorPanel {
 
     // Add fill button
     section.appendChild(this.createButton('+ Add Fill', () => {
-      const newFills = [...fills, { type: 'SOLID' as const, visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5, a: 1 } }];
+      const lastColor = this.runtime.getLastUsedFillColor();
+      const newFills = [...fills, { type: 'SOLID' as const, visible: true, opacity: 1, color: lastColor }];
       this.updateNode(nodeId, { fills: newFills });
     }));
 

@@ -3,6 +3,7 @@
  *
  * Coordinates WebGL rendering of the scene graph.
  */
+import type { NodeId } from '@core/types/common';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import { EventEmitter } from '@core/events/event-emitter';
@@ -49,10 +50,15 @@ export declare class Renderer extends EventEmitter<RendererEvents> {
     private ctx;
     private viewport;
     private shaders;
+    private textures;
     private fillVAO;
     private fillVBO;
     private fillIBO;
+    private imageVAO;
+    private imageVBO;
+    private imageIBO;
     private sceneGraph;
+    private currentPageId;
     private clearColor;
     private pixelRatio;
     private animationFrameId;
@@ -70,6 +76,14 @@ export declare class Renderer extends EventEmitter<RendererEvents> {
      * Set the scene graph to render.
      */
     setSceneGraph(sceneGraph: SceneGraph): void;
+    /**
+     * Set the current page to render.
+     */
+    setCurrentPageId(pageId: NodeId | null): void;
+    /**
+     * Get the current page ID.
+     */
+    getCurrentPageId(): NodeId | null;
     /**
      * Get the viewport.
      */
@@ -122,6 +136,14 @@ export declare class Renderer extends EventEmitter<RendererEvents> {
      * Render a vector node.
      */
     private renderVector;
+    /**
+     * Render an image node.
+     */
+    private renderImage;
+    /**
+     * Render a placeholder rectangle for images that are loading.
+     */
+    private renderImagePlaceholder;
     /**
      * Render a text node.
      */

@@ -15,6 +15,10 @@ import { createRectangleTool } from '@tools/drawing/rectangle-tool';
 import { createEllipseTool } from '@tools/drawing/ellipse-tool';
 import { createLineTool } from '@tools/drawing/line-tool';
 import { createPenTool } from '@tools/drawing/pen-tool';
+import { createPolygonTool } from '@tools/drawing/polygon-tool';
+import { createStarTool } from '@tools/drawing/star-tool';
+import { createPencilTool } from '@tools/drawing/pencil-tool';
+import { createImageTool } from '@tools/drawing/image-tool';
 import { createHandTool } from '@tools/navigation/hand-tool';
 import { createPointerHandler } from '@tools/input/pointer-handler';
 import { createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -63,12 +67,19 @@ export class DesignLibreRuntime extends EventEmitter {
     ellipseTool = null;
     lineTool = null;
     penTool = null;
+    polygonTool = null;
+    starTool = null;
+    pencilTool = null;
+    imageTool = null;
     handTool = null;
     // State
     state = {
         initialized: false,
         currentDocumentId: null,
+        currentPageId: null,
     };
+    // Last used fill color for shapes (default: #707070)
+    lastUsedFillColor = { r: 0.439, g: 0.439, b: 0.439, a: 1 };
     // Options
     options;
     constructor(options = {}) {
@@ -366,6 +377,30 @@ export class DesignLibreRuntime extends EventEmitter {
     getStyleManager() {
         return this.styleManager;
     }
+    /**
+     * Get the polygon tool.
+     */
+    getPolygonTool() {
+        return this.polygonTool;
+    }
+    /**
+     * Get the star tool.
+     */
+    getStarTool() {
+        return this.starTool;
+    }
+    /**
+     * Get the last used fill color for shapes.
+     */
+    getLastUsedFillColor() {
+        return { ...this.lastUsedFillColor };
+    }
+    /**
+     * Set the last used fill color for shapes.
+     */
+    setLastUsedFillColor(color) {
+        this.lastUsedFillColor = { ...color };
+    }
     // =========================================================================
     // Cleanup
     // =========================================================================
@@ -443,7 +478,7 @@ export class DesignLibreRuntime extends EventEmitter {
                 width: rect.width,
                 height: rect.height,
                 vectorPaths: [path],
-                fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+                fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
             });
             this.selectionManager.select([nodeId], 'replace');
             return nodeId;
@@ -461,7 +496,7 @@ export class DesignLibreRuntime extends EventEmitter {
                 width: bounds.width,
                 height: bounds.height,
                 vectorPaths: [path],
-                fills: [solidPaint(rgba(0.85, 0.85, 0.85, 1))],
+                fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
             });
             this.selectionManager.select([nodeId], 'replace');
             return nodeId;
@@ -563,6 +598,130 @@ export class DesignLibreRuntime extends EventEmitter {
             this.selectionManager.select([nodeId], 'replace');
             return nodeId;
         });
+        // Polygon tool
+        this.polygonTool = createPolygonTool();
+        this.polygonTool.setOnPolygonComplete((polygon) => {
+            const parentId = this.getCurrentPageId();
+            if (!parentId)
+                return null;
+            // Create path from polygon vertices
+            const commands = [];
+            if (polygon.vertices.length > 0) {
+                // Translate vertices to local coordinates
+                const minX = polygon.bounds.x;
+                const minY = polygon.bounds.y;
+                commands.push({ type: 'M', x: polygon.vertices[0].x - minX, y: polygon.vertices[0].y - minY });
+                for (let i = 1; i < polygon.vertices.length; i++) {
+                    commands.push({ type: 'L', x: polygon.vertices[i].x - minX, y: polygon.vertices[i].y - minY });
+                }
+                commands.push({ type: 'Z' });
+            }
+            const path = { windingRule: 'NONZERO', commands };
+            const nodeId = this.sceneGraph.createVector(parentId, {
+                name: `Polygon (${polygon.sides} sides)`,
+                x: polygon.bounds.x,
+                y: polygon.bounds.y,
+                width: polygon.bounds.width,
+                height: polygon.bounds.height,
+                vectorPaths: [path],
+                fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
+            });
+            this.selectionManager.select([nodeId], 'replace');
+            return nodeId;
+        });
+        // Star tool
+        this.starTool = createStarTool();
+        this.starTool.setOnStarComplete((star) => {
+            const parentId = this.getCurrentPageId();
+            if (!parentId)
+                return null;
+            // Create path from star vertices
+            const commands = [];
+            if (star.vertices.length > 0) {
+                // Translate vertices to local coordinates
+                const minX = star.bounds.x;
+                const minY = star.bounds.y;
+                commands.push({ type: 'M', x: star.vertices[0].x - minX, y: star.vertices[0].y - minY });
+                for (let i = 1; i < star.vertices.length; i++) {
+                    commands.push({ type: 'L', x: star.vertices[i].x - minX, y: star.vertices[i].y - minY });
+                }
+                commands.push({ type: 'Z' });
+            }
+            const path = { windingRule: 'NONZERO', commands };
+            const nodeId = this.sceneGraph.createVector(parentId, {
+                name: `Star (${star.points} points)`,
+                x: star.bounds.x,
+                y: star.bounds.y,
+                width: star.bounds.width,
+                height: star.bounds.height,
+                vectorPaths: [path],
+                fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
+            });
+            this.selectionManager.select([nodeId], 'replace');
+            return nodeId;
+        });
+        // Pencil tool (freehand drawing)
+        this.pencilTool = createPencilTool();
+        this.pencilTool.setOnPathComplete((data) => {
+            const parentId = this.getCurrentPageId();
+            if (!parentId)
+                return null;
+            // Translate path to local coordinates
+            const minX = data.bounds.x;
+            const minY = data.bounds.y;
+            const translatedCommands = data.path.commands.map((cmd) => {
+                const newCmd = { ...cmd };
+                if ('x' in newCmd && 'y' in newCmd) {
+                    newCmd.x -= minX;
+                    newCmd.y -= minY;
+                }
+                if ('x1' in newCmd && 'y1' in newCmd) {
+                    newCmd.x1 -= minX;
+                    newCmd.y1 -= minY;
+                }
+                if ('x2' in newCmd && 'y2' in newCmd) {
+                    newCmd.x2 -= minX;
+                    newCmd.y2 -= minY;
+                }
+                return newCmd;
+            });
+            const nodeId = this.sceneGraph.createVector(parentId, {
+                name: 'Freehand',
+                x: minX,
+                y: minY,
+                width: data.bounds.width,
+                height: data.bounds.height,
+                vectorPaths: [{ windingRule: data.path.windingRule, commands: translatedCommands }],
+                fills: [],
+                strokes: [solidPaint(rgba(0, 0, 0, 1))],
+                strokeWeight: 2,
+            });
+            this.selectionManager.select([nodeId], 'replace');
+            return nodeId;
+        });
+        // Image tool
+        this.imageTool = createImageTool();
+        this.imageTool.setOnImagePlace((data) => {
+            const parentId = this.getCurrentPageId();
+            if (!parentId)
+                return null;
+            const width = data.naturalWidth ?? 200;
+            const height = data.naturalHeight ?? 200;
+            // Create an IMAGE node with the data URL
+            const nodeId = this.sceneGraph.createImage(parentId, {
+                name: data.file.name,
+                x: data.position.x,
+                y: data.position.y,
+                width,
+                height,
+                imageRef: data.dataUrl,
+                naturalWidth: width,
+                naturalHeight: height,
+                scaleMode: 'FILL',
+            });
+            this.selectionManager.select([nodeId], 'replace');
+            return nodeId;
+        });
         // Hand tool for panning
         this.handTool = createHandTool();
         // Register tools
@@ -574,19 +733,56 @@ export class DesignLibreRuntime extends EventEmitter {
         this.toolManager.registerTool(this.ellipseTool);
         this.toolManager.registerTool(this.lineTool);
         this.toolManager.registerTool(this.penTool);
+        this.toolManager.registerTool(this.polygonTool);
+        this.toolManager.registerTool(this.starTool);
+        this.toolManager.registerTool(this.pencilTool);
+        this.toolManager.registerTool(this.imageTool);
         this.toolManager.registerTool(this.handTool);
         // Set default tool
         this.toolManager.setActiveTool('select');
     }
     /**
-     * Get the current page ID (first page of document).
+     * Get the current page ID.
      */
     getCurrentPageId() {
+        // Return tracked page if valid
+        if (this.state.currentPageId) {
+            const page = this.sceneGraph.getNode(this.state.currentPageId);
+            if (page && page.type === 'PAGE') {
+                return this.state.currentPageId;
+            }
+        }
+        // Fallback to first page
         const doc = this.sceneGraph.getDocument();
         if (!doc)
             return null;
         const pageIds = this.sceneGraph.getChildIds(doc.id);
-        return pageIds.length > 0 ? pageIds[0] : null;
+        if (pageIds.length > 0) {
+            this.state.currentPageId = pageIds[0];
+            return pageIds[0];
+        }
+        return null;
+    }
+    /**
+     * Set the current page.
+     */
+    setCurrentPage(pageId) {
+        const page = this.sceneGraph.getNode(pageId);
+        if (!page || page.type !== 'PAGE') {
+            throw new Error(`Invalid page ID: ${pageId}`);
+        }
+        this.state.currentPageId = pageId;
+        // Update renderer to show the new page
+        this.renderer?.setCurrentPageId(pageId);
+    }
+    /**
+     * Get all page IDs in the document.
+     */
+    getPageIds() {
+        const doc = this.sceneGraph.getDocument();
+        if (!doc)
+            return [];
+        return this.sceneGraph.getChildIds(doc.id);
     }
     wireInputHandlers() {
         if (!this.pointerHandler || !this.keyboardHandler || !this.toolManager)

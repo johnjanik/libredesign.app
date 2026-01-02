@@ -4,7 +4,7 @@
 import type { NodeId } from '@core/types/common';
 import type { VectorPath } from '@core/types/geometry';
 import type { Paint } from '@core/types/paint';
-import type { DocumentNodeData, PageNodeData, FrameNodeData, GroupNodeData, VectorNodeData, TextNodeData, ComponentNodeData, InstanceNodeData, BooleanOperationNodeData, SliceNodeData } from './base-node';
+import type { DocumentNodeData, PageNodeData, FrameNodeData, GroupNodeData, VectorNodeData, ImageNodeData, ImageScaleMode, TextNodeData, ComponentNodeData, InstanceNodeData, BooleanOperationNodeData, SliceNodeData } from './base-node';
 /** Options for creating a document node */
 export interface CreateDocumentOptions {
     id?: NodeId;
@@ -60,6 +60,21 @@ export interface CreateVectorOptions {
 }
 /** Create a vector node */
 export declare function createVector(options?: CreateVectorOptions): VectorNodeData;
+/** Options for creating an image node */
+export interface CreateImageOptions {
+    id?: NodeId;
+    name?: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    imageRef: string;
+    naturalWidth?: number;
+    naturalHeight?: number;
+    scaleMode?: ImageScaleMode;
+}
+/** Create an image node */
+export declare function createImage(options: CreateImageOptions): ImageNodeData;
 /** Options for creating a text node */
 export interface CreateTextOptions {
     id?: NodeId;

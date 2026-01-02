@@ -14,6 +14,8 @@ import type {
   FrameNodeData,
   GroupNodeData,
   VectorNodeData,
+  ImageNodeData,
+  ImageScaleMode,
   TextNodeData,
   ComponentNodeData,
   InstanceNodeData,
@@ -174,6 +176,48 @@ export function createVector(options: CreateVectorOptions = {}): VectorNodeData 
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: false,
     vectorPaths: options.vectorPaths ?? [],
+  };
+}
+
+/** Options for creating an image node */
+export interface CreateImageOptions {
+  id?: NodeId;
+  name?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  imageRef: string;
+  naturalWidth?: number;
+  naturalHeight?: number;
+  scaleMode?: ImageScaleMode;
+}
+
+/** Create an image node */
+export function createImage(options: CreateImageOptions): ImageNodeData {
+  return {
+    id: options.id ?? generateNodeId(),
+    type: 'IMAGE',
+    name: options.name ?? getDefaultNodeName('IMAGE'),
+    visible: true,
+    locked: false,
+    parentId: null,
+    childIds: [],
+    pluginData: {},
+    ...DEFAULT_TRANSFORM,
+    x: options.x ?? 0,
+    y: options.y ?? 0,
+    width: options.width ?? options.naturalWidth ?? 100,
+    height: options.height ?? options.naturalHeight ?? 100,
+    ...DEFAULT_APPEARANCE,
+    fills: [],
+    strokes: [],
+    constraints: DEFAULT_CONSTRAINTS,
+    clipsContent: false,
+    imageRef: options.imageRef,
+    naturalWidth: options.naturalWidth ?? options.width ?? 100,
+    naturalHeight: options.naturalHeight ?? options.height ?? 100,
+    scaleMode: options.scaleMode ?? 'FILL',
   };
 }
 

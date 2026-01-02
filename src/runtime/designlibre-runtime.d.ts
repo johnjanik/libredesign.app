@@ -9,6 +9,8 @@ import { SceneGraph } from '@scene/graph/scene-graph';
 import { Renderer } from '@renderer/core/renderer';
 import { Viewport } from '@renderer/core/viewport';
 import { ToolManager } from '@tools/base/tool-manager';
+import { PolygonTool } from '@tools/drawing/polygon-tool';
+import { StarTool } from '@tools/drawing/star-tool';
 import { SelectionManager } from '@scene/selection/selection-manager';
 import { LayoutEngine } from '@layout/layout-engine';
 import { StyleManager } from '@core/styles/style-manager';
@@ -74,8 +76,13 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     private ellipseTool;
     private lineTool;
     private penTool;
+    private polygonTool;
+    private starTool;
+    private pencilTool;
+    private imageTool;
     private handTool;
     private state;
+    private lastUsedFillColor;
     private options;
     constructor(options?: RuntimeOptions);
     /**
@@ -204,14 +211,48 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      */
     getStyleManager(): StyleManager;
     /**
+     * Get the polygon tool.
+     */
+    getPolygonTool(): PolygonTool | null;
+    /**
+     * Get the star tool.
+     */
+    getStarTool(): StarTool | null;
+    /**
+     * Get the last used fill color for shapes.
+     */
+    getLastUsedFillColor(): {
+        r: number;
+        g: number;
+        b: number;
+        a: number;
+    };
+    /**
+     * Set the last used fill color for shapes.
+     */
+    setLastUsedFillColor(color: {
+        r: number;
+        g: number;
+        b: number;
+        a: number;
+    }): void;
+    /**
      * Dispose of the runtime.
      */
     dispose(): void;
     private initializeTools;
     /**
-     * Get the current page ID (first page of document).
+     * Get the current page ID.
      */
-    private getCurrentPageId;
+    getCurrentPageId(): NodeId | null;
+    /**
+     * Set the current page.
+     */
+    setCurrentPage(pageId: NodeId): void;
+    /**
+     * Get all page IDs in the document.
+     */
+    getPageIds(): NodeId[];
     private wireInputHandlers;
     private handleShortcut;
     private deleteSelection;

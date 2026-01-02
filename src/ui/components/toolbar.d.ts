@@ -44,6 +44,7 @@ export declare class Toolbar {
     private createPopupMenuItem;
     private createToolOptionsRow;
     private selectGroupTool;
+    private applyToolOptions;
     private closePopup;
     private addActionButtons;
     private createActionButton;
