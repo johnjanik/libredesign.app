@@ -421,6 +421,18 @@ export class KeyboardManager {
             description: 'Show/hide rulers',
             category: 'View',
         });
+        this.register({
+            key: 'Home',
+            action: () => this.actionZoomToFit(),
+            description: 'Zoom to fit all',
+            category: 'View',
+        });
+        this.register({
+            key: '.',
+            action: () => this.actionZoomToSelection(),
+            description: 'Zoom to selection',
+            category: 'View',
+        });
         // Tools
         this.register({
             key: 'v',

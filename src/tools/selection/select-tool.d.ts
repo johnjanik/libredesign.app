@@ -28,6 +28,11 @@ export declare class SelectTool extends BaseTool {
     private getSelectionMode;
     private handleNodeSelection;
     private updateSelection;
+    /**
+     * Duplicate selected nodes for Ctrl+drag operation.
+     * Creates copies of selected nodes and switches to moving the copies.
+     */
+    private duplicateNodesForMove;
     private hitTest;
     private hitTestNode;
     private findNodesInRect;

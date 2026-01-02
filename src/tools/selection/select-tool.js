@@ -19,6 +19,8 @@ export class SelectTool extends BaseTool {
         resizeStartPoint: null,
         moveStartPoint: null,
         moveStartPositions: null,
+        duplicatedNodes: false,
+        originalSelection: null,
     };
     handleSize = 8;
     // Callbacks for external actions
@@ -47,6 +49,8 @@ export class SelectTool extends BaseTool {
             resizeStartPoint: null,
             moveStartPoint: null,
             moveStartPositions: null,
+            duplicatedNodes: false,
+            originalSelection: null,
         };
     }
     onPointerDown(event, context) {
@@ -124,9 +128,23 @@ export class SelectTool extends BaseTool {
             });
         }
         else if (this.state.mode === 'moving' && this.state.moveStartPoint && this.state.moveStartPositions) {
+            // Ctrl+drag: duplicate nodes on first move
+            if ((event.ctrlKey || event.metaKey) && !this.state.duplicatedNodes) {
+                this.duplicateNodesForMove(context);
+                this.state.duplicatedNodes = true;
+            }
             // Calculate delta from start point
-            const dx = worldPoint.x - this.state.moveStartPoint.x;
-            const dy = worldPoint.y - this.state.moveStartPoint.y;
+            let dx = worldPoint.x - this.state.moveStartPoint.x;
+            let dy = worldPoint.y - this.state.moveStartPoint.y;
+            // Shift+drag: constrain to horizontal or vertical
+            if (event.shiftKey) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    dy = 0; // Constrain to horizontal
+                }
+                else {
+                    dx = 0; // Constrain to vertical
+                }
+            }
             // Move all selected nodes
             for (const [nodeId, startPos] of this.state.moveStartPositions) {
                 context.sceneGraph.updateNode(nodeId, {
@@ -259,6 +277,51 @@ export class SelectTool extends BaseTool {
     }
     updateSelection(nodeIds, _context) {
         this.onSelectionChange?.(nodeIds);
+    }
+    /**
+     * Duplicate selected nodes for Ctrl+drag operation.
+     * Creates copies of selected nodes and switches to moving the copies.
+     */
+    duplicateNodesForMove(context) {
+        if (!this.state.moveStartPositions)
+            return;
+        const newNodeIds = [];
+        const newMovePositions = new Map();
+        for (const nodeId of this.state.moveStartPositions.keys()) {
+            const node = context.sceneGraph.getNode(nodeId);
+            if (!node)
+                continue;
+            // Get parent for creating duplicate
+            const parent = context.sceneGraph.getParent(nodeId);
+            if (!parent)
+                continue;
+            // Clone node properties
+            const props = {};
+            for (const key of Object.keys(node)) {
+                if (key === 'id' || key === 'parentId' || key === 'childIds')
+                    continue;
+                const value = node[key];
+                if (value !== null && typeof value === 'object') {
+                    props[key] = JSON.parse(JSON.stringify(value));
+                }
+                else {
+                    props[key] = value;
+                }
+            }
+            // Create duplicate
+            const newNodeId = context.sceneGraph.createNode(node.type, parent.id, -1, props);
+            // Store new node position
+            if ('x' in node && 'y' in node) {
+                const n = node;
+                newMovePositions.set(newNodeId, { x: n.x, y: n.y });
+            }
+            newNodeIds.push(newNodeId);
+        }
+        // Switch to moving the duplicated nodes
+        if (newNodeIds.length > 0) {
+            this.state.moveStartPositions = newMovePositions;
+            this.updateSelection(newNodeIds, context);
+        }
     }
     hitTest(point, sceneGraph) {
         // Get all nodes and test in reverse order (top to bottom)

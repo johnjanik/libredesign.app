@@ -85,6 +85,7 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     private imageTool;
     private handTool;
     private state;
+    private mmbState;
     private lastUsedFillColor;
     private options;
     constructor(options?: RuntimeOptions);

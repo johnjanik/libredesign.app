@@ -75,6 +75,17 @@ interface RuntimeState {
 }
 
 /**
+ * Middle mouse button pan/zoom state
+ */
+interface MMBState {
+  active: boolean;
+  mode: 'pan' | 'zoom' | null;
+  startCanvasX: number;
+  startCanvasY: number;
+  startZoom: number;
+}
+
+/**
  * DesignLibre Runtime
  */
 export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
@@ -125,6 +136,15 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     initialized: false,
     currentDocumentId: null,
     currentPageId: null,
+  };
+
+  // Middle mouse button state for pan/zoom
+  private mmbState: MMBState = {
+    active: false,
+    mode: null,
+    startCanvasX: 0,
+    startCanvasY: 0,
+    startZoom: 1,
   };
 
   // Last used fill color for shapes (default: #D4D2D0)
@@ -1090,14 +1110,57 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Pointer events
     this.pointerHandler.on('pointerdown', (event) => {
+      // Middle mouse button (button 1) for pan/zoom
+      if (event.button === 1) {
+        this.mmbState.active = true;
+        this.mmbState.startCanvasX = event.canvasX;
+        this.mmbState.startCanvasY = event.canvasY;
+        this.mmbState.startZoom = this.viewport?.getZoom() ?? 1;
+        // Ctrl+MMB = zoom, MMB alone = pan
+        this.mmbState.mode = (event.ctrlKey || event.metaKey) ? 'zoom' : 'pan';
+        return; // Don't pass to tool manager
+      }
       this.toolManager!.handlePointerDown(event);
     });
 
     this.pointerHandler.on('pointermove', (event) => {
+      // Handle MMB pan/zoom
+      if (this.mmbState.active) {
+        const dy = event.canvasY - this.mmbState.startCanvasY;
+
+        if (this.mmbState.mode === 'zoom') {
+          // Vertical drag controls zoom (up = zoom in, down = zoom out)
+          const zoomSensitivity = 0.01;
+          const zoomDelta = -dy * zoomSensitivity;
+          const newZoom = this.mmbState.startZoom * (1 + zoomDelta);
+          // Zoom centered on starting point
+          this.viewport?.zoomAt(
+            Math.max(0.01, Math.min(100, newZoom)),
+            this.mmbState.startCanvasX,
+            this.mmbState.startCanvasY
+          );
+        } else {
+          // Pan mode - move viewport by delta since last frame
+          this.viewport?.pan(
+            event.canvasX - this.mmbState.startCanvasX,
+            event.canvasY - this.mmbState.startCanvasY
+          );
+          // Update start position for continuous panning
+          this.mmbState.startCanvasX = event.canvasX;
+          this.mmbState.startCanvasY = event.canvasY;
+        }
+        return; // Don't pass to tool manager
+      }
       this.toolManager!.handlePointerMove(event);
     });
 
     this.pointerHandler.on('pointerup', (event) => {
+      // Release MMB state
+      if (event.button === 1 || this.mmbState.active) {
+        this.mmbState.active = false;
+        this.mmbState.mode = null;
+        if (event.button === 1) return; // Don't pass MMB release to tool manager
+      }
       this.toolManager!.handlePointerUp(event);
     });
 
@@ -1113,7 +1176,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       const scaleX = this.canvas.width / rect.width;
       const scaleY = this.canvas.height / rect.height;
 
-      // Handle zoom with wheel
+      // Handle zoom with Ctrl/Meta + wheel
       if (event.ctrlKey || event.metaKey) {
         const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
         const currentZoom = this.viewport?.getZoom() ?? 1;
@@ -1121,6 +1184,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         const canvasX = event.offsetX * scaleX;
         const canvasY = event.offsetY * scaleY;
         this.viewport?.zoomAt(currentZoom * zoomFactor, canvasX, canvasY);
+      } else if (event.shiftKey) {
+        // Shift + wheel: horizontal pan (swap deltaY to deltaX for horizontal scrolling)
+        this.viewport?.pan(-event.deltaY * scaleX, 0);
       } else {
         // Pan with wheel (deltaX/Y are CSS pixels, convert to canvas pixels)
         this.viewport?.pan(-event.deltaX * scaleX, -event.deltaY * scaleY);

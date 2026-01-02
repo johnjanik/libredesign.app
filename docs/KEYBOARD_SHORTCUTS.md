@@ -51,16 +51,40 @@ A comprehensive guide to all keyboard shortcuts available in DesignLibre.
 | `Ctrl+2` | Zoom to selection |
 | `Ctrl+=` or `Ctrl++` | Zoom in |
 | `Ctrl+-` | Zoom out |
+| `Home` | Zoom to fit all |
+| `.` (period) | Zoom to selection |
 | `Ctrl+'` | Show/hide pixel grid |
 | `Ctrl+\` | Show/hide UI |
 | `Ctrl+Shift+\` | Show/hide rulers |
 
-### Mouse Controls
+### Mouse & Trackpad Controls
 
 | Action | Control |
 |--------|---------|
 | Zoom in/out | `Ctrl + Mouse Wheel` |
-| Pan canvas | `Mouse Wheel` (vertical) or `Shift + Mouse Wheel` (horizontal) |
+| Pan canvas (vertical) | `Mouse Wheel` |
+| Pan canvas (horizontal) | `Shift + Mouse Wheel` |
+| Pan canvas (drag) | `Middle Mouse Button drag` |
+| Zoom (drag) | `Ctrl + Middle Mouse Button drag` |
+
+### Selection Modifiers
+
+| Modifier | Action |
+|----------|--------|
+| `Click` | Select object (replace selection) |
+| `Shift + Click` | Add to selection |
+| `Ctrl + Click` | Toggle selection |
+| `Shift + Ctrl + Click` | Remove from selection |
+| `Double-click` | Edit mode / select children |
+
+### Drag Modifiers
+
+| Modifier | Action |
+|----------|--------|
+| `Drag` | Move selected objects |
+| `Shift + Drag` | Constrain to horizontal/vertical |
+| `Ctrl + Drag` | Duplicate while moving |
+| `Shift + Resize` | Preserve aspect ratio |
 
 ## Tools
 
