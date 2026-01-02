@@ -40,6 +40,7 @@ import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
 import { KeyboardManager, createKeyboardManager } from '@ui/keyboard';
+import { ContextMenu, createContextMenu } from '@ui/components/context-menu';
 
 /**
  * Runtime events
@@ -103,6 +104,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private pointerHandler: PointerHandler | null = null;
   private keyboardHandler: KeyboardHandler | null = null;
   private keyboardManager: KeyboardManager | null = null;
+  private contextMenu: ContextMenu | null = null;
 
   // Canvas element (for coordinate transformations)
   private canvas: HTMLCanvasElement | null = null;
@@ -210,6 +212,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       // Initialize keyboard manager for shortcuts
       this.keyboardManager = createKeyboardManager(this);
+
+      // Initialize context menu
+      this.contextMenu = createContextMenu(this);
 
       // Wire input to tools
       this.wireInputHandlers();
@@ -689,6 +694,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.pointerHandler?.dispose();
     this.keyboardHandler?.dispose();
     this.keyboardManager?.dispose();
+    this.contextMenu?.dispose();
     this.renderer?.dispose();
     this.storage.close();
 
@@ -1120,6 +1126,24 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         this.mmbState.mode = (event.ctrlKey || event.metaKey) ? 'zoom' : 'pan';
         return; // Don't pass to tool manager
       }
+
+      // Right mouse button (button 2) for context menu
+      if (event.button === 2) {
+        // Get screen coordinates from canvas coordinates
+        if (this.canvas) {
+          const rect = this.canvas.getBoundingClientRect();
+          const scaleX = rect.width / this.canvas.width;
+          const scaleY = rect.height / this.canvas.height;
+          const screenX = rect.left + event.canvasX * scaleX;
+          const screenY = rect.top + event.canvasY * scaleY;
+
+          // Show context menu with current selection
+          const selectedIds = this.selectionManager.getSelectedNodeIds();
+          this.contextMenu?.show(screenX, screenY, selectedIds);
+        }
+        return; // Don't pass to tool manager
+      }
+
       this.toolManager!.handlePointerDown(event);
     });
 

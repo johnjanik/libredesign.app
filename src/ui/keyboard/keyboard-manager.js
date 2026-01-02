@@ -833,13 +833,13 @@ export class KeyboardManager {
         });
         this.register({
             key: 'l', ctrl: true,
-            action: () => this.actionToggleLock(),
+            action: () => this.actionLock(),
             description: 'Lock/unlock selection',
             category: 'Misc',
         });
         this.register({
             key: 'h', ctrl: true, shift: true,
-            action: () => this.actionToggleVisibility(),
+            action: () => this.actionHide(),
             description: 'Show/hide selection',
             category: 'Misc',
         });
@@ -1267,7 +1267,7 @@ export class KeyboardManager {
     actionBooleanOperation(operation) {
         this.runtime.emit('command:booleanOperation', { operation });
     }
-    actionToggleLock() {
+    actionLock() {
         const sceneGraph = this.getSceneGraph();
         if (!sceneGraph)
             return;
@@ -1278,7 +1278,7 @@ export class KeyboardManager {
             }
         }
     }
-    actionToggleVisibility() {
+    actionHide() {
         const sceneGraph = this.getSceneGraph();
         if (!sceneGraph)
             return;

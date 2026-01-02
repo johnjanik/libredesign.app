@@ -988,14 +988,14 @@ export class KeyboardManager {
 
     this.register({
       key: 'l', ctrl: true,
-      action: () => this.actionToggleLock(),
+      action: () => this.actionLock(),
       description: 'Lock/unlock selection',
       category: 'Misc',
     });
 
     this.register({
       key: 'h', ctrl: true, shift: true,
-      action: () => this.actionToggleVisibility(),
+      action: () => this.actionHide(),
       description: 'Show/hide selection',
       category: 'Misc',
     });
@@ -1061,26 +1061,26 @@ export class KeyboardManager {
     this.runtime.emit('command:cancel', {});
   }
 
-  private actionCopy(): void {
+  actionCopy(): void {
     const nodes = this.getSelectedNodes();
     if (nodes.length > 0) {
       this.copyToClipboard(nodes);
     }
   }
 
-  private actionCut(): void {
+  actionCut(): void {
     this.actionCopy();
     this.actionDelete();
   }
 
-  private actionPaste(): void {
+  actionPaste(): void {
     const newIds = this.pasteFromClipboard();
     if (newIds.length > 0) {
       this.getSelectionManager()?.select(newIds, 'replace');
     }
   }
 
-  private actionDuplicate(): void {
+  actionDuplicate(): void {
     const nodes = this.getSelectedNodes();
     if (nodes.length === 0) return;
 
@@ -1110,7 +1110,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionDelete(): void {
+  actionDelete(): void {
     const sceneGraph = this.getSceneGraph();
     const selectionManager = this.getSelectionManager();
     if (!sceneGraph || !selectionManager) return;
@@ -1144,7 +1144,7 @@ export class KeyboardManager {
     this.getSelectionManager()?.selectParent();
   }
 
-  private actionGroup(): void {
+  actionGroup(): void {
     const sceneGraph = this.getSceneGraph();
     const selectionManager = this.getSelectionManager();
     if (!sceneGraph || !selectionManager) return;
@@ -1169,7 +1169,7 @@ export class KeyboardManager {
     selectionManager.select([groupId], 'replace');
   }
 
-  private actionUngroup(): void {
+  actionUngroup(): void {
     const sceneGraph = this.getSceneGraph();
     const selectionManager = this.getSelectionManager();
     if (!sceneGraph || !selectionManager) return;
@@ -1206,12 +1206,12 @@ export class KeyboardManager {
     viewport?.setZoom(1);
   }
 
-  private actionZoomToFit(): void {
+  actionZoomToFit(): void {
     // Emit event for renderer to handle zoom to fit
     this.runtime.emit('command:zoomToFit', {});
   }
 
-  private actionZoomToSelection(): void {
+  actionZoomToSelection(): void {
     const selectedIds = this.getSelectedNodeIds();
     if (selectedIds.length > 0) {
       this.runtime.emit('command:zoomToSelection', { nodeIds: selectedIds });
@@ -1268,7 +1268,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionBringForward(): void {
+  actionBringForward(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 
@@ -1277,7 +1277,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionSendBackward(): void {
+  actionSendBackward(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 
@@ -1286,7 +1286,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionBringToFront(): void {
+  actionBringToFront(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 
@@ -1299,7 +1299,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionSendToBack(): void {
+  actionSendToBack(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 
@@ -1468,7 +1468,7 @@ export class KeyboardManager {
     this.runtime.emit('command:booleanOperation', { operation });
   }
 
-  private actionToggleLock(): void {
+  actionLock(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 
@@ -1480,7 +1480,7 @@ export class KeyboardManager {
     }
   }
 
-  private actionToggleVisibility(): void {
+  actionHide(): void {
     const sceneGraph = this.getSceneGraph();
     if (!sceneGraph) return;
 

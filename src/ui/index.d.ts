@@ -5,4 +5,5 @@ export * from './components/canvas-container';
 export * from './components/toolbar';
 export * from './components/left-sidebar';
 export * from './components/inspector-panel';
+export * from './components/context-menu';
 //# sourceMappingURL=index.d.ts.map

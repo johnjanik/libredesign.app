@@ -65,6 +65,7 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     private pointerHandler;
     private keyboardHandler;
     private keyboardManager;
+    private contextMenu;
     private canvas;
     private serializer;
     private storage;
