@@ -34,6 +34,7 @@ import { createPreserveArchive, readPreserveArchive, preserveToNode } from '@per
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { createStyleManager } from '@core/styles/style-manager';
+import { createKeyboardManager } from '@ui/keyboard';
 /**
  * DesignLibre Runtime
  */
@@ -50,6 +51,7 @@ export class DesignLibreRuntime extends EventEmitter {
     // Input handlers
     pointerHandler = null;
     keyboardHandler = null;
+    keyboardManager = null;
     // Canvas element (for coordinate transformations)
     canvas = null;
     // Persistence
@@ -127,6 +129,8 @@ export class DesignLibreRuntime extends EventEmitter {
             this.pointerHandler = createPointerHandler(this.canvas, this.viewport);
             this.keyboardHandler = createKeyboardHandler();
             this.keyboardHandler.registerDefaultShortcuts();
+            // Initialize keyboard manager for shortcuts
+            this.keyboardManager = createKeyboardManager(this);
             // Wire input to tools
             this.wireInputHandlers();
             // Initialize storage
@@ -469,6 +473,12 @@ export class DesignLibreRuntime extends EventEmitter {
         return this.renderer;
     }
     /**
+     * Get the keyboard manager.
+     */
+    getKeyboardManager() {
+        return this.keyboardManager;
+    }
+    /**
      * Get the style manager.
      */
     getStyleManager() {
@@ -509,6 +519,7 @@ export class DesignLibreRuntime extends EventEmitter {
         this.autosaveManager?.dispose();
         this.pointerHandler?.dispose();
         this.keyboardHandler?.dispose();
+        this.keyboardManager?.dispose();
         this.renderer?.dispose();
         this.storage.close();
         this.state.initialized = false;

@@ -15,6 +15,7 @@ import { SelectionManager } from '@scene/selection/selection-manager';
 import { LayoutEngine } from '@layout/layout-engine';
 import type { PreserveArchive, PreserveWriteOptions } from '@persistence/preserve';
 import { StyleManager } from '@core/styles/style-manager';
+import { KeyboardManager } from '@ui/keyboard';
 /**
  * Runtime events
  */
@@ -63,6 +64,7 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     private styleManager;
     private pointerHandler;
     private keyboardHandler;
+    private keyboardManager;
     private canvas;
     private serializer;
     private storage;
@@ -228,6 +230,10 @@ export declare class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
      * Get the renderer.
      */
     getRenderer(): Renderer | null;
+    /**
+     * Get the keyboard manager.
+     */
+    getKeyboardManager(): KeyboardManager | null;
     /**
      * Get the style manager.
      */

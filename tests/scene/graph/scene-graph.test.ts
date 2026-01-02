@@ -37,7 +37,7 @@ describe('SceneGraph', () => {
 
       expect(pages.length).toBe(1);
       expect(pages[0]?.type).toBe('PAGE');
-      expect(pages[0]?.name).toBe('Page 1');
+      expect(pages[0]?.name).toBe('Leaf 1');
     });
 
     it('emits document:loaded event', () => {
@@ -209,7 +209,7 @@ describe('SceneGraph', () => {
         expect.objectContaining({
           nodeId: pages[0]!.id,
           path: ['name'],
-          oldValue: 'Page 1',
+          oldValue: 'Leaf 1',
           newValue: 'New Name',
         })
       );
@@ -380,7 +380,7 @@ describe('SceneGraph', () => {
       });
 
       expect(visited).toContain('Untitled'); // Document
-      expect(visited).toContain('Page 1');
+      expect(visited).toContain('Leaf 1');
       expect(visited).toContain('Frame');
       expect(visited).toContain('Vector');
     });

@@ -39,6 +39,7 @@ import type { PreserveArchive, PreserveWriteOptions, PreserveNode } from '@persi
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
+import { KeyboardManager, createKeyboardManager } from '@ui/keyboard';
 
 /**
  * Runtime events
@@ -90,6 +91,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
   private keyboardHandler: KeyboardHandler | null = null;
+  private keyboardManager: KeyboardManager | null = null;
 
   // Canvas element (for coordinate transformations)
   private canvas: HTMLCanvasElement | null = null;
@@ -185,6 +187,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.pointerHandler = createPointerHandler(this.canvas, this.viewport);
       this.keyboardHandler = createKeyboardHandler();
       this.keyboardHandler.registerDefaultShortcuts();
+
+      // Initialize keyboard manager for shortcuts
+      this.keyboardManager = createKeyboardManager(this);
 
       // Wire input to tools
       this.wireInputHandlers();
@@ -609,6 +614,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
+   * Get the keyboard manager.
+   */
+  getKeyboardManager(): KeyboardManager | null {
+    return this.keyboardManager;
+  }
+
+  /**
    * Get the style manager.
    */
   getStyleManager(): StyleManager {
@@ -656,6 +668,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.autosaveManager?.dispose();
     this.pointerHandler?.dispose();
     this.keyboardHandler?.dispose();
+    this.keyboardManager?.dispose();
     this.renderer?.dispose();
     this.storage.close();
 
