@@ -30,6 +30,8 @@ export declare class LeftSidebar {
     private onCollapseChange?;
     constructor(runtime: DesignLibreRuntime, container: HTMLElement, options?: LeftSidebarOptions);
     private setup;
+    private handleKeyDown;
+    private triggerLayerRename;
     /**
      * Sync leaves with actual PAGE nodes from scene graph.
      */

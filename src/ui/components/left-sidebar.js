@@ -98,6 +98,63 @@ export class LeftSidebar {
         }
         // Listen for selection changes
         this.runtime.on('selection:changed', () => this.renderLayersSection());
+        // F2 keyboard shortcut for rename
+        document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+    }
+    handleKeyDown(e) {
+        if (e.key !== 'F2')
+            return;
+        // Check if we're already in an input field
+        if (document.activeElement?.tagName === 'INPUT')
+            return;
+        const selectionManager = this.runtime.getSelectionManager();
+        const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
+        if (selectedIds.length !== 1)
+            return;
+        const selectedId = selectedIds[0];
+        const sceneGraph = this.runtime.getSceneGraph();
+        if (!sceneGraph)
+            return;
+        const node = sceneGraph.getNode(selectedId);
+        if (!node)
+            return;
+        e.preventDefault();
+        // Check if selected node is a page (leaf) or a layer
+        if (node.type === 'PAGE') {
+            // Find the leaf item and trigger rename
+            const leaf = this.leaves.find(l => l.nodeId === selectedId);
+            if (leaf) {
+                const leafItem = this.element?.querySelector(`.designlibre-leaves-list .designlibre-leaf-item:nth-child(${this.leaves.indexOf(leaf) + 1}) span:last-of-type`);
+                if (leafItem) {
+                    this.renameLeaf(leaf, leafItem);
+                }
+            }
+        }
+        else {
+            // It's a layer - find the layer item and trigger rename
+            const layerItem = this.element?.querySelector(`.designlibre-layers-list .designlibre-layer-item[data-node-id="${selectedId}"] span:nth-child(2)`);
+            if (layerItem) {
+                this.renameLayer(selectedId, node.name, layerItem);
+            }
+            else {
+                // Fallback: re-render with rename active
+                this.triggerLayerRename(selectedId, node.name);
+            }
+        }
+    }
+    triggerLayerRename(nodeId, currentName) {
+        // Find the layer item in the DOM
+        const layersList = this.element?.querySelector('.designlibre-layers-list');
+        if (!layersList)
+            return;
+        const items = layersList.querySelectorAll('.designlibre-layer-item');
+        for (const item of items) {
+            const nameSpan = item.querySelector('span:nth-child(2)');
+            if (nameSpan && nameSpan.textContent === currentName) {
+                this.renameLayer(nodeId, currentName, nameSpan);
+                return;
+            }
+        }
     }
     /**
      * Sync leaves with actual PAGE nodes from scene graph.
@@ -585,6 +642,7 @@ export class LeftSidebar {
     createLayerItem(node, isSelected, depth) {
         const item = document.createElement('div');
         item.className = 'designlibre-layer-item';
+        item.dataset['nodeId'] = node.id;
         item.style.cssText = `
       display: flex;
       align-items: center;
