@@ -28,11 +28,15 @@ export declare class LeftSidebar {
     private activeLeafId;
     private leafCounter;
     private onCollapseChange?;
+    private clipboard;
+    private pasteOffset;
     constructor(runtime: DesignLibreRuntime, container: HTMLElement, options?: LeftSidebarOptions);
     private setup;
     private handleKeyDown;
     private handleDelete;
     private handleDuplicate;
+    private handleCopy;
+    private handlePaste;
     private triggerLayerRename;
     /**
      * Sync leaves with actual PAGE nodes from scene graph.

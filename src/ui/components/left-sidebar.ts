@@ -92,6 +92,13 @@ export class LeftSidebar {
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
 
+  // Clipboard for copy/paste
+  private clipboard: Array<{
+    type: string;
+    props: Record<string, unknown>;
+  }> = [];
+  private pasteOffset = 0;
+
   constructor(
     runtime: DesignLibreRuntime,
     container: HTMLElement,
@@ -151,6 +158,16 @@ export class LeftSidebar {
 
     if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {
       this.handleDuplicate(e);
+      return;
+    }
+
+    if (e.key === 'c' && (e.ctrlKey || e.metaKey)) {
+      this.handleCopy(e);
+      return;
+    }
+
+    if (e.key === 'v' && (e.ctrlKey || e.metaKey)) {
+      this.handlePaste(e);
       return;
     }
 
@@ -251,12 +268,20 @@ export class LeftSidebar {
       if (!parent) continue;
       const parentId = parent.id;
 
-      // Create a copy of the node properties with offset position
-      const props: Record<string, unknown> = {
-        name: `${node.name} copy`,
-      };
+      // Deep clone all node properties
+      const props: Record<string, unknown> = {};
+      for (const key of Object.keys(node)) {
+        if (key === 'id' || key === 'parentId' || key === 'childIds') continue;
+        const value = (node as unknown as Record<string, unknown>)[key];
+        if (value !== null && typeof value === 'object') {
+          props[key] = JSON.parse(JSON.stringify(value));
+        } else {
+          props[key] = value;
+        }
+      }
 
-      // Copy position with offset if node has x/y
+      // Apply offset and rename
+      props['name'] = `${node.name} copy`;
       if ('x' in node && typeof node.x === 'number') {
         props['x'] = node.x + offset;
       }
@@ -264,28 +289,50 @@ export class LeftSidebar {
         props['y'] = node.y + offset;
       }
 
-      // Copy other visual properties
-      if ('width' in node) props['width'] = node.width;
-      if ('height' in node) props['height'] = node.height;
-      if ('rotation' in node) props['rotation'] = node.rotation;
-      if ('opacity' in node) props['opacity'] = node.opacity;
-      if ('fills' in node) props['fills'] = node.fills;
-      if ('strokes' in node) props['strokes'] = node.strokes;
-      if ('strokeWeight' in node) props['strokeWeight'] = node.strokeWeight;
-      if ('cornerRadius' in node) props['cornerRadius'] = node.cornerRadius;
-      if ('effects' in node) props['effects'] = node.effects;
+      // Create the node with basic options
+      const createOptions: Record<string, unknown> = {
+        name: props['name'],
+        x: props['x'],
+        y: props['y'],
+        width: props['width'],
+        height: props['height'],
+      };
 
-      // Copy type-specific properties
-      if ('characters' in node) props['characters'] = node.characters;
-      if ('pathData' in node) props['pathData'] = node.pathData;
-      if ('imageRef' in node) props['imageRef'] = node.imageRef;
+      // Add type-specific creation options
+      if (node.type === 'VECTOR') {
+        createOptions['vectorPaths'] = props['vectorPaths'];
+        createOptions['fills'] = props['fills'];
+        createOptions['strokes'] = props['strokes'];
+        createOptions['strokeWeight'] = props['strokeWeight'];
+      } else if (node.type === 'TEXT') {
+        createOptions['characters'] = props['characters'];
+      } else if (node.type === 'IMAGE') {
+        createOptions['imageRef'] = props['imageRef'];
+        createOptions['naturalWidth'] = props['naturalWidth'];
+        createOptions['naturalHeight'] = props['naturalHeight'];
+        createOptions['scaleMode'] = props['scaleMode'];
+      }
 
       const newNodeId = sceneGraph.createNode(
         node.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
         parentId,
         -1,
-        props as Parameters<typeof sceneGraph.createNode>[3]
+        createOptions as Parameters<typeof sceneGraph.createNode>[3]
       );
+
+      // Apply all remaining properties via updateNode
+      const updateProps: Record<string, unknown> = {};
+      const skipKeys = ['id', 'type', 'parentId', 'childIds', 'pluginData', 'name', 'x', 'y', 'width', 'height'];
+
+      for (const key of Object.keys(props)) {
+        if (!skipKeys.includes(key)) {
+          updateProps[key] = props[key];
+        }
+      }
+
+      if (Object.keys(updateProps).length > 0) {
+        sceneGraph.updateNode(newNodeId, updateProps as Partial<import('@scene/nodes/base-node').NodeData>);
+      }
 
       newNodeIds.push(newNodeId);
     }
@@ -293,6 +340,141 @@ export class LeftSidebar {
     // Select the new duplicated nodes
     if (newNodeIds.length > 0) {
       selectionManager?.select(newNodeIds, 'replace');
+    }
+  }
+
+  private handleCopy(e: KeyboardEvent): void {
+    const selectionManager = this.runtime.getSelectionManager();
+    const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
+
+    if (selectedIds.length === 0) return;
+
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Filter out PAGE and DOCUMENT nodes
+    const copyableIds = selectedIds.filter(id => {
+      const node = sceneGraph.getNode(id);
+      return node && node.type !== 'PAGE' && node.type !== 'DOCUMENT';
+    });
+
+    if (copyableIds.length === 0) return;
+
+    e.preventDefault();
+
+    // Clear clipboard and reset paste offset
+    this.clipboard = [];
+    this.pasteOffset = 0;
+
+    // Copy each selected node to clipboard
+    for (const nodeId of copyableIds) {
+      const node = sceneGraph.getNode(nodeId);
+      if (!node) continue;
+
+      // Deep clone all node properties except id, parentId, childIds
+      const props: Record<string, unknown> = {};
+
+      for (const key of Object.keys(node)) {
+        if (key === 'id' || key === 'parentId' || key === 'childIds') continue;
+
+        const value = (node as unknown as Record<string, unknown>)[key];
+
+        // Deep clone objects and arrays to avoid reference issues
+        if (value !== null && typeof value === 'object') {
+          props[key] = JSON.parse(JSON.stringify(value));
+        } else {
+          props[key] = value;
+        }
+      }
+
+      this.clipboard.push({
+        type: node.type,
+        props,
+      });
+    }
+  }
+
+  private handlePaste(e: KeyboardEvent): void {
+    if (this.clipboard.length === 0) return;
+
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Get current page as parent for pasted nodes
+    const currentPageId = this.runtime.getCurrentPageId();
+    if (!currentPageId) return;
+
+    e.preventDefault();
+
+    // Increment paste offset for each paste operation
+    this.pasteOffset += 20;
+
+    const newNodeIds: NodeId[] = [];
+
+    // Paste each node from clipboard
+    for (const item of this.clipboard) {
+      const props = { ...item.props };
+
+      // Apply paste offset to position
+      if (typeof props['x'] === 'number') {
+        props['x'] = (props['x'] as number) + this.pasteOffset;
+      }
+      if (typeof props['y'] === 'number') {
+        props['y'] = (props['y'] as number) + this.pasteOffset;
+      }
+
+      // Create the node with basic options that factory accepts
+      const createOptions: Record<string, unknown> = {
+        name: props['name'],
+        x: props['x'],
+        y: props['y'],
+        width: props['width'],
+        height: props['height'],
+      };
+
+      // Add type-specific creation options
+      if (item.type === 'VECTOR') {
+        createOptions['vectorPaths'] = props['vectorPaths'];
+        createOptions['fills'] = props['fills'];
+        createOptions['strokes'] = props['strokes'];
+        createOptions['strokeWeight'] = props['strokeWeight'];
+      } else if (item.type === 'TEXT') {
+        createOptions['characters'] = props['characters'];
+      } else if (item.type === 'IMAGE') {
+        createOptions['imageRef'] = props['imageRef'];
+        createOptions['naturalWidth'] = props['naturalWidth'];
+        createOptions['naturalHeight'] = props['naturalHeight'];
+        createOptions['scaleMode'] = props['scaleMode'];
+      }
+
+      const newNodeId = sceneGraph.createNode(
+        item.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
+        currentPageId,
+        -1,
+        createOptions as Parameters<typeof sceneGraph.createNode>[3]
+      );
+
+      // Apply all remaining properties via updateNode
+      const updateProps: Record<string, unknown> = {};
+      const skipKeys = ['id', 'type', 'parentId', 'childIds', 'pluginData', 'name', 'x', 'y', 'width', 'height'];
+
+      for (const key of Object.keys(props)) {
+        if (!skipKeys.includes(key)) {
+          updateProps[key] = props[key];
+        }
+      }
+
+      if (Object.keys(updateProps).length > 0) {
+        sceneGraph.updateNode(newNodeId, updateProps as Partial<import('@scene/nodes/base-node').NodeData>);
+      }
+
+      newNodeIds.push(newNodeId);
+    }
+
+    // Select the pasted nodes
+    const selectionManager = this.runtime.getSelectionManager();
+    if (newNodeIds.length > 0 && selectionManager) {
+      selectionManager.select(newNodeIds, 'replace');
     }
   }
 
