@@ -102,10 +102,14 @@ export class LeftSidebar {
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
     }
     handleKeyDown(e) {
-        if (e.key !== 'F2')
-            return;
         // Check if we're already in an input field
         if (document.activeElement?.tagName === 'INPUT')
+            return;
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            this.handleDelete(e);
+            return;
+        }
+        if (e.key !== 'F2')
             return;
         const selectionManager = this.runtime.getSelectionManager();
         const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
@@ -141,6 +145,29 @@ export class LeftSidebar {
                 this.triggerLayerRename(selectedId, node.name);
             }
         }
+    }
+    handleDelete(e) {
+        const selectionManager = this.runtime.getSelectionManager();
+        const selectedIds = selectionManager?.getSelectedNodeIds() ?? [];
+        if (selectedIds.length === 0)
+            return;
+        const sceneGraph = this.runtime.getSceneGraph();
+        if (!sceneGraph)
+            return;
+        // Filter out PAGE and DOCUMENT nodes - don't allow deleting those
+        const deletableIds = selectedIds.filter(id => {
+            const node = sceneGraph.getNode(id);
+            return node && node.type !== 'PAGE' && node.type !== 'DOCUMENT';
+        });
+        if (deletableIds.length === 0)
+            return;
+        e.preventDefault();
+        // Delete each selected node
+        for (const nodeId of deletableIds) {
+            sceneGraph.deleteNode(nodeId);
+        }
+        // Clear selection
+        selectionManager?.clear();
     }
     triggerLayerRename(nodeId, currentName) {
         // Find the layer item in the DOM

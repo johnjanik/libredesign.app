@@ -31,6 +31,7 @@ export declare class LeftSidebar {
     constructor(runtime: DesignLibreRuntime, container: HTMLElement, options?: LeftSidebarOptions);
     private setup;
     private handleKeyDown;
+    private handleDelete;
     private triggerLayerRename;
     /**
      * Sync leaves with actual PAGE nodes from scene graph.
