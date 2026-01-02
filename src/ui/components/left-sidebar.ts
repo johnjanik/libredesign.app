@@ -6,6 +6,7 @@
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { NodeId } from '@core/types/common';
+import { downloadiOS26Template } from '@templates/index';
 
 /**
  * Leaf (page) definition
@@ -295,24 +296,30 @@ export class LeftSidebar {
     // File name section
     this.element.appendChild(this.createFileNameSection());
 
-    // Tabs (File, Library) + Search
+    // Tabs (Assets, Library) + Search
     this.element.appendChild(this.createTabsSection());
 
-    // Leaves section
-    this.element.appendChild(this.createLeavesSection());
+    // Tab content depends on active tab
+    if (this.activeTab === 'assets') {
+      // Assets tab: show leaves and layers
+      this.element.appendChild(this.createLeavesSection());
 
-    // Separator
-    const separator = document.createElement('div');
-    separator.style.cssText = `
-      height: 1px;
-      background: var(--designlibre-border, #3d3d3d);
-      margin: 0;
-    `;
-    this.element.appendChild(separator);
+      // Separator
+      const separator = document.createElement('div');
+      separator.style.cssText = `
+        height: 1px;
+        background: var(--designlibre-border, #3d3d3d);
+        margin: 0;
+      `;
+      this.element.appendChild(separator);
 
-    // Layers section
-    const layersSection = this.createLayersSection();
-    this.element.appendChild(layersSection);
+      // Layers section
+      const layersSection = this.createLayersSection();
+      this.element.appendChild(layersSection);
+    } else {
+      // Library tab: show templates
+      this.element.appendChild(this.createLibrarySection());
+    }
   }
 
   private createHeader(): HTMLElement {
@@ -658,6 +665,179 @@ export class LeftSidebar {
       if (leaf.id !== this.activeLeafId) {
         item.style.backgroundColor = 'transparent';
       }
+    });
+
+    return item;
+  }
+
+  private createLibrarySection(): HTMLElement {
+    const section = document.createElement('div');
+    section.className = 'designlibre-sidebar-library';
+    section.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `;
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+    `;
+
+    const label = document.createElement('span');
+    label.textContent = 'Templates';
+    label.style.cssText = `
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
+    header.appendChild(label);
+    section.appendChild(header);
+
+    // Templates list
+    const list = document.createElement('div');
+    list.className = 'designlibre-library-list';
+    list.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    `;
+
+    // iOS 26 Template
+    const templateItem = this.createTemplateItem(
+      'iOS 26 Liquid Glass',
+      'Complete iOS 26 design system with Liquid Glass components',
+      'iOS/iPadOS',
+      async () => {
+        await downloadiOS26Template();
+      }
+    );
+    list.appendChild(templateItem);
+
+    // Placeholder for more templates
+    const moreTemplates = document.createElement('div');
+    moreTemplates.style.cssText = `
+      padding: 16px 8px;
+      font-size: 12px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      text-align: center;
+    `;
+    moreTemplates.innerHTML = `
+      <div style="margin-bottom: 8px;">More templates coming soon</div>
+      <div style="font-size: 11px; opacity: 0.7;">Drag templates to Assets to use them in your project</div>
+    `;
+    list.appendChild(moreTemplates);
+
+    section.appendChild(list);
+
+    return section;
+  }
+
+  private createTemplateItem(
+    name: string,
+    description: string,
+    platform: string,
+    onDownload: () => Promise<void>
+  ): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'designlibre-template-item';
+    item.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
+
+    // Platform badge
+    const badge = document.createElement('span');
+    badge.textContent = platform;
+    badge.style.cssText = `
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--designlibre-accent, #4dabff);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    item.appendChild(badge);
+
+    // Name
+    const nameEl = document.createElement('span');
+    nameEl.textContent = name;
+    nameEl.style.cssText = `
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+    item.appendChild(nameEl);
+
+    // Description
+    const descEl = document.createElement('span');
+    descEl.textContent = description;
+    descEl.style.cssText = `
+      font-size: 12px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      line-height: 1.4;
+    `;
+    item.appendChild(descEl);
+
+    // Download button
+    const downloadBtn = document.createElement('button');
+    downloadBtn.textContent = 'Download .preserve';
+    downloadBtn.style.cssText = `
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: var(--designlibre-accent, #4dabff);
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
+    downloadBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      downloadBtn.textContent = 'Downloading...';
+      downloadBtn.style.opacity = '0.7';
+      try {
+        await onDownload();
+        downloadBtn.textContent = 'Downloaded!';
+        setTimeout(() => {
+          downloadBtn.textContent = 'Download .preserve';
+          downloadBtn.style.opacity = '1';
+        }, 2000);
+      } catch (error) {
+        downloadBtn.textContent = 'Error - Try Again';
+        downloadBtn.style.opacity = '1';
+        console.error('Template download failed:', error);
+      }
+    });
+    downloadBtn.addEventListener('mouseenter', () => {
+      downloadBtn.style.background = 'var(--designlibre-accent-hover, #6bbaff)';
+    });
+    downloadBtn.addEventListener('mouseleave', () => {
+      downloadBtn.style.background = 'var(--designlibre-accent, #4dabff)';
+    });
+    item.appendChild(downloadBtn);
+
+    // Hover effect
+    item.addEventListener('mouseenter', () => {
+      item.style.background = 'var(--designlibre-bg-tertiary, #252525)';
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
     });
 
     return item;
@@ -1040,9 +1220,11 @@ export class LeftSidebar {
       { label: 'Save', shortcut: 'Ctrl+S', action: () => this.runtime.saveDocument() },
       { label: 'Save as .preserve...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsPreserve() },
       { separator: true },
+      { label: 'Templates', submenu: true, action: () => this.showTemplatesMenu(anchor) },
+      { separator: true },
       { label: 'Export...', shortcut: 'Ctrl+E', action: () => {} },
       { separator: true },
-      { label: 'Settings', action: () => {} },
+      { label: 'Settings', action: () => this.showSettingsMenu(anchor) },
     ];
 
     for (const item of menuItems) {
@@ -1099,6 +1281,252 @@ export class LeftSidebar {
     requestAnimationFrame(() => {
       document.addEventListener('mousedown', closeMenu);
     });
+  }
+
+  /**
+   * Show templates submenu.
+   */
+  private showTemplatesMenu(anchor: HTMLElement): void {
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-templates-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-templates-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 260px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    const templateItems = [
+      {
+        label: 'iOS 26 Liquid Glass',
+        description: 'Complete iOS 26 design system',
+        action: async () => {
+          menu.remove();
+          await downloadiOS26Template();
+        },
+      },
+    ];
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.textContent = 'Download Template';
+    menu.appendChild(header);
+
+    for (const item of templateItems) {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      label.style.fontWeight = '500';
+      menuItem.appendChild(label);
+
+      if (item.description) {
+        const desc = document.createElement('span');
+        desc.textContent = item.description;
+        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+        menuItem.appendChild(desc);
+      }
+
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
+      menuItem.addEventListener('click', () => {
+        item.action();
+      });
+
+      menu.appendChild(menuItem);
+    }
+
+    document.body.appendChild(menu);
+
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closeMenu);
+      }
+    };
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
+  }
+
+  /**
+   * Show settings menu.
+   */
+  private showSettingsMenu(anchor: HTMLElement): void {
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-settings-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-settings-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.bottom + 4}px;
+      min-width: 280px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 8px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    // Title
+    const title = document.createElement('div');
+    title.textContent = 'Settings';
+    title.style.cssText = 'font-weight: 600; padding: 4px 8px 12px; border-bottom: 1px solid #3d3d3d; margin-bottom: 8px;';
+    menu.appendChild(title);
+
+    // Syntax Highlighting toggle
+    const syntaxHighlightSetting = this.createToggleSetting(
+      'Syntax Highlighting',
+      'Color code in Code view by language',
+      this.getSyntaxHighlightingSetting(),
+      (enabled) => this.setSyntaxHighlightingSetting(enabled)
+    );
+    menu.appendChild(syntaxHighlightSetting);
+
+    document.body.appendChild(menu);
+
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closeMenu);
+      }
+    };
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
+  }
+
+  /**
+   * Create a toggle setting row.
+   */
+  private createToggleSetting(
+    label: string,
+    description: string,
+    initialValue: boolean,
+    onChange: (enabled: boolean) => void
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 8px;
+      border-radius: 4px;
+    `;
+
+    const textContainer = document.createElement('div');
+    textContainer.style.cssText = 'flex: 1; margin-right: 12px;';
+
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label;
+    labelEl.style.cssText = 'font-weight: 500; margin-bottom: 2px;';
+    textContainer.appendChild(labelEl);
+
+    const descEl = document.createElement('div');
+    descEl.textContent = description;
+    descEl.style.cssText = 'font-size: 11px; color: #888;';
+    textContainer.appendChild(descEl);
+
+    row.appendChild(textContainer);
+
+    // Toggle switch
+    const toggle = document.createElement('button');
+    toggle.style.cssText = `
+      width: 40px;
+      height: 22px;
+      border-radius: 11px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.2s;
+      background: ${initialValue ? '#4dabff' : '#444'};
+    `;
+
+    const knob = document.createElement('div');
+    knob.style.cssText = `
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      top: 2px;
+      transition: left 0.2s;
+      left: ${initialValue ? '20px' : '2px'};
+    `;
+    toggle.appendChild(knob);
+
+    let enabled = initialValue;
+    toggle.addEventListener('click', () => {
+      enabled = !enabled;
+      toggle.style.background = enabled ? '#4dabff' : '#444';
+      knob.style.left = enabled ? '20px' : '2px';
+      onChange(enabled);
+    });
+
+    row.appendChild(toggle);
+    return row;
+  }
+
+  /**
+   * Get syntax highlighting setting from localStorage.
+   */
+  private getSyntaxHighlightingSetting(): boolean {
+    const stored = localStorage.getItem('designlibre-syntax-highlighting');
+    return stored === null ? true : stored === 'true';
+  }
+
+  /**
+   * Set syntax highlighting setting and dispatch event.
+   */
+  private setSyntaxHighlightingSetting(enabled: boolean): void {
+    localStorage.setItem('designlibre-syntax-highlighting', String(enabled));
+    // Dispatch custom event for CodeView to listen to
+    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+      detail: { syntaxHighlighting: enabled }
+    }));
   }
 
   /**

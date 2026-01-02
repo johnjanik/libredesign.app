@@ -40,7 +40,8 @@
       "@devtools/*": ["src/devtools/*"],
       "@animation/*": ["src/animation/*"],
       "@prototype/*": ["src/prototype/*"],
-      "@ai/*": ["src/ai/*"]
+      "@ai/*": ["src/ai/*"],
+      "@templates/*": ["src/templates/*"]
     },
 
     "types": ["vitest/globals"]

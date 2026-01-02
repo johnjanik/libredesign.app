@@ -511,8 +511,8 @@ export class Renderer extends EventEmitter<RendererEvents> {
     const color = fill.color;
     const opacity = (node.opacity ?? 1) * (fill.opacity ?? 1);
 
-    // Tessellate rectangle (FrameNode doesn't have cornerRadius in current types, default to 0)
-    const cornerRadius = 0;
+    // Tessellate rectangle with corner radius if specified
+    const cornerRadius = node.cornerRadius ?? 0;
     const tess = cornerRadius > 0
       ? tessellateRoundedRect(0, 0, node.width, node.height, cornerRadius)
       : tessellateRect(0, 0, node.width, node.height);

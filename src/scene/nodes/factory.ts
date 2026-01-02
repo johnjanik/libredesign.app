@@ -89,6 +89,7 @@ export interface CreateFrameOptions {
   y?: number;
   width?: number;
   height?: number;
+  cornerRadius?: number;
 }
 
 /** Create a frame node */
@@ -112,6 +113,7 @@ export function createFrame(options: CreateFrameOptions = {}): FrameNodeData {
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: true,
     autoLayout: DEFAULT_AUTO_LAYOUT,
+    cornerRadius: options.cornerRadius ?? 0,
   };
 }
 

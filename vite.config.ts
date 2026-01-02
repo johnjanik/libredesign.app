@@ -35,6 +35,7 @@ export default defineConfig({
       '@animation': resolve(__dirname, 'src/animation'),
       '@prototype': resolve(__dirname, 'src/prototype'),
       '@ai': resolve(__dirname, 'src/ai'),
+      '@templates': resolve(__dirname, 'src/templates'),
     },
   },
 

@@ -451,6 +451,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     fills: node.appearance?.fills?.map(preserveToPaint) ?? [],
     strokes: node.appearance?.strokes?.map(preserveToPaint) ?? [],
     strokeWeight: node.appearance?.strokeWeight,
+    cornerRadius: node.appearance?.cornerRadius,
     effects: node.appearance?.effects?.map(preserveToEffect) ?? [],
   });
 

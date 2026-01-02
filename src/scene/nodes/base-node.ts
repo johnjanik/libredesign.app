@@ -88,6 +88,7 @@ export interface PageNodeData extends BaseNodeData, TransformProps {
 export interface FrameNodeData extends SceneNodeData {
   readonly type: 'FRAME';
   readonly autoLayout: AutoLayoutProps;
+  readonly cornerRadius: number;
 }
 
 /**
