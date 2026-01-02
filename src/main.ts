@@ -130,28 +130,6 @@ async function initializeApp(config: AppConfig): Promise<void> {
   // Log initialization
   if (config.debug) {
     console.log('DesignLibre initialized', { runtime });
-
-    // DEBUG: Check if canvas is receiving events at all
-    const canvas = canvasContainer.querySelector('canvas');
-    if (canvas) {
-      console.log('[DEBUG] Canvas element found:', canvas);
-      console.log('[DEBUG] Canvas size:', canvas.width, 'x', canvas.height);
-      console.log('[DEBUG] Canvas style:', canvas.style.cssText);
-
-      canvas.addEventListener('pointerdown', (e) => {
-        console.log('[DEBUG] Canvas received pointerdown:', e.clientX, e.clientY);
-      });
-      canvas.addEventListener('click', (e) => {
-        console.log('[DEBUG] Canvas received click:', e.clientX, e.clientY);
-      });
-    } else {
-      console.error('[DEBUG] Canvas element NOT found in container!');
-    }
-
-    // Check document level events
-    document.addEventListener('pointerdown', (e) => {
-      console.log('[DEBUG] Document pointerdown on:', (e.target as HTMLElement)?.tagName, (e.target as HTMLElement)?.className);
-    });
   }
 }
 
