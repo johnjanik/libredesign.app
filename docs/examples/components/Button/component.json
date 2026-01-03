@@ -1,0 +1,728 @@
+{
+  "$schema": "https://designlibre.app/schemas/component-v1.json",
+  "version": "1.0.0",
+
+  "component": {
+    "id": "comp-button",
+    "key": "button",
+    "name": "Button",
+    "description": "Interactive button component with multiple variants and states",
+    "category": "buttons",
+    "tags": ["interactive", "cta", "form", "action"],
+    "status": "stable",
+    "version": "2.1.0",
+    "createdAt": "2025-06-15T09:00:00Z",
+    "updatedAt": "2026-01-03T14:30:00Z",
+    "authors": ["jane@acme.com", "bob@acme.com"],
+    "isComponentSet": true,
+    "thumbnail": "thumbnail.png"
+  },
+
+  "properties": {
+    "definitions": {
+      "label": {
+        "type": "TEXT",
+        "name": "Label",
+        "description": "Button text content",
+        "defaultValue": "Button",
+        "required": true,
+        "placeholder": "Enter button text"
+      },
+      "variant": {
+        "type": "VARIANT",
+        "name": "Variant",
+        "description": "Visual style variant",
+        "defaultValue": "primary",
+        "options": ["primary", "secondary", "ghost", "destructive"]
+      },
+      "size": {
+        "type": "VARIANT",
+        "name": "Size",
+        "description": "Button size",
+        "defaultValue": "medium",
+        "options": ["small", "medium", "large"]
+      },
+      "fullWidth": {
+        "type": "BOOLEAN",
+        "name": "Full Width",
+        "description": "Stretch to fill container width",
+        "defaultValue": false
+      },
+      "disabled": {
+        "type": "BOOLEAN",
+        "name": "Disabled",
+        "description": "Disable button interactions",
+        "defaultValue": false
+      },
+      "loading": {
+        "type": "BOOLEAN",
+        "name": "Loading",
+        "description": "Show loading spinner",
+        "defaultValue": false
+      },
+      "iconLeft": {
+        "type": "INSTANCE_SWAP",
+        "name": "Left Icon",
+        "description": "Icon displayed before the label",
+        "defaultValue": null,
+        "allowedComponents": [],
+        "allowedCategories": ["icons"]
+      },
+      "iconRight": {
+        "type": "INSTANCE_SWAP",
+        "name": "Right Icon",
+        "description": "Icon displayed after the label",
+        "defaultValue": null,
+        "allowedComponents": [],
+        "allowedCategories": ["icons"]
+      },
+      "iconOnly": {
+        "type": "BOOLEAN",
+        "name": "Icon Only",
+        "description": "Hide label, show only icon (requires iconLeft)",
+        "defaultValue": false
+      }
+    },
+    "groups": [
+      {
+        "id": "content",
+        "name": "Content",
+        "properties": ["label", "iconLeft", "iconRight", "iconOnly"]
+      },
+      {
+        "id": "style",
+        "name": "Style",
+        "properties": ["variant", "size", "fullWidth"]
+      },
+      {
+        "id": "state",
+        "name": "State",
+        "properties": ["disabled", "loading"]
+      }
+    ],
+    "order": ["label", "variant", "size", "fullWidth", "disabled", "loading", "iconLeft", "iconRight", "iconOnly"]
+  },
+
+  "variants": [
+    {
+      "id": "primary-small",
+      "name": "Primary / Small",
+      "propertyValues": { "variant": "primary", "size": "small" },
+      "structure": {
+        "root": {
+          "id": "btn-root",
+          "name": "Button",
+          "visible": true,
+          "locked": false,
+          "x": 0,
+          "y": 0,
+          "width": 80,
+          "height": 32,
+          "rotation": 0,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.39, "g": 0.2, "b": 0.9, "a": 1 } }],
+          "strokes": [],
+          "strokeWeight": 0,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "effects": [],
+          "clipsContent": false,
+          "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+          "cornerRadius": 6,
+          "autoLayout": {
+            "mode": "HORIZONTAL",
+            "itemSpacing": 6,
+            "padding": { "top": 8, "right": 14, "bottom": 8, "left": 14 },
+            "primaryAxisAlign": "CENTER",
+            "counterAxisAlign": "CENTER",
+            "primaryAxisSizing": "AUTO",
+            "counterAxisSizing": "AUTO",
+            "wrap": false
+          }
+        },
+        "nodes": {
+          "btn-label": {
+            "id": "btn-label",
+            "type": "TEXT",
+            "name": "Label",
+            "visible": true,
+            "locked": false,
+            "parentId": "btn-root",
+            "childIds": [],
+            "x": 14,
+            "y": 8,
+            "width": 52,
+            "height": 16,
+            "rotation": 0,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "strokes": [],
+            "strokeWeight": 0,
+            "strokeAlign": "OUTSIDE",
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "effects": [],
+            "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+            "characters": "Button",
+            "styleRanges": [{
+              "start": 0,
+              "end": 6,
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "fontSize": 13,
+              "lineHeight": "AUTO",
+              "letterSpacing": 0
+            }],
+            "textAutoResize": "WIDTH_AND_HEIGHT",
+            "textAlignHorizontal": "CENTER",
+            "textAlignVertical": "CENTER",
+            "propertyBindings": [{ "propertyId": "label", "targetPath": ["characters"], "transform": { "type": "DIRECT" } }]
+          }
+        },
+        "childIds": ["btn-label"]
+      }
+    },
+    {
+      "id": "primary-medium",
+      "name": "Primary / Medium",
+      "propertyValues": { "variant": "primary", "size": "medium" },
+      "structure": {
+        "root": {
+          "id": "btn-root",
+          "name": "Button",
+          "visible": true,
+          "locked": false,
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.39, "g": 0.2, "b": 0.9, "a": 1 } }],
+          "strokes": [],
+          "strokeWeight": 0,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "effects": [],
+          "clipsContent": false,
+          "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+          "cornerRadius": 8,
+          "autoLayout": {
+            "mode": "HORIZONTAL",
+            "itemSpacing": 8,
+            "padding": { "top": 12, "right": 20, "bottom": 12, "left": 20 },
+            "primaryAxisAlign": "CENTER",
+            "counterAxisAlign": "CENTER",
+            "primaryAxisSizing": "AUTO",
+            "counterAxisSizing": "AUTO",
+            "wrap": false
+          }
+        },
+        "nodes": {
+          "btn-label": {
+            "id": "btn-label",
+            "type": "TEXT",
+            "name": "Label",
+            "visible": true,
+            "locked": false,
+            "parentId": "btn-root",
+            "childIds": [],
+            "x": 20,
+            "y": 12,
+            "width": 60,
+            "height": 20,
+            "rotation": 0,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "strokes": [],
+            "strokeWeight": 0,
+            "strokeAlign": "OUTSIDE",
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "effects": [],
+            "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+            "characters": "Button",
+            "styleRanges": [{
+              "start": 0,
+              "end": 6,
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "fontSize": 14,
+              "lineHeight": "AUTO",
+              "letterSpacing": 0
+            }],
+            "textAutoResize": "WIDTH_AND_HEIGHT",
+            "textAlignHorizontal": "CENTER",
+            "textAlignVertical": "CENTER",
+            "propertyBindings": [{ "propertyId": "label", "targetPath": ["characters"], "transform": { "type": "DIRECT" } }]
+          }
+        },
+        "childIds": ["btn-label"]
+      }
+    },
+    {
+      "id": "secondary-medium",
+      "name": "Secondary / Medium",
+      "propertyValues": { "variant": "secondary", "size": "medium" },
+      "structure": {
+        "root": {
+          "id": "btn-root",
+          "name": "Button",
+          "visible": true,
+          "locked": false,
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.95, "g": 0.95, "b": 0.95, "a": 1 } }],
+          "strokes": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.8, "g": 0.8, "b": 0.8, "a": 1 } }],
+          "strokeWeight": 1,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "effects": [],
+          "clipsContent": false,
+          "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+          "cornerRadius": 8,
+          "autoLayout": {
+            "mode": "HORIZONTAL",
+            "itemSpacing": 8,
+            "padding": { "top": 12, "right": 20, "bottom": 12, "left": 20 },
+            "primaryAxisAlign": "CENTER",
+            "counterAxisAlign": "CENTER",
+            "primaryAxisSizing": "AUTO",
+            "counterAxisSizing": "AUTO",
+            "wrap": false
+          }
+        },
+        "nodes": {
+          "btn-label": {
+            "id": "btn-label",
+            "type": "TEXT",
+            "name": "Label",
+            "visible": true,
+            "locked": false,
+            "parentId": "btn-root",
+            "childIds": [],
+            "x": 20,
+            "y": 12,
+            "width": 60,
+            "height": 20,
+            "rotation": 0,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1 } }],
+            "strokes": [],
+            "strokeWeight": 0,
+            "strokeAlign": "OUTSIDE",
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "effects": [],
+            "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+            "characters": "Button",
+            "styleRanges": [{
+              "start": 0,
+              "end": 6,
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "fontSize": 14,
+              "lineHeight": "AUTO",
+              "letterSpacing": 0
+            }],
+            "textAutoResize": "WIDTH_AND_HEIGHT",
+            "textAlignHorizontal": "CENTER",
+            "textAlignVertical": "CENTER",
+            "propertyBindings": [{ "propertyId": "label", "targetPath": ["characters"], "transform": { "type": "DIRECT" } }]
+          }
+        },
+        "childIds": ["btn-label"]
+      }
+    },
+    {
+      "id": "destructive-medium",
+      "name": "Destructive / Medium",
+      "propertyValues": { "variant": "destructive", "size": "medium" },
+      "structure": {
+        "root": {
+          "id": "btn-root",
+          "name": "Button",
+          "visible": true,
+          "locked": false,
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 44,
+          "rotation": 0,
+          "opacity": 1,
+          "blendMode": "NORMAL",
+          "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.9, "g": 0.25, "b": 0.25, "a": 1 } }],
+          "strokes": [],
+          "strokeWeight": 0,
+          "strokeAlign": "INSIDE",
+          "strokeCap": "NONE",
+          "strokeJoin": "MITER",
+          "effects": [],
+          "clipsContent": false,
+          "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+          "cornerRadius": 8,
+          "autoLayout": {
+            "mode": "HORIZONTAL",
+            "itemSpacing": 8,
+            "padding": { "top": 12, "right": 20, "bottom": 12, "left": 20 },
+            "primaryAxisAlign": "CENTER",
+            "counterAxisAlign": "CENTER",
+            "primaryAxisSizing": "AUTO",
+            "counterAxisSizing": "AUTO",
+            "wrap": false
+          }
+        },
+        "nodes": {
+          "btn-label": {
+            "id": "btn-label",
+            "type": "TEXT",
+            "name": "Label",
+            "visible": true,
+            "locked": false,
+            "parentId": "btn-root",
+            "childIds": [],
+            "x": 20,
+            "y": 12,
+            "width": 60,
+            "height": 20,
+            "rotation": 0,
+            "opacity": 1,
+            "blendMode": "NORMAL",
+            "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+            "strokes": [],
+            "strokeWeight": 0,
+            "strokeAlign": "OUTSIDE",
+            "strokeCap": "NONE",
+            "strokeJoin": "MITER",
+            "effects": [],
+            "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+            "characters": "Delete",
+            "styleRanges": [{
+              "start": 0,
+              "end": 6,
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "fontSize": 14,
+              "lineHeight": "AUTO",
+              "letterSpacing": 0
+            }],
+            "textAutoResize": "WIDTH_AND_HEIGHT",
+            "textAlignHorizontal": "CENTER",
+            "textAlignVertical": "CENTER",
+            "propertyBindings": [{ "propertyId": "label", "targetPath": ["characters"], "transform": { "type": "DIRECT" } }]
+          }
+        },
+        "childIds": ["btn-label"]
+      }
+    }
+  ],
+
+  "structure": {
+    "root": {
+      "id": "btn-root",
+      "name": "Button",
+      "visible": true,
+      "locked": false,
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 44,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 0.39, "g": 0.2, "b": 0.9, "a": 1 } }],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+      "cornerRadius": 8,
+      "autoLayout": {
+        "mode": "HORIZONTAL",
+        "itemSpacing": 8,
+        "padding": { "top": 12, "right": 20, "bottom": 12, "left": 20 },
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER",
+        "primaryAxisSizing": "AUTO",
+        "counterAxisSizing": "AUTO",
+        "wrap": false
+      }
+    },
+    "nodes": {
+      "btn-label": {
+        "id": "btn-label",
+        "type": "TEXT",
+        "name": "Label",
+        "visible": true,
+        "locked": false,
+        "parentId": "btn-root",
+        "childIds": [],
+        "x": 20,
+        "y": 12,
+        "width": 60,
+        "height": 20,
+        "rotation": 0,
+        "opacity": 1,
+        "blendMode": "NORMAL",
+        "fills": [{ "type": "SOLID", "visible": true, "opacity": 1, "color": { "r": 1, "g": 1, "b": 1, "a": 1 } }],
+        "strokes": [],
+        "strokeWeight": 0,
+        "strokeAlign": "OUTSIDE",
+        "strokeCap": "NONE",
+        "strokeJoin": "MITER",
+        "effects": [],
+        "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+        "characters": "Button",
+        "styleRanges": [{
+          "start": 0,
+          "end": 6,
+          "fontFamily": "Inter",
+          "fontWeight": 600,
+          "fontSize": 14,
+          "lineHeight": "AUTO",
+          "letterSpacing": 0
+        }],
+        "textAutoResize": "WIDTH_AND_HEIGHT",
+        "textAlignHorizontal": "CENTER",
+        "textAlignVertical": "CENTER",
+        "propertyBindings": [{ "propertyId": "label", "targetPath": ["characters"], "transform": { "type": "DIRECT" } }]
+      }
+    },
+    "childIds": ["btn-label"]
+  },
+
+  "documentation": {
+    "description": "# Button Component\n\nThe Button component is the primary interactive element for triggering actions. It supports multiple visual variants, sizes, and states.\n\n## Features\n\n- **Multiple variants**: Primary, Secondary, Ghost, Destructive\n- **Three sizes**: Small (32px), Medium (44px), Large (52px)\n- **Icon support**: Left icon, right icon, or icon-only mode\n- **States**: Hover, Pressed, Focused, Disabled, Loading\n- **Full accessibility**: ARIA labels, keyboard navigation, focus management",
+
+    "usage": [
+      {
+        "title": "Primary Actions",
+        "description": "Use primary buttons for the main call-to-action on a page or in a form. Limit to one per view."
+      },
+      {
+        "title": "Secondary Actions",
+        "description": "Use secondary buttons for alternative or less prominent actions that don't compete with the primary action."
+      },
+      {
+        "title": "Destructive Actions",
+        "description": "Use destructive buttons for actions that delete data, disconnect services, or have significant consequences. Always confirm destructive actions."
+      },
+      {
+        "title": "Ghost Buttons",
+        "description": "Use ghost buttons for tertiary actions or in dense UI where outlined buttons would be too prominent."
+      }
+    ],
+
+    "guidelines": [
+      {
+        "type": "do",
+        "title": "Use clear, action-oriented labels",
+        "description": "Button labels should clearly describe the action: 'Save Changes', 'Add to Cart', 'Download PDF'"
+      },
+      {
+        "type": "do",
+        "title": "Maintain visual hierarchy",
+        "description": "One primary button per view, use secondary for alternative actions"
+      },
+      {
+        "type": "do",
+        "title": "Show loading state for async actions",
+        "description": "When an action takes more than 300ms, show the loading spinner"
+      },
+      {
+        "type": "dont",
+        "title": "Avoid vague labels",
+        "description": "Don't use 'Click Here', 'Submit', or 'OK' - be specific about what happens"
+      },
+      {
+        "type": "dont",
+        "title": "Don't disable without explanation",
+        "description": "If a button must be disabled, provide tooltip explaining why"
+      },
+      {
+        "type": "caution",
+        "title": "Consider touch targets",
+        "description": "Minimum touch target is 44x44px - use at least 'medium' size on mobile"
+      }
+    ],
+
+    "codeExamples": [
+      {
+        "title": "React - Basic",
+        "language": "tsx",
+        "code": "import { Button } from '@acme/ui';\n\n<Button variant=\"primary\" size=\"medium\">\n  Save Changes\n</Button>"
+      },
+      {
+        "title": "React - With Icons",
+        "language": "tsx",
+        "code": "import { Button } from '@acme/ui';\nimport { PlusIcon, ArrowRightIcon } from '@acme/icons';\n\n<Button\n  variant=\"primary\"\n  iconLeft={<PlusIcon />}\n>\n  Add Item\n</Button>\n\n<Button\n  variant=\"secondary\"\n  iconRight={<ArrowRightIcon />}\n>\n  Continue\n</Button>"
+      },
+      {
+        "title": "React - Loading State",
+        "language": "tsx",
+        "code": "const [loading, setLoading] = useState(false);\n\n<Button\n  variant=\"primary\"\n  loading={loading}\n  onClick={async () => {\n    setLoading(true);\n    await saveData();\n    setLoading(false);\n  }}\n>\n  {loading ? 'Saving...' : 'Save'}\n</Button>"
+      },
+      {
+        "title": "SwiftUI",
+        "language": "swift",
+        "code": "import AcmeUI\n\nstruct ContentView: View {\n    var body: some View {\n        Button(\"Save Changes\") {\n            saveData()\n        }\n        .buttonStyle(.acmePrimary)\n        .buttonSize(.medium)\n    }\n}"
+      },
+      {
+        "title": "Kotlin Compose",
+        "language": "kotlin",
+        "code": "import com.acme.ui.Button\nimport com.acme.ui.ButtonVariant\n\n@Composable\nfun SaveButton() {\n    Button(\n        text = \"Save Changes\",\n        variant = ButtonVariant.Primary,\n        onClick = { saveData() }\n    )\n}"
+      }
+    ],
+
+    "relatedComponents": ["IconButton", "LinkButton", "ButtonGroup", "ToggleButton"],
+
+    "changelog": [
+      {
+        "version": "2.1.0",
+        "date": "2026-01-03",
+        "changes": ["Added iconOnly mode", "Improved focus ring visibility", "Fixed loading spinner alignment"]
+      },
+      {
+        "version": "2.0.0",
+        "date": "2025-09-15",
+        "changes": ["Breaking: Renamed 'danger' variant to 'destructive'", "Added ghost variant", "New animation system for states"],
+        "breaking": true
+      },
+      {
+        "version": "1.0.0",
+        "date": "2025-06-15",
+        "changes": ["Initial release"]
+      }
+    ],
+
+    "links": [
+      {
+        "title": "Design Specifications",
+        "url": "https://design.acme.com/components/button",
+        "type": "documentation"
+      },
+      {
+        "title": "Storybook",
+        "url": "https://storybook.acme.com/?path=/story/button",
+        "type": "storybook"
+      },
+      {
+        "title": "GitHub",
+        "url": "https://github.com/acme/components/tree/main/src/Button",
+        "type": "github"
+      }
+    ]
+  },
+
+  "accessibility": {
+    "role": "button",
+    "label": { "propertyId": "label" },
+    "keyboard": {
+      "focusable": true,
+      "shortcuts": [
+        { "key": "Enter", "action": "activate", "description": "Activates the button" },
+        { "key": "Space", "action": "activate", "description": "Activates the button" }
+      ]
+    },
+    "focus": {
+      "visibleStyle": "ring",
+      "returnFocus": true
+    },
+    "announcements": [
+      { "trigger": "state-change", "message": { "propertyId": "label" }, "priority": "polite" }
+    ],
+    "minTouchTarget": 44,
+    "contrastLevel": "AA"
+  },
+
+  "states": [
+    {
+      "id": "hover",
+      "name": "Hover",
+      "trigger": { "type": "HOVER" },
+      "overrides": [
+        { "nodeId": "btn-root", "path": ["fills", "0", "color"], "value": { "r": 0.35, "g": 0.16, "b": 0.85, "a": 1 } }
+      ],
+      "transition": { "duration": 150, "easing": "ease-out" }
+    },
+    {
+      "id": "pressed",
+      "name": "Pressed",
+      "trigger": { "type": "PRESSED" },
+      "overrides": [
+        { "nodeId": "btn-root", "path": ["fills", "0", "color"], "value": { "r": 0.31, "g": 0.12, "b": 0.75, "a": 1 } }
+      ],
+      "transition": { "duration": 50, "easing": "ease-in" }
+    },
+    {
+      "id": "focused",
+      "name": "Focused",
+      "trigger": { "type": "FOCUSED" },
+      "overrides": [
+        {
+          "nodeId": "btn-root",
+          "path": ["effects"],
+          "value": [{
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "color": { "r": 0.39, "g": 0.2, "b": 0.9, "a": 0.5 },
+            "offset": { "x": 0, "y": 0 },
+            "radius": 0,
+            "spread": 3
+          }]
+        }
+      ],
+      "transition": { "duration": 100, "easing": "ease-out" }
+    },
+    {
+      "id": "disabled",
+      "name": "Disabled",
+      "trigger": { "type": "DISABLED" },
+      "overrides": [
+        { "nodeId": "btn-root", "path": ["opacity"], "value": 0.5 }
+      ]
+    },
+    {
+      "id": "loading",
+      "name": "Loading",
+      "trigger": { "type": "LOADING" },
+      "overrides": [
+        { "nodeId": "btn-label", "path": ["visible"], "value": false }
+      ]
+    }
+  ],
+
+  "codeOutputs": [
+    { "platform": "react", "path": "Button.tsx", "generatedAt": "2026-01-03T14:30:00Z", "sourceHash": "a1b2c3d4" },
+    { "platform": "swiftui", "path": "Button.swift", "generatedAt": "2026-01-03T14:30:00Z", "sourceHash": "a1b2c3d4" },
+    { "platform": "compose", "path": "Button.kt", "generatedAt": "2026-01-03T14:30:00Z", "sourceHash": "a1b2c3d4" }
+  ],
+
+  "exportPresets": [
+    { "format": "PNG", "suffix": "", "constraint": { "type": "SCALE", "value": 1 } },
+    { "format": "PNG", "suffix": "@2x", "constraint": { "type": "SCALE", "value": 2 } },
+    { "format": "SVG", "suffix": "", "constraint": { "type": "SCALE", "value": 1 } }
+  ],
+
+  "meta": {
+    "figmaNodeId": "1234:5678",
+    "importedFrom": "figma",
+    "lastSyncedAt": "2025-12-01T10:00:00Z"
+  }
+}
