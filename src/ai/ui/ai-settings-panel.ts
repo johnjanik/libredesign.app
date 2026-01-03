@@ -8,6 +8,7 @@ import type { ProviderType, ToolTierConfig } from '../config/provider-config';
 import { getConfigManager, testProviderConnection } from '../config';
 import { AVAILABLE_MODELS } from '../config/provider-config';
 import { TOOL_TIERS } from '../tools/tool-categories';
+import { getOAuthClient } from '../auth/oauth-client';
 
 /**
  * Settings panel options
@@ -283,8 +284,16 @@ export class AISettingsPanel {
     const container = document.createElement('div');
     container.style.cssText = 'display: flex; flex-direction: column; gap: 16px;';
 
-    // API Key (for cloud providers)
-    if (provider === 'anthropic' || provider === 'openai') {
+    // Authentication (for cloud providers)
+    if (provider === 'anthropic') {
+      // Add OAuth sign-in option for Anthropic
+      container.appendChild(this.createAnthropicAuthSection());
+
+      // Also show API key option as alternative
+      const apiKey = this.configManager.getApiKey(provider);
+      const apiKeyRow = this.createApiKeyInput(provider, apiKey);
+      container.appendChild(apiKeyRow);
+    } else if (provider === 'openai') {
       const apiKey = this.configManager.getApiKey(provider);
       const apiKeyRow = this.createApiKeyInput(provider, apiKey);
       container.appendChild(apiKeyRow);
@@ -720,6 +729,187 @@ export class AISettingsPanel {
 
     row.appendChild(inputWrapper);
     return row;
+  }
+
+  private createAnthropicAuthSection(): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border-radius: 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+
+    const oauthClient = getOAuthClient();
+    const isAuthenticated = oauthClient.isAuthenticated();
+
+    // Title
+    const titleRow = document.createElement('div');
+    titleRow.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+    const claudeIcon = document.createElement('span');
+    claudeIcon.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+    </svg>`;
+    claudeIcon.style.cssText = 'color: var(--designlibre-accent, #a855f7);';
+    titleRow.appendChild(claudeIcon);
+
+    const title = document.createElement('span');
+    title.textContent = 'Sign in with Claude';
+    title.style.cssText = `
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+    titleRow.appendChild(title);
+
+    section.appendChild(titleRow);
+
+    // Description
+    const desc = document.createElement('p');
+    desc.style.cssText = `
+      font-size: 12px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin: 0;
+      line-height: 1.5;
+    `;
+
+    if (isAuthenticated) {
+      desc.textContent = 'You are signed in with your Claude account. Your designs can use Claude AI.';
+    } else {
+      desc.textContent = 'Sign in with your Anthropic account to use Claude directly in DesignLibre. This uses the same authentication as Claude Code.';
+    }
+    section.appendChild(desc);
+
+    // Button row
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display: flex; gap: 8px;';
+
+    if (isAuthenticated) {
+      // Show sign out button
+      const signOutBtn = document.createElement('button');
+      signOutBtn.textContent = 'Sign Out';
+      signOutBtn.style.cssText = `
+        padding: 10px 20px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        background: transparent;
+        color: var(--designlibre-text-secondary, #a0a0a0);
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+      `;
+      signOutBtn.addEventListener('mouseover', () => {
+        signOutBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      });
+      signOutBtn.addEventListener('mouseout', () => {
+        signOutBtn.style.background = 'transparent';
+      });
+      signOutBtn.addEventListener('click', () => {
+        oauthClient.signOut();
+        // Refresh section
+        const parent = section.parentElement;
+        if (parent) {
+          const newSection = this.createAnthropicAuthSection();
+          parent.replaceChild(newSection, section);
+        }
+      });
+      btnRow.appendChild(signOutBtn);
+
+      // Status indicator
+      const status = document.createElement('span');
+      status.innerHTML = `${ICONS.check} Connected`;
+      status.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--designlibre-success, #22c55e);
+        font-size: 12px;
+      `;
+      btnRow.appendChild(status);
+    } else {
+      // Show sign in button
+      const signInBtn = document.createElement('button');
+      signInBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg> Sign in with Claude`;
+      signInBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 20px;
+        border: none;
+        background: linear-gradient(135deg, #a855f7, #6366f1);
+        color: white;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      `;
+      signInBtn.addEventListener('mouseover', () => {
+        signInBtn.style.opacity = '0.9';
+      });
+      signInBtn.addEventListener('mouseout', () => {
+        signInBtn.style.opacity = '1';
+      });
+      signInBtn.addEventListener('click', async () => {
+        signInBtn.disabled = true;
+        signInBtn.innerHTML = `${ICONS.spinner} Signing in...`;
+
+        try {
+          await oauthClient.startAuth();
+          // Refresh section
+          const parent = section.parentElement;
+          if (parent) {
+            const newSection = this.createAnthropicAuthSection();
+            parent.replaceChild(newSection, section);
+          }
+        } catch (error) {
+          signInBtn.disabled = false;
+          signInBtn.innerHTML = `Sign in with Claude`;
+          console.error('OAuth error:', error);
+          desc.textContent = `Error: ${error instanceof Error ? error.message : 'Authentication failed'}`;
+          desc.style.color = 'var(--designlibre-error, #ef4444)';
+        }
+      });
+      btnRow.appendChild(signInBtn);
+    }
+
+    section.appendChild(btnRow);
+
+    // Divider with "or use API key"
+    const divider = document.createElement('div');
+    divider.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+    `;
+    const line1 = document.createElement('div');
+    line1.style.cssText = 'flex: 1; height: 1px; background: var(--designlibre-border, #3d3d3d);';
+    const orText = document.createElement('span');
+    orText.textContent = 'or use API key';
+    orText.style.cssText = `
+      font-size: 11px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    const line2 = document.createElement('div');
+    line2.style.cssText = 'flex: 1; height: 1px; background: var(--designlibre-border, #3d3d3d);';
+    divider.appendChild(line1);
+    divider.appendChild(orText);
+    divider.appendChild(line2);
+    section.appendChild(divider);
+
+    return section;
   }
 
   private createSelectRow(

@@ -19,8 +19,12 @@ import type {
  * Anthropic-specific configuration
  */
 export interface AnthropicConfig extends AIProviderConfig {
-  /** Anthropic API key */
-  apiKey: string;
+  /** Anthropic API key (if using API key auth) */
+  apiKey?: string;
+  /** OAuth access token (if using OAuth auth) */
+  accessToken?: string;
+  /** Function to get fresh access token (for OAuth refresh) */
+  getAccessToken?: () => Promise<string | null>;
   /** API base URL (for proxies) */
   baseUrl?: string;
   /** Model to use (default: claude-sonnet-4-20250514) */
@@ -116,11 +120,12 @@ export class AnthropicProvider implements AIProvider {
   }
 
   async connect(): Promise<void> {
-    // Validate API key by making a minimal request
+    // Validate credentials by making a minimal request
     try {
+      const headers = await this.getHeaders();
       const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
         method: 'POST',
-        headers: this.getHeaders(),
+        headers,
         body: JSON.stringify({
           model: this.config.model,
           max_tokens: 1,
@@ -183,9 +188,10 @@ export class AnthropicProvider implements AIProvider {
       body['tools'] = anthropicTools;
     }
 
+    const headers = await this.getHeaders();
     const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -230,9 +236,10 @@ export class AnthropicProvider implements AIProvider {
       body['tools'] = anthropicTools;
     }
 
+    const headers = await this.getHeaders();
     const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(body),
     });
 
@@ -312,12 +319,28 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 
-  private getHeaders(): Record<string, string> {
-    return {
+  private async getHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'x-api-key': this.config.apiKey,
       'anthropic-version': '2023-06-01',
     };
+
+    // Use OAuth token if available, otherwise use API key
+    if (this.config.getAccessToken) {
+      const token = await this.config.getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        return headers;
+      }
+    }
+
+    if (this.config.accessToken) {
+      headers['Authorization'] = `Bearer ${this.config.accessToken}`;
+    } else if (this.config.apiKey) {
+      headers['x-api-key'] = this.config.apiKey;
+    }
+
+    return headers;
   }
 
   private convertMessages(messages: AIMessage[]): AnthropicMessage[] {

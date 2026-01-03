@@ -188,6 +188,19 @@ export {
   testProviderConnection,
 } from './config';
 
+// Authentication
+export {
+  AnthropicOAuthClient,
+  getOAuthClient,
+  createOAuthClient,
+} from './auth';
+
+export type {
+  OAuthConfig,
+  OAuthTokens,
+  AuthState,
+} from './auth';
+
 // Tools
 export {
   TOOL_CATEGORIES,

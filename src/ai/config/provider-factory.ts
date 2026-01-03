@@ -19,14 +19,28 @@ import type {
   LlamaCppProviderConfig,
 } from './provider-config';
 import { getConfigManager } from './config-manager';
+import { getOAuthClient } from '../auth/oauth-client';
 
 /**
  * Create an Anthropic provider from configuration
  */
 export function createAnthropicFromConfig(config: AnthropicProviderConfig): AnthropicProvider {
   const configManager = getConfigManager();
-  const apiKey = config.apiKey || configManager.getApiKey('anthropic');
+  const oauthClient = getOAuthClient();
 
+  // Check for OAuth authentication first
+  if (oauthClient.isAuthenticated()) {
+    return new AnthropicProvider({
+      getAccessToken: () => oauthClient.getAccessToken(),
+      baseUrl: config.baseUrl,
+      model: config.defaultModel,
+      maxTokens: config.maxTokens,
+      temperature: config.temperature,
+    });
+  }
+
+  // Fall back to API key
+  const apiKey = config.apiKey || configManager.getApiKey('anthropic');
   return new AnthropicProvider({
     apiKey,
     baseUrl: config.baseUrl,
