@@ -268,6 +268,8 @@ export class OllamaProvider implements AIProvider {
 
     // Parse tool calls if present
     const toolCalls: AIToolCall[] = [];
+    let content = data.message.content;
+
     if (data.message.tool_calls) {
       for (let i = 0; i < data.message.tool_calls.length; i++) {
         const tc = data.message.tool_calls[i];
@@ -281,6 +283,16 @@ export class OllamaProvider implements AIProvider {
       }
     }
 
+    // Fallback: Parse tool calls from text content if model doesn't use native format
+    // Some models output JSON tool calls as plain text instead of using tool_calls
+    if (toolCalls.length === 0 && content) {
+      const parsed = this.parseToolCallsFromText(content, options?.tools ?? []);
+      if (parsed.toolCalls.length > 0) {
+        toolCalls.push(...parsed.toolCalls);
+        content = parsed.remainingContent;
+      }
+    }
+
     // Determine stop reason
     let stopReason: AIResponse['stopReason'] = 'end_turn';
     if (toolCalls.length > 0) {
@@ -290,7 +302,7 @@ export class OllamaProvider implements AIProvider {
     }
 
     return {
-      content: data.message.content,
+      content,
       toolCalls,
       stopReason,
       usage: {
@@ -318,6 +330,58 @@ export class OllamaProvider implements AIProvider {
         parameters: params,
       },
     };
+  }
+
+  /**
+   * Parse tool calls from text content when model outputs JSON instead of using native format.
+   * Handles common patterns like {"name": "tool_name", "arguments": {...}}
+   */
+  private parseToolCallsFromText(
+    content: string,
+    availableTools: AITool[]
+  ): { toolCalls: AIToolCall[]; remainingContent: string } {
+    const toolCalls: AIToolCall[] = [];
+    let remainingContent = content;
+
+    // Build a map of tool names (including normalized versions without underscores)
+    const toolNameMap = new Map<string, string>();
+    for (const tool of availableTools) {
+      toolNameMap.set(tool.name.toLowerCase(), tool.name);
+      // Also map versions without underscores (e.g., "importimageas_leaf" -> "import_image_as_leaf")
+      toolNameMap.set(tool.name.toLowerCase().replace(/_/g, ''), tool.name);
+    }
+
+    // Try to find JSON objects that look like tool calls
+    // Pattern: {"name": "...", "arguments": {...}}
+    const jsonPattern = /\{[\s\S]*?"name"[\s\S]*?"arguments"[\s\S]*?\}/g;
+    const matches = content.match(jsonPattern);
+
+    if (matches) {
+      for (const match of matches) {
+        try {
+          const parsed = JSON.parse(match);
+          if (parsed.name && typeof parsed.arguments === 'object') {
+            // Normalize the tool name (handle missing underscores)
+            const normalizedName = parsed.name.toLowerCase().replace(/_/g, '');
+            const actualToolName = toolNameMap.get(normalizedName) || toolNameMap.get(parsed.name.toLowerCase());
+
+            if (actualToolName) {
+              toolCalls.push({
+                id: `ollama-text-tool-${toolCalls.length}`,
+                name: actualToolName,
+                arguments: parsed.arguments,
+              });
+              // Remove the JSON from content
+              remainingContent = remainingContent.replace(match, '').trim();
+            }
+          }
+        } catch {
+          // Invalid JSON, skip
+        }
+      }
+    }
+
+    return { toolCalls, remainingContent };
   }
 
   async *streamMessage(
@@ -369,6 +433,8 @@ export class OllamaProvider implements AIProvider {
     const decoder = new TextDecoder();
     let buffer = '';
     let toolCallIndex = 0;
+    let accumulatedContent = ''; // Accumulate content to check for tool calls at end
+    let hasNativeToolCalls = false;
 
     try {
       while (true) {
@@ -386,11 +452,13 @@ export class OllamaProvider implements AIProvider {
             const data: OllamaChatResponse = JSON.parse(line);
 
             if (data.message?.content) {
+              accumulatedContent += data.message.content;
               yield { type: 'text', text: data.message.content };
             }
 
             // Handle tool calls in streaming response
             if (data.message?.tool_calls) {
+              hasNativeToolCalls = true;
               for (const tc of data.message.tool_calls) {
                 yield {
                   type: 'tool_call_start',
@@ -414,6 +482,23 @@ export class OllamaProvider implements AIProvider {
             }
 
             if (data.done) {
+              // Before yielding done, check for tool calls in text if none were native
+              if (!hasNativeToolCalls && accumulatedContent) {
+                const parsed = this.parseToolCallsFromText(accumulatedContent, options?.tools ?? []);
+                for (const tc of parsed.toolCalls) {
+                  yield {
+                    type: 'tool_call_start',
+                    toolCall: { id: tc.id, name: tc.name },
+                    index: toolCallIndex,
+                  };
+                  yield {
+                    type: 'tool_call_end',
+                    toolCall: tc,
+                    index: toolCallIndex,
+                  };
+                  toolCallIndex++;
+                }
+              }
               yield { type: 'done' };
             }
           } catch {
@@ -427,9 +512,11 @@ export class OllamaProvider implements AIProvider {
         try {
           const data: OllamaChatResponse = JSON.parse(buffer);
           if (data.message?.content) {
+            accumulatedContent += data.message.content;
             yield { type: 'text', text: data.message.content };
           }
           if (data.message?.tool_calls) {
+            hasNativeToolCalls = true;
             for (const tc of data.message.tool_calls) {
               yield {
                 type: 'tool_call_start',
@@ -452,6 +539,23 @@ export class OllamaProvider implements AIProvider {
             }
           }
           if (data.done) {
+            // Before yielding done, check for tool calls in text if none were native
+            if (!hasNativeToolCalls && accumulatedContent) {
+              const parsed = this.parseToolCallsFromText(accumulatedContent, options?.tools ?? []);
+              for (const tc of parsed.toolCalls) {
+                yield {
+                  type: 'tool_call_start',
+                  toolCall: { id: tc.id, name: tc.name },
+                  index: toolCallIndex,
+                };
+                yield {
+                  type: 'tool_call_end',
+                  toolCall: tc,
+                  index: toolCallIndex,
+                };
+                toolCallIndex++;
+              }
+            }
             yield { type: 'done' };
           }
         } catch {
