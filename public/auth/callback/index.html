@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authenticating... - DesignLibre</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                   Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      padding: 3rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .success-icon {
+      width: 50px;
+      height: 50px;
+      margin: 0 auto 1.5rem;
+      background: #4caf50;
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .success-icon svg {
+      width: 30px;
+      height: 30px;
+      fill: white;
+    }
+
+    .success-icon.visible {
+      display: flex;
+    }
+
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c00;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+      font-size: 0.9rem;
+    }
+
+    .error.visible {
+      display: block;
+    }
+
+    .retry-link {
+      display: none;
+      margin-top: 1rem;
+    }
+
+    .retry-link.visible {
+      display: block;
+    }
+
+    .retry-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .retry-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div class="spinner" id="spinner"></div>
+    <div class="success-icon" id="success-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    </div>
+    <h1 id="title">Authenticating...</h1>
+    <p id="message">Please wait while we complete the sign-in process.</p>
+    <div class="error" id="error"></div>
+    <div class="retry-link" id="retry">
+      <a href="#" onclick="window.close(); return false;">Close this window</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // Parse URL parameters
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+
+      // UI elements
+      const spinner = document.getElementById('spinner');
+      const successIcon = document.getElementById('success-icon');
+      const title = document.getElementById('title');
+      const message = document.getElementById('message');
+      const errorDiv = document.getElementById('error');
+      const retryDiv = document.getElementById('retry');
+
+      function showError(msg) {
+        spinner.style.display = 'none';
+        title.textContent = 'Authentication Failed';
+        message.textContent = 'Unable to complete sign-in.';
+        errorDiv.textContent = msg;
+        errorDiv.classList.add('visible');
+        retryDiv.classList.add('visible');
+      }
+
+      function showSuccess() {
+        spinner.style.display = 'none';
+        successIcon.classList.add('visible');
+        title.textContent = 'Success!';
+        message.textContent = 'Redirecting back to DesignLibre...';
+      }
+
+      // Handle OAuth error response from Anthropic
+      if (error) {
+        const errorMessages = {
+          'access_denied': 'You declined the authorization request.',
+          'invalid_request': 'The authorization request was invalid.',
+          'unauthorized_client': 'This application is not authorized.',
+          'unsupported_response_type': 'The response type is not supported.',
+          'invalid_scope': 'The requested scope is invalid.',
+          'server_error': 'The authorization server encountered an error.',
+          'temporarily_unavailable': 'The server is temporarily unavailable.',
+        };
+        showError(errorDescription || errorMessages[error] || error);
+        return;
+      }
+
+      // Validate required parameters
+      if (!code) {
+        showError('Missing authorization code. Please try signing in again.');
+        return;
+      }
+
+      if (!state) {
+        showError('Missing state parameter. This may be a security issue.');
+        return;
+      }
+
+      // Check if we have an opener window
+      if (!window.opener) {
+        showError('This page must be opened from DesignLibre. Please close this window and try again.');
+        return;
+      }
+
+      // Post message to parent window
+      try {
+        window.opener.postMessage({
+          type: 'oauth_callback',
+          code: code,
+          state: state
+        }, window.location.origin);
+
+        showSuccess();
+
+        // Auto-close after a short delay to show success message
+        setTimeout(function() {
+          window.close();
+        }, 1500);
+
+        // Fallback: if window doesn't close, show manual close link
+        setTimeout(function() {
+          if (!window.closed) {
+            message.textContent = 'You can now close this window.';
+            retryDiv.classList.add('visible');
+          }
+        }, 3000);
+
+      } catch (err) {
+        console.error('OAuth callback error:', err);
+        showError('Failed to communicate with the application. Please close this window and try again.');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,730 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% Colors
+\definecolor{anthropicpurple}{RGB}{103, 58, 183}
+\definecolor{codebg}{RGB}{245, 245, 245}
+\definecolor{codeframe}{RGB}{200, 200, 200}
+\definecolor{linkblue}{RGB}{0, 102, 204}
+\definecolor{warnorange}{RGB}{255, 152, 0}
+\definecolor{successgreen}{RGB}{76, 175, 80}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=anthropicpurple,
+    urlcolor=linkblue,
+    pdftitle={DesignLibre OAuth Setup Guide},
+    pdfauthor={DesignLibre Team}
+}
+
+% Code listing setup
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    breaklines=true,
+    breakatwhitespace=true,
+    showstringspaces=false,
+    tabsize=2,
+    captionpos=b,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{anthropicpurple}\bfseries,
+    stringstyle=\color{successgreen},
+    commentstyle=\color{gray}\itshape
+}
+
+% Custom boxes
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{infobox}{
+    colback=blue!5!white,
+    colframe=linkblue,
+    title=\textbf{Info},
+    fonttitle=\bfseries,
+    breakable
+}
+
+\newtcolorbox{warningbox}{
+    colback=orange!5!white,
+    colframe=warnorange,
+    title=\textbf{Warning},
+    fonttitle=\bfseries,
+    breakable
+}
+
+\newtcolorbox{successbox}{
+    colback=green!5!white,
+    colframe=successgreen,
+    title=\textbf{Success},
+    fonttitle=\bfseries,
+    breakable
+}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{anthropicpurple}{DesignLibre}}
+\fancyhead[R]{OAuth Setup Guide}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Title formatting
+\titleformat{\section}
+    {\Large\bfseries\color{anthropicpurple}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\large\bfseries\color{anthropicpurple!80!black}}
+    {\thesubsection}{1em}{}
+
+\begin{document}
+
+% Title Page
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries\textcolor{anthropicpurple}{DesignLibre}\par}
+    \vspace{0.5cm}
+    {\Large OAuth Authentication Setup Guide\par}
+
+    \vspace{2cm}
+
+    {\large Integrating Claude API with OAuth 2.0 + PKCE\par}
+
+    \vspace{3cm}
+
+    \begin{tcolorbox}[colback=anthropicpurple!10!white,colframe=anthropicpurple,width=0.8\textwidth]
+        \centering
+        This guide covers:
+        \begin{itemize}[leftmargin=*]
+            \item Registering your application with Anthropic
+            \item Configuring OAuth client credentials
+            \item Creating the OAuth callback page
+            \item Testing the authentication flow
+        \end{itemize}
+    \end{tcolorbox}
+
+    \vfill
+
+    {\large Version 1.0\par}
+    {\large January 2026\par}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introduction}
+% =============================================================================
+
+DesignLibre integrates with Claude AI through Anthropic's API. While API keys provide a simple authentication method, OAuth 2.0 with PKCE (Proof Key for Code Exchange) offers a more secure, user-friendly authentication flow---similar to how Claude Code CLI authenticates users.
+
+\subsection{Why OAuth?}
+
+\begin{itemize}
+    \item \textbf{No API key management}: Users authenticate with their Anthropic account
+    \item \textbf{Secure}: PKCE prevents authorization code interception attacks
+    \item \textbf{User-friendly}: Familiar "Sign in with..." flow
+    \item \textbf{Token refresh}: Automatic token renewal without re-authentication
+    \item \textbf{Scoped access}: Request only the permissions needed
+\end{itemize}
+
+\subsection{Prerequisites}
+
+Before proceeding, ensure you have:
+
+\begin{enumerate}
+    \item An Anthropic account with API access
+    \item A deployed web application with HTTPS (required for OAuth)
+    \item Access to your web server to add the callback page
+\end{enumerate}
+
+\begin{warningbox}
+OAuth requires HTTPS in production. For local development, \texttt{localhost} is typically allowed, but production deployments must use a valid SSL certificate.
+\end{warningbox}
+
+% =============================================================================
+\section{Registering Your Application with Anthropic}
+% =============================================================================
+
+\subsection{Step 1: Access the Anthropic Console}
+
+Navigate to the Anthropic Console at:
+
+\begin{center}
+    \url{https://console.anthropic.com}
+\end{center}
+
+Sign in with your Anthropic account credentials.
+
+\subsection{Step 2: Navigate to OAuth Applications}
+
+\begin{enumerate}
+    \item Click on \textbf{Settings} in the left sidebar
+    \item Select \textbf{OAuth Applications} (or \textbf{API \& OAuth})
+    \item Click \textbf{Create New Application}
+\end{enumerate}
+
+\begin{infobox}
+If you don't see the OAuth Applications option, your account may need to be upgraded or you may need to request access from Anthropic. Contact \href{mailto:support@anthropic.com}{support@anthropic.com} for assistance.
+\end{infobox}
+
+\subsection{Step 3: Configure Application Details}
+
+Fill in the application registration form:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{8cm}|}
+\hline
+\textbf{Field} & \textbf{Value} \\
+\hline
+Application Name & DesignLibre \\
+\hline
+Description & AI-powered design tool with Claude integration \\
+\hline
+Application Type & Single Page Application (SPA) \\
+\hline
+Homepage URL & \texttt{https://your-domain.com} \\
+\hline
+Redirect URIs & \texttt{https://your-domain.com/auth/callback} \\
+\hline
+\end{tabular}
+\caption{OAuth Application Configuration}
+\end{table}
+
+\subsection{Step 4: Configure Redirect URIs}
+
+Add all redirect URIs where your application will receive OAuth callbacks:
+
+\begin{lstlisting}[language=bash,title=Example Redirect URIs]
+# Production
+https://designlibre.app/auth/callback
+https://www.designlibre.app/auth/callback
+
+# Staging
+https://staging.designlibre.app/auth/callback
+
+# Local Development
+http://localhost:3000/auth/callback
+http://localhost:5173/auth/callback
+\end{lstlisting}
+
+\begin{warningbox}
+Each environment needs its own redirect URI. The redirect URI in the OAuth request must \textbf{exactly match} one of the registered URIs---including trailing slashes and protocol.
+\end{warningbox}
+
+\subsection{Step 5: Request Scopes}
+
+Select the OAuth scopes your application needs:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|p{7cm}|c|}
+\hline
+\textbf{Scope} & \textbf{Description} & \textbf{Required} \\
+\hline
+\texttt{api:read} & Read access to Claude API & Yes \\
+\hline
+\texttt{api:write} & Write access (send messages) & Yes \\
+\hline
+\texttt{user:read} & Read user profile information & Optional \\
+\hline
+\end{tabular}
+\caption{OAuth Scopes}
+\end{table}
+
+\subsection{Step 6: Obtain Client Credentials}
+
+After creating the application, you'll receive:
+
+\begin{itemize}
+    \item \textbf{Client ID}: A public identifier for your application
+    \item \textbf{Client Secret}: \textit{Not used for public clients with PKCE}
+\end{itemize}
+
+\begin{successbox}
+Save your \textbf{Client ID}! You'll need it to configure the OAuth client in DesignLibre.
+
+Example: \texttt{dl\_oauth\_abc123xyz789}
+\end{successbox}
+
+\subsection{Step 7: Update DesignLibre Configuration}
+
+Update the OAuth client configuration in your codebase:
+
+\begin{lstlisting}[language=JavaScript,title=src/ai/auth/oauth-client.ts]
+const ANTHROPIC_OAUTH_CONFIG: OAuthConfig = {
+  clientId: 'your-client-id-here',  // Replace with your Client ID
+  authorizationEndpoint: 'https://console.anthropic.com/oauth/authorize',
+  tokenEndpoint: 'https://console.anthropic.com/oauth/token',
+  redirectUri: `${window.location.origin}/auth/callback`,
+  scopes: ['api:read', 'api:write'],
+};
+\end{lstlisting}
+
+% =============================================================================
+\section{Creating the OAuth Callback Page}
+% =============================================================================
+
+The callback page receives the authorization code from Anthropic and posts it back to the parent window (your main application).
+
+\subsection{Step 1: Create the Callback HTML File}
+
+Create a new file at \texttt{/auth/callback/index.html} (or configure your router to serve this page at \texttt{/auth/callback}):
+
+\begin{lstlisting}[language=HTML,title=public/auth/callback/index.html]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authenticating... - DesignLibre</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                   Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      padding: 3rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1.5rem;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    h1 {
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      color: #666;
+      font-size: 0.95rem;
+    }
+
+    .error {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #c00;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .error.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner" id="spinner"></div>
+    <h1 id="title">Authenticating...</h1>
+    <p id="message">Please wait while we complete the sign-in process.</p>
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    (function() {
+      // Parse URL parameters
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const state = params.get('state');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+
+      // UI elements
+      const spinner = document.getElementById('spinner');
+      const title = document.getElementById('title');
+      const message = document.getElementById('message');
+      const errorDiv = document.getElementById('error');
+
+      function showError(msg) {
+        spinner.style.display = 'none';
+        title.textContent = 'Authentication Failed';
+        message.textContent = 'Unable to complete sign-in.';
+        errorDiv.textContent = msg;
+        errorDiv.classList.add('visible');
+      }
+
+      function showSuccess() {
+        spinner.style.display = 'none';
+        title.textContent = 'Success!';
+        message.textContent = 'You can close this window.';
+      }
+
+      // Handle OAuth error response
+      if (error) {
+        showError(errorDescription || error);
+        return;
+      }
+
+      // Validate required parameters
+      if (!code || !state) {
+        showError('Missing authorization code or state parameter.');
+        return;
+      }
+
+      // Post message to parent window
+      if (window.opener) {
+        try {
+          window.opener.postMessage({
+            type: 'oauth_callback',
+            code: code,
+            state: state
+          }, window.location.origin);
+
+          showSuccess();
+
+          // Auto-close after short delay
+          setTimeout(() => {
+            window.close();
+          }, 1500);
+        } catch (err) {
+          showError('Failed to communicate with the application.');
+        }
+      } else {
+        showError('This page must be opened from DesignLibre.');
+      }
+    })();
+  </script>
+</body>
+</html>
+\end{lstlisting}
+
+\subsection{Step 2: Understanding the Callback Flow}
+
+The callback page performs these steps:
+
+\begin{enumerate}
+    \item \textbf{Parse URL Parameters}: Extract \texttt{code} and \texttt{state} from the query string
+    \item \textbf{Validate State}: The state parameter prevents CSRF attacks
+    \item \textbf{Post to Parent}: Send the code to the opener window via \texttt{postMessage}
+    \item \textbf{Close Window}: Automatically close after successful handoff
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\begin{tcolorbox}[colback=white,colframe=anthropicpurple,width=0.9\textwidth]
+\begin{verbatim}
+    DesignLibre App                 Anthropic Console
+         |                                |
+         |----[1] Open popup------------->|
+         |                                |
+         |                    [2] User authenticates
+         |                                |
+         |<---[3] Redirect to callback----|
+         |       ?code=xxx&state=yyy      |
+         |                                |
+    Callback Page                         |
+         |                                |
+         |----[4] postMessage to parent   |
+         |                                |
+    DesignLibre App                       |
+         |                                |
+         |----[5] Exchange code for token-|
+         |                                |
+         |<---[6] Access token------------|
+         |                                |
+\end{verbatim}
+\end{tcolorbox}
+\caption{OAuth 2.0 + PKCE Flow Diagram}
+\end{figure}
+
+\subsection{Step 3: Security Considerations}
+
+\begin{warningbox}
+\textbf{Important Security Notes:}
+\begin{itemize}
+    \item Always validate the \texttt{origin} in \texttt{postMessage} handlers
+    \item Never log or expose the authorization code
+    \item Use HTTPS in production
+    \item The state parameter must match what was sent in the authorization request
+\end{itemize}
+\end{warningbox}
+
+\subsection{Step 4: Server Configuration}
+
+Ensure your web server serves the callback page correctly:
+
+\subsubsection{Nginx Configuration}
+
+\begin{lstlisting}[language=bash,title=nginx.conf]
+location /auth/callback {
+    try_files $uri $uri/ /auth/callback/index.html;
+}
+\end{lstlisting}
+
+\subsubsection{Apache Configuration}
+
+\begin{lstlisting}[language=bash,title=.htaccess]
+RewriteEngine On
+RewriteRule ^auth/callback$ /auth/callback/index.html [L]
+\end{lstlisting}
+
+\subsubsection{Vite/SPA Configuration}
+
+For single-page applications using Vite:
+
+\begin{lstlisting}[language=JavaScript,title=vite.config.ts]
+export default defineConfig({
+  // ... other config
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        callback: resolve(__dirname, 'auth/callback/index.html'),
+      },
+    },
+  },
+});
+\end{lstlisting}
+
+% =============================================================================
+\section{Testing the Authentication Flow}
+% =============================================================================
+
+\subsection{Step 1: Local Development Testing}
+
+\begin{enumerate}
+    \item Start your development server
+    \item Open the AI Assistant panel
+    \item Click "Sign in with Claude"
+    \item Verify the popup opens to Anthropic's authorization page
+    \item Complete authentication
+    \item Verify the callback page appears briefly
+    \item Verify the popup closes automatically
+    \item Check that the settings panel shows "Connected"
+\end{enumerate}
+
+\subsection{Step 2: Verify Token Storage}
+
+Open your browser's Developer Tools and check localStorage:
+
+\begin{lstlisting}[language=JavaScript,title=Browser Console]
+// Check if tokens are stored
+const tokenData = localStorage.getItem('designlibre:auth:anthropic');
+if (tokenData) {
+  const tokens = JSON.parse(atob(tokenData));
+  console.log('Access Token:', tokens.accessToken ? 'Present' : 'Missing');
+  console.log('Refresh Token:', tokens.refreshToken ? 'Present' : 'Missing');
+  console.log('Expires At:', new Date(tokens.expiresAt));
+}
+\end{lstlisting}
+
+\subsection{Step 3: Test API Calls}
+
+Verify that API calls use the OAuth token:
+
+\begin{enumerate}
+    \item Open Network tab in Developer Tools
+    \item Send a message in the AI Assistant
+    \item Find the request to \texttt{api.anthropic.com}
+    \item Verify the \texttt{Authorization: Bearer ...} header is present
+\end{enumerate}
+
+\subsection{Step 4: Test Token Refresh}
+
+To test token refresh:
+
+\begin{lstlisting}[language=JavaScript,title=Browser Console - Force Token Expiry]
+// Manually expire the token for testing
+const tokenData = localStorage.getItem('designlibre:auth:anthropic');
+if (tokenData) {
+  const tokens = JSON.parse(atob(tokenData));
+  tokens.expiresAt = Date.now() - 1000; // Set to past
+  localStorage.setItem(
+    'designlibre:auth:anthropic',
+    btoa(JSON.stringify(tokens))
+  );
+  console.log('Token marked as expired. Next API call will trigger refresh.');
+}
+\end{lstlisting}
+
+% =============================================================================
+\section{Troubleshooting}
+% =============================================================================
+
+\subsection{Common Issues}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{4cm}|p{8cm}|}
+\hline
+\textbf{Issue} & \textbf{Solution} \\
+\hline
+"Invalid redirect URI" & Ensure the redirect URI exactly matches what's registered in Anthropic Console, including protocol and trailing slashes \\
+\hline
+"Invalid client ID" & Verify the client ID in \texttt{oauth-client.ts} matches the one from Anthropic Console \\
+\hline
+Popup blocked & Users may need to allow popups for your domain \\
+\hline
+"State mismatch" & Clear session storage and try again; may indicate CSRF attempt \\
+\hline
+Token refresh fails & The refresh token may have expired; user needs to re-authenticate \\
+\hline
+CORS errors & Ensure your domain is allowed in Anthropic's OAuth app settings \\
+\hline
+\end{tabular}
+\caption{Troubleshooting Guide}
+\end{table}
+
+\subsection{Debug Mode}
+
+Enable debug logging by adding to your OAuth client:
+
+\begin{lstlisting}[language=JavaScript,title=Debug Logging]
+// In oauth-client.ts, add to startAuth():
+console.log('[OAuth] Starting auth flow', {
+  clientId: this.config.clientId,
+  redirectUri: this.config.redirectUri,
+  scopes: this.config.scopes,
+});
+
+// In handleCallback():
+console.log('[OAuth] Received callback', { code: '***', state });
+console.log('[OAuth] Token exchange successful', {
+  hasAccessToken: !!tokens.accessToken,
+  hasRefreshToken: !!tokens.refreshToken,
+  expiresAt: tokens.expiresAt,
+});
+\end{lstlisting}
+
+% =============================================================================
+\section{Production Checklist}
+% =============================================================================
+
+Before deploying to production, verify:
+
+\begin{enumerate}[label=$\square$]
+    \item OAuth application registered with Anthropic
+    \item Production redirect URI added to allowed URIs
+    \item HTTPS configured and working
+    \item Callback page deployed and accessible
+    \item Client ID updated in production config
+    \item Token storage working correctly
+    \item Error handling tested
+    \item Token refresh tested
+    \item Sign out functionality working
+    \item Analytics/monitoring in place (optional)
+\end{enumerate}
+
+% =============================================================================
+\section{Appendix: Complete OAuth Client Code}
+% =============================================================================
+
+For reference, here is the complete OAuth client implementation:
+
+\begin{lstlisting}[language=JavaScript,title=src/ai/auth/oauth-client.ts (excerpt)]
+export class AnthropicOAuthClient {
+  private config: OAuthConfig;
+  private authWindow: Window | null = null;
+
+  constructor(config: Partial<OAuthConfig> = {}) {
+    this.config = { ...ANTHROPIC_OAUTH_CONFIG, ...config };
+  }
+
+  async startAuth(): Promise<void> {
+    const state = generateRandomString(32);
+    const verifier = generateCodeVerifier();
+    const challenge = await generateCodeChallenge(verifier);
+
+    sessionStorage.setItem(STATE_STORAGE_KEY, state);
+    sessionStorage.setItem(VERIFIER_STORAGE_KEY, verifier);
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: this.config.clientId,
+      redirect_uri: this.config.redirectUri,
+      scope: this.config.scopes.join(' '),
+      state,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+    });
+
+    const authUrl = `${this.config.authorizationEndpoint}?${params}`;
+
+    // Open centered popup
+    const width = 500, height = 700;
+    const left = window.screenX + (window.outerWidth - width) / 2;
+    const top = window.screenY + (window.outerHeight - height) / 2;
+
+    this.authWindow = window.open(
+      authUrl,
+      'Claude Authentication',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    return this.waitForCallback();
+  }
+
+  // ... rest of implementation
+}
+\end{lstlisting}
+
+\vspace{2cm}
+
+\begin{center}
+\textcolor{anthropicpurple}{\rule{0.5\textwidth}{1pt}}
+
+\vspace{0.5cm}
+
+{\large\textbf{Questions or Issues?}}
+
+\vspace{0.3cm}
+
+Open an issue at:\\
+\url{https://github.com/johnjanik/libredesign.app/issues}
+
+\vspace{0.5cm}
+
+\textcolor{anthropicpurple}{\rule{0.5\textwidth}{1pt}}
+\end{center}
+
+\end{document}
