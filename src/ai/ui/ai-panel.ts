@@ -144,6 +144,17 @@ export class AIPanel {
       this.updateStatusIndicator(status);
     });
     this.unsubscribers.push(unsubStatus);
+
+    // Handle tool execution - replace raw JSON with friendly message
+    const unsubToolStart = this.aiController.on('ai:tool:start', ({ toolCall }) => {
+      this.handleToolStart(toolCall);
+    });
+    this.unsubscribers.push(unsubToolStart);
+
+    const unsubToolComplete = this.aiController.on('ai:tool:complete', ({ toolCall, result }) => {
+      this.handleToolComplete(toolCall, result);
+    });
+    this.unsubscribers.push(unsubToolComplete);
   }
 
   private updateStyles(): void {
@@ -573,6 +584,62 @@ export class AIPanel {
     this.streamingMessageIndex = null;
     this.messageInput?.setStreaming(false);
     this.renderMessages();
+  }
+
+  private handleToolStart(toolCall: { name: string }): void {
+    // Replace any JSON tool call in the current message with a friendly status
+    const friendlyNames: Record<string, string> = {
+      'import_image_as_leaf': 'Importing image and analyzing with vision...',
+      'create_rectangle': 'Creating rectangle...',
+      'create_ellipse': 'Creating ellipse...',
+      'create_text': 'Creating text...',
+      'create_frame': 'Creating frame...',
+    };
+
+    const statusMessage = friendlyNames[toolCall.name] || `Executing ${toolCall.name.replace(/_/g, ' ')}...`;
+
+    // If we have a streaming message, check if it contains JSON tool call and replace
+    if (this.streamingMessageIndex !== null) {
+      const msg = this.messages[this.streamingMessageIndex];
+      if (msg) {
+        // Check if content looks like a JSON tool call
+        const content = msg.content.trim();
+        if (content.startsWith('{') && content.includes('"name"') && content.includes('"arguments"')) {
+          // Replace JSON with friendly message
+          msg.content = statusMessage;
+          this.currentStreamContent = statusMessage;
+        } else if (content === '' || !content) {
+          // Empty content, just set the status
+          msg.content = statusMessage;
+          this.currentStreamContent = statusMessage;
+        } else {
+          // Append status to existing content
+          msg.content = content + '\n\n' + statusMessage;
+          this.currentStreamContent = msg.content;
+        }
+        this.renderMessages();
+      }
+    }
+  }
+
+  private handleToolComplete(_toolCall: { name: string }, result: { success: boolean; message: string }): void {
+    // Update message with completion status
+    if (this.streamingMessageIndex !== null) {
+      const msg = this.messages[this.streamingMessageIndex];
+      if (msg) {
+        const statusEmoji = result.success ? '✓' : '✗';
+        const statusText = result.success ? result.message : `Failed: ${result.message}`;
+
+        // Replace "...ing" messages with completion
+        if (msg.content.includes('...')) {
+          msg.content = `${statusEmoji} ${statusText}`;
+        } else {
+          msg.content += `\n${statusEmoji} ${statusText}`;
+        }
+        this.currentStreamContent = msg.content;
+        this.renderMessages();
+      }
+    }
   }
 
   private handleError(error: Error): void {
