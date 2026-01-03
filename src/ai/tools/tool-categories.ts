@@ -121,6 +121,7 @@ export const TOOL_CATEGORIES = {
       'zoom_to_selection',
       'zoom_to_fit',
       'set_zoom',
+      'look_at',
     ] as const,
   },
 } as const;

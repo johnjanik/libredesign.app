@@ -520,6 +520,14 @@ export class ToolExecutor {
         return { success: true };
       }
 
+      case 'look_at': {
+        // Look_at is a visual feedback tool - just return the coordinates
+        // The AI controller handles cursor movement separately
+        const x = getNumberArg(args, 'x') ?? 0;
+        const y = getNumberArg(args, 'y') ?? 0;
+        return { success: true, x, y };
+      }
+
       default:
         throw new Error(`Tool implementation not found: ${tool}`);
     }

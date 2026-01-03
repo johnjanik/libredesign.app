@@ -748,6 +748,28 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
       properties: { success: { type: 'boolean' } },
     },
   },
+
+  look_at: {
+    name: 'look_at',
+    description: 'Move the AI cursor to a position for visual feedback',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X coordinate to look at' },
+        y: { type: 'number', description: 'Y coordinate to look at' },
+      },
+      required: ['x', 'y'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        x: { type: 'number' },
+        y: { type: 'number' },
+      },
+    },
+  },
 };
 
 /**

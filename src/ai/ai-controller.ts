@@ -7,7 +7,6 @@
 
 import { EventEmitter } from '@core/events/event-emitter';
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
-import type { NodeId } from '@core/types/common';
 import type { Point } from '@core/types/geometry';
 
 import {
@@ -30,6 +29,11 @@ import type { LlamaCppConfig } from './providers/llamacpp-provider';
 
 import { ActionExecutor, createActionExecutor } from './actions/action-executor';
 import type { AIAction, ActionResult } from './actions/action-types';
+
+import { ToolExecutor, createToolExecutor } from './tools/tool-executor';
+import type { ToolResult, ToolCall } from './tools/tool-executor';
+import { DesignLibreBridge, createDesignLibreBridge } from './tools/designlibre-bridge';
+import { setGlobalBridge } from './tools/runtime-bridge';
 
 import { CanvasCapture, createCanvasCapture } from './vision/canvas-capture';
 import type { CaptureResult } from './vision/canvas-capture';
@@ -55,7 +59,7 @@ export interface AIControllerEvents {
   'ai:message:error': { error: Error };
   'ai:stream:chunk': { chunk: AIStreamChunk };
   'ai:tool:start': { toolCall: AIToolCall };
-  'ai:tool:complete': { toolCall: AIToolCall; result: ActionResult };
+  'ai:tool:complete': { toolCall: AIToolCall; result: ToolResult };
   'ai:cursor:move': { x: number; y: number };
   'ai:status:change': { status: AIStatus };
   [key: string]: unknown;
@@ -104,6 +108,8 @@ export interface ChatOptions {
 export class AIController extends EventEmitter<AIControllerEvents> {
   private providerManager: ProviderManager;
   private actionExecutor: ActionExecutor;
+  private toolExecutor: ToolExecutor;
+  private bridge: DesignLibreBridge;
   private canvasCapture: CanvasCapture;
   private calibrator: CoordinateCalibrator;
   private contextBuilder: ContextBuilder;
@@ -122,6 +128,11 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       fallbackChain: config.fallbackChain,
       autoConnect: config.autoConnect,
     });
+
+    // Initialize the bridge and tool executor
+    this.bridge = createDesignLibreBridge(runtime);
+    setGlobalBridge(this.bridge);
+    this.toolExecutor = createToolExecutor(this.bridge);
 
     this.actionExecutor = createActionExecutor(runtime);
     this.canvasCapture = createCanvasCapture(runtime);
@@ -329,125 +340,35 @@ export class AIController extends EventEmitter<AIControllerEvents> {
   // =========================================================================
 
   /**
-   * Execute tool calls from the AI response.
+   * Execute tool calls from the AI response using the ToolExecutor.
    */
   private async executeToolCalls(toolCalls: AIToolCall[]): Promise<void> {
     for (const toolCall of toolCalls) {
       this.emit('ai:tool:start', { toolCall });
 
-      const action = this.toolCallToAction(toolCall);
-      if (action) {
-        const result = await this.actionExecutor.execute(action);
-        this.emit('ai:tool:complete', { toolCall, result });
+      // Convert AIToolCall to ToolCall format
+      const call: ToolCall = {
+        tool: toolCall.name,
+        args: toolCall.arguments,
+      };
+
+      // Execute through the ToolExecutor
+      const result = await this.toolExecutor.executeTool(call);
+
+      // Handle cursor movement for look_at tool
+      if (toolCall.name === 'look_at' && result.success) {
+        const x = toolCall.arguments['x'] as number;
+        const y = toolCall.arguments['y'] as number;
+        this.cursorPosition = { x, y };
+        this.emit('ai:cursor:move', { x, y });
       }
-    }
-  }
 
-  /**
-   * Convert a tool call to an AI action.
-   */
-  private toolCallToAction(toolCall: AIToolCall): AIAction | null {
-    const args = toolCall.arguments;
+      this.emit('ai:tool:complete', { toolCall, result });
 
-    switch (toolCall.name) {
-      case 'create_shape':
-        if (args['shape'] === 'rectangle') {
-          return {
-            type: 'CREATE_RECTANGLE',
-            x: args['x'] as number,
-            y: args['y'] as number,
-            width: args['width'] as number,
-            height: args['height'] as number,
-            fill: args['fill'] as string | undefined,
-            stroke: args['stroke'] as string | undefined,
-            name: args['name'] as string | undefined,
-          };
-        } else if (args['shape'] === 'ellipse') {
-          return {
-            type: 'CREATE_ELLIPSE',
-            x: args['x'] as number,
-            y: args['y'] as number,
-            width: args['width'] as number,
-            height: args['height'] as number,
-            fill: args['fill'] as string | undefined,
-            stroke: args['stroke'] as string | undefined,
-            name: args['name'] as string | undefined,
-          };
-        }
-        return null;
-
-      case 'create_text':
-        return {
-          type: 'CREATE_TEXT',
-          x: args['x'] as number,
-          y: args['y'] as number,
-          text: args['text'] as string,
-          fontSize: args['fontSize'] as number | undefined,
-          fill: args['fill'] as string | undefined,
-          name: args['name'] as string | undefined,
-        };
-
-      case 'create_frame':
-        return {
-          type: 'CREATE_FRAME',
-          x: args['x'] as number,
-          y: args['y'] as number,
-          width: args['width'] as number,
-          height: args['height'] as number,
-          fill: args['fill'] as string | undefined,
-          name: args['name'] as string | undefined,
-        };
-
-      case 'select':
-        return {
-          type: 'SELECT',
-          nodeIds: args['nodeIds'] as NodeId[],
-        };
-
-      case 'move':
-        return {
-          type: 'MOVE',
-          nodeIds: (args['nodeIds'] as NodeId[]) || [],
-          dx: args['dx'] as number,
-          dy: args['dy'] as number,
-        };
-
-      case 'update_style':
-        return {
-          type: 'UPDATE_NODE',
-          nodeId: args['nodeId'] as NodeId,
-          updates: {
-            fill: args['fill'] as string | undefined,
-            stroke: args['stroke'] as string | undefined,
-            opacity: args['opacity'] as number | undefined,
-          },
-        };
-
-      case 'delete':
-        return {
-          type: 'DELETE',
-          nodeIds: (args['nodeIds'] as NodeId[]) || [],
-        };
-
-      case 'zoom':
-        if (args['fitContent']) {
-          return { type: 'ZOOM_TO_FIT' };
-        }
-        return {
-          type: 'ZOOM',
-          level: args['level'] as number,
-        };
-
-      case 'look_at':
-        return {
-          type: 'LOOK_AT',
-          x: args['x'] as number,
-          y: args['y'] as number,
-        };
-
-      default:
-        console.warn(`Unknown tool: ${toolCall.name}`);
-        return null;
+      // Log tool execution for debugging
+      if (!result.success) {
+        console.warn(`Tool "${toolCall.name}" failed:`, result.error);
+      }
     }
   }
 

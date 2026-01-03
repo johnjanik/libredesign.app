@@ -8,7 +8,9 @@
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { NodeId } from '@core/types/common';
 import type { CoordinateCalibrator } from '../calibration/coordinate-calibrator';
-import type { AITool } from '../providers/ai-provider';
+import type { AITool, AIToolParameter } from '../providers/ai-provider';
+import { getAllToolDefinitions } from '../tools/tool-registry';
+import type { ToolDefinition, JSONSchema } from '../tools/tool-registry';
 
 /**
  * Built context for AI
@@ -423,147 +425,89 @@ Respond naturally and execute design requests using the provided tools.`;
 
   /**
    * Get tool definitions for function calling.
+   * Uses the comprehensive tool registry for all available tools.
    */
   getTools(): AITool[] {
-    return [
-      {
-        name: 'create_shape',
-        description: 'Create a rectangle or ellipse shape on the canvas',
-        parameters: {
-          type: 'object',
-          properties: {
-            shape: {
-              type: 'string',
-              enum: ['rectangle', 'ellipse'],
-              description: 'Type of shape to create',
-            },
-            x: { type: 'number', description: 'X coordinate (world units)' },
-            y: { type: 'number', description: 'Y coordinate (world units)' },
-            width: { type: 'number', description: 'Width in pixels' },
-            height: { type: 'number', description: 'Height in pixels' },
-            fill: { type: 'string', description: 'Fill color (hex or name)' },
-            stroke: { type: 'string', description: 'Stroke color (hex or name)' },
-            name: { type: 'string', description: 'Name for the element' },
-          },
-          required: ['shape', 'x', 'y', 'width', 'height'],
-        },
-      },
-      {
-        name: 'create_text',
-        description: 'Create a text element on the canvas',
-        parameters: {
-          type: 'object',
-          properties: {
-            x: { type: 'number', description: 'X coordinate' },
-            y: { type: 'number', description: 'Y coordinate' },
-            text: { type: 'string', description: 'Text content' },
-            fontSize: { type: 'number', description: 'Font size in pixels' },
-            fill: { type: 'string', description: 'Text color' },
-            name: { type: 'string', description: 'Name for the element' },
-          },
-          required: ['x', 'y', 'text'],
-        },
-      },
-      {
-        name: 'create_frame',
-        description: 'Create a frame (container) element',
-        parameters: {
-          type: 'object',
-          properties: {
-            x: { type: 'number', description: 'X coordinate' },
-            y: { type: 'number', description: 'Y coordinate' },
-            width: { type: 'number', description: 'Width' },
-            height: { type: 'number', description: 'Height' },
-            fill: { type: 'string', description: 'Background color' },
-            name: { type: 'string', description: 'Frame name' },
-          },
-          required: ['x', 'y', 'width', 'height'],
-        },
-      },
-      {
-        name: 'select',
-        description: 'Select elements by their IDs',
-        parameters: {
-          type: 'object',
-          properties: {
-            nodeIds: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Array of node IDs to select',
-            },
-          },
-          required: ['nodeIds'],
-        },
-      },
-      {
-        name: 'move',
-        description: 'Move elements by an offset',
-        parameters: {
-          type: 'object',
-          properties: {
-            nodeIds: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'IDs of nodes to move (or empty for selection)',
-            },
-            dx: { type: 'number', description: 'Horizontal offset' },
-            dy: { type: 'number', description: 'Vertical offset' },
-          },
-          required: ['dx', 'dy'],
-        },
-      },
-      {
-        name: 'update_style',
-        description: 'Update the style properties of an element',
-        parameters: {
-          type: 'object',
-          properties: {
-            nodeId: { type: 'string', description: 'ID of the node to update' },
-            fill: { type: 'string', description: 'New fill color' },
-            stroke: { type: 'string', description: 'New stroke color' },
-            opacity: { type: 'number', description: 'Opacity (0-1)', minimum: 0, maximum: 1 },
-          },
-          required: ['nodeId'],
-        },
-      },
-      {
-        name: 'delete',
-        description: 'Delete elements from the canvas',
-        parameters: {
-          type: 'object',
-          properties: {
-            nodeIds: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'IDs of nodes to delete (or empty for selection)',
-            },
-          },
-        },
-      },
-      {
-        name: 'zoom',
-        description: 'Change the zoom level or fit content',
-        parameters: {
-          type: 'object',
-          properties: {
-            level: { type: 'number', description: 'Zoom level (1.0 = 100%)' },
-            fitContent: { type: 'boolean', description: 'Zoom to fit all content' },
-          },
-        },
-      },
-      {
-        name: 'look_at',
-        description: 'Move the AI cursor to a position (visual feedback only)',
-        parameters: {
-          type: 'object',
-          properties: {
-            x: { type: 'number', description: 'X coordinate to look at' },
-            y: { type: 'number', description: 'Y coordinate to look at' },
-          },
-          required: ['x', 'y'],
-        },
-      },
-    ];
+    const definitions = getAllToolDefinitions();
+    return definitions.map((def) => this.toolDefinitionToAITool(def));
+  }
+
+  /**
+   * Convert a ToolDefinition to an AITool
+   */
+  private toolDefinitionToAITool(def: ToolDefinition): AITool {
+    const params: AITool['parameters'] = {
+      type: 'object',
+      properties: this.convertSchemaProperties(def.parameters.properties || {}),
+    };
+    // Only add required if it exists and is not empty
+    if (def.parameters.required && def.parameters.required.length > 0) {
+      params.required = def.parameters.required;
+    }
+    return {
+      name: def.name,
+      description: def.description,
+      parameters: params,
+    };
+  }
+
+  /**
+   * Convert JSONSchema properties to AIToolParameter properties
+   */
+  private convertSchemaProperties(
+    props: Record<string, JSONSchema & { description?: string }>
+  ): Record<string, AIToolParameter> {
+    const result: Record<string, AIToolParameter> = {};
+
+    for (const [key, schema] of Object.entries(props)) {
+      result[key] = this.jsonSchemaToAIToolParameter(schema);
+    }
+
+    return result;
+  }
+
+  /**
+   * Convert a JSONSchema to an AIToolParameter
+   */
+  private jsonSchemaToAIToolParameter(schema: JSONSchema): AIToolParameter {
+    const param: AIToolParameter = {
+      type: schema.type as AIToolParameter['type'],
+    };
+
+    // Only add description if it exists
+    if (schema.description) {
+      param.description = schema.description;
+    }
+
+    if (schema.enum) {
+      param.enum = schema.enum;
+    }
+
+    if (schema.items) {
+      param.items = this.jsonSchemaToAIToolParameter(schema.items);
+    }
+
+    if (schema.properties) {
+      param.properties = this.convertSchemaProperties(schema.properties);
+      // Only add required if it exists and is not empty
+      if (schema.required && schema.required.length > 0) {
+        param.required = schema.required;
+      }
+    }
+
+    if (schema.minimum !== undefined) {
+      param.minimum = schema.minimum;
+    }
+
+    if (schema.maximum !== undefined) {
+      param.maximum = schema.maximum;
+    }
+
+    if (schema.default !== undefined) {
+      param.default = schema.default;
+    }
+
+    return param;
   }
 
   /**
