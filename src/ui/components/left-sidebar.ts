@@ -119,6 +119,9 @@ export class LeftSidebar {
     this.element.className = 'designlibre-left-sidebar';
     this.updateStyles();
 
+    // Apply saved text scale setting
+    this.applyTextScale();
+
     // Initialize leaves from scene graph pages
     this.syncLeavesFromSceneGraph();
 
@@ -389,7 +392,7 @@ export class LeftSidebar {
       border: 1px solid transparent;
       border-radius: 4px;
       padding: 6px 8px;
-      font-size: 14px;
+      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
       font-weight: 500;
       color: var(--designlibre-text-primary, #e4e4e4);
       outline: none;
@@ -471,7 +474,7 @@ export class LeftSidebar {
         border-radius: 4px;
         background: ${this.activeTab === tab.id ? 'var(--designlibre-bg-secondary, #2d2d2d)' : 'transparent'};
         color: ${this.activeTab === tab.id ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
-        font-size: 12px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
         font-weight: 500;
         cursor: pointer;
         transition: background 0.15s;
@@ -523,7 +526,7 @@ export class LeftSidebar {
       background: transparent;
       border: none;
       padding: 8px 0;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-primary, #e4e4e4);
       outline: none;
     `;
@@ -556,7 +559,7 @@ export class LeftSidebar {
     const label = document.createElement('span');
     label.textContent = 'Leaves';
     label.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       font-weight: 600;
       text-transform: uppercase;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -621,7 +624,7 @@ export class LeftSidebar {
     name.textContent = leaf.name;
     name.style.cssText = `
       flex: 1;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -697,7 +700,7 @@ export class LeftSidebar {
     const label = document.createElement('span');
     label.textContent = 'Templates';
     label.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       font-weight: 600;
       text-transform: uppercase;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -741,7 +744,7 @@ export class LeftSidebar {
     const moreTemplates = document.createElement('div');
     moreTemplates.style.cssText = `
       padding: 16px 8px;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-muted, #6a6a6a);
       text-align: center;
     `;
@@ -792,7 +795,7 @@ export class LeftSidebar {
     const nameEl = document.createElement('span');
     nameEl.textContent = name;
     nameEl.style.cssText = `
-      font-size: 14px;
+      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
       font-weight: 500;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
@@ -802,7 +805,7 @@ export class LeftSidebar {
     const descEl = document.createElement('span');
     descEl.textContent = description;
     descEl.style.cssText = `
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-secondary, #a0a0a0);
       line-height: 1.4;
     `;
@@ -817,7 +820,7 @@ export class LeftSidebar {
       background: var(--designlibre-accent, #4dabff);
       border: none;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       font-weight: 500;
       color: white;
       cursor: pointer;
@@ -882,7 +885,7 @@ export class LeftSidebar {
     const label = document.createElement('span');
     label.textContent = 'Layers';
     label.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       font-weight: 600;
       text-transform: uppercase;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -926,7 +929,7 @@ export class LeftSidebar {
       const empty = document.createElement('div');
       empty.style.cssText = `
         padding: 16px 12px;
-        font-size: 12px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
         color: var(--designlibre-text-muted, #6a6a6a);
         text-align: center;
       `;
@@ -982,7 +985,7 @@ export class LeftSidebar {
     name.textContent = node.name;
     name.style.cssText = `
       flex: 1;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -1053,7 +1056,7 @@ export class LeftSidebar {
       border: 1px solid var(--designlibre-accent, #4dabff);
       border-radius: 2px;
       padding: 2px 4px;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-primary, #e4e4e4);
       outline: none;
     `;
@@ -1168,7 +1171,7 @@ export class LeftSidebar {
       border: 1px solid var(--designlibre-accent, #4dabff);
       border-radius: 2px;
       padding: 2px 4px;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       color: var(--designlibre-text-primary, #e4e4e4);
       outline: none;
     `;
@@ -1224,7 +1227,7 @@ export class LeftSidebar {
       padding: 4px;
       color: #e4e4e4;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;
@@ -1324,7 +1327,7 @@ export class LeftSidebar {
       padding: 4px;
       color: #e4e4e4;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;
@@ -1429,7 +1432,7 @@ export class LeftSidebar {
       padding: 4px;
       color: #e4e4e4;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;
@@ -1629,7 +1632,7 @@ export class LeftSidebar {
       padding: 8px;
       color: #e4e4e4;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;
@@ -1648,6 +1651,19 @@ export class LeftSidebar {
       (enabled) => this.setSyntaxHighlightingSetting(enabled)
     );
     menu.appendChild(syntaxHighlightSetting);
+
+    // Text Scale slider
+    const textScaleSetting = this.createSliderSetting(
+      'Text Scale',
+      'Adjust text size in sidebars',
+      this.getTextScaleSetting(),
+      0.8,  // min
+      1.4,  // max
+      0.05, // step
+      (value) => `${Math.round(value * 100)}%`,
+      (scale) => this.setTextScaleSetting(scale)
+    );
+    menu.appendChild(textScaleSetting);
 
     document.body.appendChild(menu);
 
@@ -1735,6 +1751,104 @@ export class LeftSidebar {
   }
 
   /**
+   * Create a slider setting row.
+   */
+  private createSliderSetting(
+    label: string,
+    description: string,
+    initialValue: number,
+    min: number,
+    max: number,
+    step: number,
+    formatValue: (value: number) => string,
+    onChange: (value: number) => void
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      padding: 8px;
+      border-radius: 4px;
+    `;
+
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+
+    const textContainer = document.createElement('div');
+
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label;
+    labelEl.style.cssText = 'font-weight: 500; margin-bottom: 2px;';
+    textContainer.appendChild(labelEl);
+
+    const descEl = document.createElement('div');
+    descEl.textContent = description;
+    descEl.style.cssText = 'font-size: 11px; color: #888;';
+    textContainer.appendChild(descEl);
+
+    headerRow.appendChild(textContainer);
+
+    const valueDisplay = document.createElement('span');
+    valueDisplay.textContent = formatValue(initialValue);
+    valueDisplay.style.cssText = 'font-size: 12px; color: #4dabff; font-weight: 500; min-width: 40px; text-align: right;';
+    headerRow.appendChild(valueDisplay);
+
+    row.appendChild(headerRow);
+
+    // Slider
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(initialValue);
+    slider.style.cssText = `
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #444;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    `;
+
+    // Style the slider thumb via CSS
+    const styleId = 'designlibre-slider-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #4dabff;
+          cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #4dabff;
+          cursor: pointer;
+          border: none;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    slider.addEventListener('input', () => {
+      const value = parseFloat(slider.value);
+      valueDisplay.textContent = formatValue(value);
+      onChange(value);
+    });
+
+    row.appendChild(slider);
+    return row;
+  }
+
+  /**
    * Get syntax highlighting setting from localStorage.
    */
   private getSyntaxHighlightingSetting(): boolean {
@@ -1751,6 +1865,35 @@ export class LeftSidebar {
     window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
       detail: { syntaxHighlighting: enabled }
     }));
+  }
+
+  /**
+   * Get text scale setting from localStorage.
+   */
+  private getTextScaleSetting(): number {
+    const stored = localStorage.getItem('designlibre-text-scale');
+    return stored === null ? 1 : parseFloat(stored);
+  }
+
+  /**
+   * Set text scale setting and apply to document.
+   */
+  private setTextScaleSetting(scale: number): void {
+    localStorage.setItem('designlibre-text-scale', String(scale));
+    // Apply to CSS custom property
+    document.documentElement.style.setProperty('--designlibre-text-scale', String(scale));
+    // Dispatch custom event
+    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+      detail: { textScale: scale }
+    }));
+  }
+
+  /**
+   * Apply saved text scale on initialization.
+   */
+  private applyTextScale(): void {
+    const scale = this.getTextScaleSetting();
+    document.documentElement.style.setProperty('--designlibre-text-scale', String(scale));
   }
 
   /**
@@ -1846,7 +1989,7 @@ export class LeftSidebar {
       padding: 4px;
       color: #e4e4e4;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 13px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;

@@ -38,6 +38,9 @@ export {
 export { AnthropicProvider, createAnthropicProvider } from './providers/anthropic-provider';
 export type { AnthropicConfig } from './providers/anthropic-provider';
 
+export { OpenAIProvider, createOpenAIProvider } from './providers/openai-provider';
+export type { OpenAIConfig } from './providers/openai-provider';
+
 export { OllamaProvider, createOllamaProvider } from './providers/ollama-provider';
 export type { OllamaConfig } from './providers/ollama-provider';
 
@@ -81,8 +84,8 @@ export { CoordinateCalibrator, createCoordinateCalibrator } from './calibration/
 export type { CalibrationResult, SpatialDescription } from './calibration/coordinate-calibrator';
 
 // Context
-export { ContextBuilder, createContextBuilder } from './context/context-builder';
-export type { AIContext, ContextBuilderOptions } from './context/context-builder';
+export { ContextBuilder, createContextBuilder, DEFAULT_TOKEN_BUDGET } from './context/context-builder';
+export type { AIContext, ContextBuilderOptions, TokenBudget } from './context/context-builder';
 
 export { ConversationManager, createConversationManager } from './context/conversation-manager';
 export type {
@@ -99,3 +102,88 @@ export type { AICommandPaletteOptions } from './ui/ai-command-palette';
 
 export { AICursorOverlay, createAICursorOverlay } from './ui/ai-cursor-overlay';
 export type { AICursorOverlayOptions } from './ui/ai-cursor-overlay';
+
+export { AISettingsPanel, showAISettingsPanel, createAISettingsPanel } from './ui/ai-settings-panel';
+export type { AISettingsPanelOptions } from './ui/ai-settings-panel';
+
+export { MessageInput, createMessageInput } from './ui/components/message-input';
+export type { MessageInputOptions, MessageInputEvents, MessageAttachment } from './ui/components/message-input';
+
+export { CodeBlock, createCodeBlock, detectLanguage } from './ui/components/code-block';
+export type { CodeBlockOptions, CodeLanguage } from './ui/components/code-block';
+
+export { MarkdownRenderer, createMarkdownRenderer, renderMarkdownToHtml } from './ui/components/markdown-renderer';
+export type { MarkdownRendererOptions } from './ui/components/markdown-renderer';
+
+// Error Handling
+export {
+  AIError,
+  ErrorHandler,
+  NetworkStatusDetector,
+  createErrorHandler,
+  createErrorFromException,
+  createErrorFromResponse,
+  parseHttpError,
+  calculateRetryDelay,
+  withRetry,
+  getNetworkDetector,
+  retryRecoveryStrategy,
+  providerFallbackStrategy,
+  DEFAULT_RETRY_CONFIG,
+} from './error';
+
+export type {
+  AIErrorCode,
+  AIErrorCategory,
+  RetryConfig,
+  RecoveryStrategy,
+  RecoveryContext,
+  RecoveryResult,
+} from './error';
+
+// Configuration
+export type {
+  ProviderType,
+  ProviderStatus,
+  BaseProviderConfig,
+  AnthropicProviderConfig,
+  OpenAIProviderConfig,
+  OllamaProviderConfig,
+  LlamaCppProviderConfig,
+  ProviderConfig,
+  AIConfig,
+  ProviderStatusInfo,
+  ModelInfo,
+  ConfigManagerEvents,
+  ValidationResult,
+  SupportedCodeLanguage,
+} from './config';
+
+export {
+  AVAILABLE_MODELS,
+  getModelInfo,
+  modelSupportsCapability,
+  DEFAULT_ANTHROPIC_CONFIG,
+  DEFAULT_OPENAI_CONFIG,
+  DEFAULT_OLLAMA_CONFIG,
+  DEFAULT_LLAMACPP_CONFIG,
+  DEFAULT_AI_CONFIG,
+  CONFIG_STORAGE_KEY,
+  PANEL_CONFIG,
+  MESSAGE_CONFIG,
+  CONTEXT_CONFIG,
+  KEYBOARD_SHORTCUTS,
+  SUPPORTED_CODE_LANGUAGES,
+  ConfigManager,
+  getConfigManager,
+  createConfigManager,
+  createAnthropicFromConfig,
+  createOpenAIFromConfig,
+  createOllamaFromConfig,
+  createLlamaCppFromConfig,
+  createProviderFromConfig,
+  createProviderManagerFromConfig,
+  initializeProviders,
+  updateProviderAtRuntime,
+  testProviderConnection,
+} from './config';

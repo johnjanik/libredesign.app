@@ -19,20 +19,44 @@ export interface InspectorPanelOptions {
   width?: number;
   collapsed?: boolean;
   defaultTab?: 'design' | 'prototype' | 'inspect';
+  /** Callback when collapse state changes */
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
 type InspectorTab = 'design' | 'prototype' | 'inspect';
+
+/** Collapse button width */
+const COLLAPSE_BUTTON_WIDTH = 24;
+
+/** SVG Icons for inspector */
+const INSPECTOR_ICONS = {
+  collapseRight: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>`,
+  collapseLeft: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="15 18 9 12 15 6"/>
+  </svg>`,
+};
 
 /** Inspector panel */
 export class InspectorPanel {
   private runtime: DesignLibreRuntime;
   private container: HTMLElement;
   private element: HTMLElement | null = null;
+  private collapseButton: HTMLElement | null = null;
+  private mainContent: HTMLElement | null = null;
   private tabsElement: HTMLElement | null = null;
   private contentElement: HTMLElement | null = null;
-  private options: Required<InspectorPanelOptions>;
+  private options: {
+    position: 'left' | 'right';
+    width: number;
+    collapsed: boolean;
+    defaultTab: 'design' | 'prototype' | 'inspect';
+    onCollapseChange: ((collapsed: boolean) => void) | null;
+  };
   private selectedNodeIds: NodeId[] = [];
   private activeTab: InspectorTab = 'design';
+  private collapsed = false;
   private unsubscribers: Array<() => void> = [];
 
   constructor(
@@ -47,8 +71,10 @@ export class InspectorPanel {
       width: options.width ?? 280,
       collapsed: options.collapsed ?? false,
       defaultTab: options.defaultTab ?? 'design',
+      onCollapseChange: options.onCollapseChange ?? null,
     };
     this.activeTab = this.options.defaultTab;
+    this.collapsed = this.options.collapsed;
 
     this.setup();
   }
@@ -59,9 +85,23 @@ export class InspectorPanel {
     this.element.className = 'designlibre-inspector-panel';
     this.element.style.cssText = this.getPanelStyles();
 
+    // Create collapse button (arrow toggle)
+    this.collapseButton = this.createCollapseButton();
+    this.element.appendChild(this.collapseButton);
+
+    // Create main content wrapper (tabs + content)
+    this.mainContent = document.createElement('div');
+    this.mainContent.className = 'designlibre-inspector-main';
+    this.mainContent.style.cssText = `
+      flex: 1;
+      display: ${this.collapsed ? 'none' : 'flex'};
+      flex-direction: column;
+      overflow: hidden;
+    `;
+
     // Create tabs
     this.tabsElement = this.createTabs();
-    this.element.appendChild(this.tabsElement);
+    this.mainContent.appendChild(this.tabsElement);
 
     // Create content area
     this.contentElement = document.createElement('div');
@@ -71,7 +111,8 @@ export class InspectorPanel {
       overflow-y: auto;
       padding: 12px;
     `;
-    this.element.appendChild(this.contentElement);
+    this.mainContent.appendChild(this.contentElement);
+    this.element.appendChild(this.mainContent);
 
     // Add to container
     this.container.appendChild(this.element);
@@ -97,23 +138,99 @@ export class InspectorPanel {
   }
 
   private getPanelStyles(): string {
-    const position = this.options.position === 'right' ? 'right: 0;' : 'left: 0;';
+    const width = this.collapsed ? COLLAPSE_BUTTON_WIDTH : this.options.width;
 
     return `
-      position: absolute;
-      top: 0;
-      ${position}
-      width: ${this.options.width}px;
+      position: relative;
+      width: ${width}px;
       height: 100%;
       background: var(--designlibre-bg-primary, #1e1e1e);
-      border-${this.options.position === 'right' ? 'left' : 'right'}: 1px solid var(--designlibre-border, #3d3d3d);
+      border-left: 1px solid var(--designlibre-border, #3d3d3d);
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-primary, #e4e4e4);
-      z-index: 100;
+      flex-shrink: 0;
+      transition: width 0.2s ease;
     `;
+  }
+
+  private createCollapseButton(): HTMLElement {
+    const button = document.createElement('button');
+    button.className = 'designlibre-inspector-collapse-btn';
+    button.title = this.collapsed ? 'Expand panel' : 'Collapse panel';
+    button.innerHTML = this.collapsed
+      ? INSPECTOR_ICONS.collapseLeft
+      : INSPECTOR_ICONS.collapseRight;
+    button.style.cssText = `
+      width: ${COLLAPSE_BUTTON_WIDTH}px;
+      height: 100%;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      flex-shrink: 0;
+      border-right: ${this.collapsed ? 'none' : '1px solid var(--designlibre-border, #3d3d3d)'};
+      transition: background-color 0.15s;
+    `;
+
+    button.addEventListener('click', () => this.toggleCollapse());
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+
+    return button;
+  }
+
+  private toggleCollapse(): void {
+    this.collapsed = !this.collapsed;
+
+    // Update element width
+    if (this.element) {
+      this.element.style.width = `${this.collapsed ? COLLAPSE_BUTTON_WIDTH : this.options.width}px`;
+    }
+
+    // Update collapse button
+    if (this.collapseButton) {
+      this.collapseButton.title = this.collapsed ? 'Expand panel' : 'Collapse panel';
+      this.collapseButton.innerHTML = this.collapsed
+        ? INSPECTOR_ICONS.collapseLeft
+        : INSPECTOR_ICONS.collapseRight;
+      this.collapseButton.style.borderRight = this.collapsed
+        ? 'none'
+        : '1px solid var(--designlibre-border, #3d3d3d)';
+    }
+
+    // Show/hide main content
+    if (this.mainContent) {
+      this.mainContent.style.display = this.collapsed ? 'none' : 'flex';
+    }
+
+    // Notify callback
+    if (this.options.onCollapseChange) {
+      this.options.onCollapseChange(this.collapsed);
+    }
+  }
+
+  /** Check if panel is collapsed */
+  isCollapsed(): boolean {
+    return this.collapsed;
+  }
+
+  /** Programmatically set collapsed state */
+  setCollapsed(collapsed: boolean): void {
+    if (this.collapsed !== collapsed) {
+      this.toggleCollapse();
+    }
   }
 
   private createTabs(): HTMLElement {
@@ -142,7 +259,7 @@ export class InspectorPanel {
         border: none;
         background: ${tabDef.id === this.activeTab ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent'};
         color: ${tabDef.id === this.activeTab ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
-        font-size: 11px;
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
         font-weight: 500;
         cursor: pointer;
         transition: all 0.15s;
@@ -288,13 +405,13 @@ export class InspectorPanel {
     `;
 
     const name = document.createElement('div');
-    name.style.cssText = `font-weight: 600; font-size: 14px; margin-bottom: 4px;`;
+    name.style.cssText = `font-weight: 600; font-size: var(--designlibre-sidebar-font-size-lg, 14px); margin-bottom: 4px;`;
     name.textContent = node.name || 'Leaf 1';
     header.appendChild(name);
 
     const type = document.createElement('div');
     type.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       color: var(--designlibre-text-secondary, #a0a0a0);
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -311,7 +428,7 @@ export class InspectorPanel {
     const colorRow = this.createPropertyRow();
     const colorLabel = document.createElement('span');
     colorLabel.textContent = 'Color';
-    colorLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
+    colorLabel.style.cssText = `width: 80px; font-size: var(--designlibre-sidebar-font-size-sm, 12px); color: var(--designlibre-text-secondary, #a0a0a0);`;
 
     const pageNode = node as { backgroundColor?: RGBA };
     const bgColor = pageNode.backgroundColor ?? { r: 0.102, g: 0.102, b: 0.102, a: 1 };
@@ -340,7 +457,7 @@ export class InspectorPanel {
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       font-family: monospace;
     `;
 
@@ -375,7 +492,7 @@ export class InspectorPanel {
     const opacityRow = this.createPropertyRow();
     const opacityLabel = document.createElement('span');
     opacityLabel.textContent = 'Transparency';
-    opacityLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
+    opacityLabel.style.cssText = `width: 80px; font-size: var(--designlibre-sidebar-font-size-sm, 12px); color: var(--designlibre-text-secondary, #a0a0a0);`;
 
     const opacity = (node as { opacity?: number }).opacity ?? 1;
     const opacityInput = document.createElement('input');
@@ -390,7 +507,7 @@ export class InspectorPanel {
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       text-align: right;
     `;
     opacityInput.addEventListener('change', () => {
@@ -400,7 +517,7 @@ export class InspectorPanel {
 
     const opacityUnit = document.createElement('span');
     opacityUnit.textContent = '%';
-    opacityUnit.style.cssText = `margin-left: 4px; font-size: 12px; color: var(--designlibre-text-muted, #6a6a6a);`;
+    opacityUnit.style.cssText = `margin-left: 4px; font-size: var(--designlibre-sidebar-font-size-sm, 12px); color: var(--designlibre-text-muted, #6a6a6a);`;
 
     opacityRow.appendChild(opacityLabel);
     opacityRow.appendChild(opacityInput);
@@ -411,7 +528,7 @@ export class InspectorPanel {
     const visibilityRow = this.createPropertyRow();
     const visibilityLabel = document.createElement('span');
     visibilityLabel.textContent = 'Visibility';
-    visibilityLabel.style.cssText = `width: 80px; font-size: 12px; color: var(--designlibre-text-secondary, #a0a0a0);`;
+    visibilityLabel.style.cssText = `width: 80px; font-size: var(--designlibre-sidebar-font-size-sm, 12px); color: var(--designlibre-text-secondary, #a0a0a0);`;
 
     const visible = (node as { visible?: boolean }).visible !== false;
     const eyeBtn = document.createElement('button');
@@ -482,7 +599,7 @@ export class InspectorPanel {
     const title = document.createElement('div');
     title.textContent = 'Styles';
     title.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       font-weight: 600;
       text-transform: uppercase;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -557,7 +674,7 @@ export class InspectorPanel {
       placeholder.style.cssText = `
         padding: 12px;
         text-align: center;
-        font-size: 12px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
         color: var(--designlibre-text-muted, #6a6a6a);
         background: var(--designlibre-bg-secondary, #2d2d2d);
         border-radius: 4px;
@@ -632,7 +749,7 @@ export class InspectorPanel {
     name.textContent = style.name;
     name.style.cssText = `
       flex: 1;
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
 
@@ -724,7 +841,7 @@ export class InspectorPanel {
     const title = document.createElement('div');
     title.textContent = 'Export';
     title.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       font-weight: 600;
       text-transform: uppercase;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -798,7 +915,7 @@ export class InspectorPanel {
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
       cursor: pointer;
       transition: background 0.15s;
     `;
@@ -835,7 +952,7 @@ export class InspectorPanel {
       border-radius: 4px;
       background: var(--designlibre-bg-primary, #1e1e1e);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
     `;
     ['1x', '2x', '3x', '4x'].forEach(scale => {
       const opt = document.createElement('option');
@@ -886,13 +1003,13 @@ export class InspectorPanel {
     `;
 
     const name = document.createElement('div');
-    name.style.cssText = `font-weight: 600; font-size: 14px; margin-bottom: 4px;`;
+    name.style.cssText = `font-weight: 600; font-size: var(--designlibre-sidebar-font-size-lg, 14px); margin-bottom: 4px;`;
     name.textContent = node.name || 'Unnamed';
     header.appendChild(name);
 
     const type = document.createElement('div');
     type.style.cssText = `
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       color: var(--designlibre-text-secondary, #a0a0a0);
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -947,7 +1064,7 @@ export class InspectorPanel {
 
     if (fills.length === 0) {
       const noFill = document.createElement('div');
-      noFill.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; margin-bottom: 8px;`;
+      noFill.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); margin-bottom: 8px;`;
       noFill.textContent = 'No fill';
       section.appendChild(noFill);
     } else {
@@ -1002,7 +1119,7 @@ export class InspectorPanel {
 
     if (strokes.length === 0) {
       const noStroke = document.createElement('div');
-      noStroke.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; margin-bottom: 8px;`;
+      noStroke.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); margin-bottom: 8px;`;
       noStroke.textContent = 'No stroke';
       section.appendChild(noStroke);
     } else {
@@ -1182,7 +1299,7 @@ export class InspectorPanel {
       padding: 12px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       border-radius: 6px;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       color: var(--designlibre-text-secondary, #a0a0a0);
     `;
     note.textContent = 'Prototype interactions will be available in a future update.';
@@ -1233,7 +1350,7 @@ export class InspectorPanel {
         border: 1px solid var(--designlibre-border, #3d3d3d);
         border-radius: 4px;
         color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 11px;
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
         cursor: pointer;
         transition: all 0.15s;
       `;
@@ -1320,7 +1437,7 @@ export class InspectorPanel {
       background: var(--designlibre-bg-secondary, #2d2d2d);
       border-radius: 6px;
       font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       line-height: 1.5;
       overflow-x: auto;
       white-space: pre-wrap;
@@ -1366,7 +1483,7 @@ export class InspectorPanel {
     row.appendChild(labelEl);
 
     const valueEl = document.createElement('span');
-    valueEl.style.cssText = `font-family: 'SF Mono', monospace; font-size: 11px;`;
+    valueEl.style.cssText = `font-family: 'SF Mono', monospace; font-size: var(--designlibre-sidebar-font-size-xs, 11px);`;
     valueEl.textContent = value;
     row.appendChild(valueEl);
 
@@ -1384,7 +1501,7 @@ export class InspectorPanel {
     const header = document.createElement('div');
     header.style.cssText = `
       font-weight: 600;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--designlibre-text-secondary, #a0a0a0);
@@ -1413,7 +1530,7 @@ export class InspectorPanel {
     container.style.cssText = `flex: 1; display: flex; align-items: center; gap: 4px;`;
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; width: 14px;`;
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 14px;`;
     labelEl.textContent = label;
     container.appendChild(labelEl);
 
@@ -1430,7 +1547,7 @@ export class InspectorPanel {
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
       font-family: 'SF Mono', monospace;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
     `;
     input.addEventListener('change', () => {
       const v = parseFloat(input.value);
@@ -1446,7 +1563,7 @@ export class InspectorPanel {
     row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 12px;`;
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
@@ -1465,7 +1582,7 @@ export class InspectorPanel {
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
       font-family: 'SF Mono', monospace;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       text-align: right;
     `;
     input.addEventListener('change', () => {
@@ -1476,7 +1593,7 @@ export class InspectorPanel {
 
     if (unit) {
       const unitEl = document.createElement('span');
-      unitEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px;`;
+      unitEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px);`;
       unitEl.textContent = unit;
       inputWrap.appendChild(unitEl);
     }
@@ -1490,7 +1607,7 @@ export class InspectorPanel {
     row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 12px;`;
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
@@ -1503,7 +1620,7 @@ export class InspectorPanel {
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       cursor: pointer;
     `;
     for (const opt of options) {
@@ -1557,7 +1674,7 @@ export class InspectorPanel {
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
       font-family: 'SF Mono', monospace;
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
     `;
     container.appendChild(hexInput);
 
@@ -1569,7 +1686,7 @@ export class InspectorPanel {
     row.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: 11px; width: 50px;`;
+    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 50px;`;
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
@@ -1582,7 +1699,7 @@ export class InspectorPanel {
     row.appendChild(slider);
 
     const valueEl = document.createElement('span');
-    valueEl.style.cssText = `font-size: 11px; width: 40px; text-align: right;`;
+    valueEl.style.cssText = `font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 40px; text-align: right;`;
     valueEl.textContent = `${Math.round(value)}${unit}`;
     row.appendChild(valueEl);
 
@@ -1600,7 +1717,7 @@ export class InspectorPanel {
     row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-primary); font-size: 12px;`;
+    labelEl.style.cssText = `color: var(--designlibre-text-primary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
@@ -1628,7 +1745,7 @@ export class InspectorPanel {
       border: 1px dashed var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       color: var(--designlibre-text-secondary, #a0a0a0);
-      font-size: 11px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
       cursor: pointer;
       transition: all 0.15s;
     `;

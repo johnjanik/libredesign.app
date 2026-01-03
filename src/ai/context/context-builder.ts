@@ -2,6 +2,7 @@
  * Context Builder
  *
  * Builds context information for AI prompts from the current design state.
+ * Includes token counting, smart truncation, and custom instructions.
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
@@ -19,6 +20,20 @@ export interface AIContext {
   tools: AITool[];
   /** Current state description */
   stateDescription: string;
+  /** Estimated token count */
+  estimatedTokens: number;
+}
+
+/**
+ * Token budget configuration
+ */
+export interface TokenBudget {
+  /** Maximum total tokens for context */
+  maxTokens: number;
+  /** Reserve tokens for response */
+  reserveForResponse: number;
+  /** Priority order for truncation */
+  truncationPriority: ('sceneGraph' | 'stateDescription' | 'customInstructions')[];
 }
 
 /**
@@ -29,6 +44,40 @@ export interface ContextBuilderOptions {
   includeSceneGraph?: boolean | undefined;
   /** Maximum nodes to include in scene description */
   maxNodes?: number | undefined;
+  /** Custom instructions to include in system prompt */
+  customInstructions?: string | undefined;
+  /** Token budget for context management */
+  tokenBudget?: TokenBudget | undefined;
+  /** Include detailed selection info */
+  detailedSelection?: boolean | undefined;
+  /** Project name for context */
+  projectName?: string | undefined;
+}
+
+/**
+ * Default token budget
+ */
+export const DEFAULT_TOKEN_BUDGET: TokenBudget = {
+  maxTokens: 100000,
+  reserveForResponse: 4096,
+  truncationPriority: ['sceneGraph', 'stateDescription', 'customInstructions'],
+};
+
+/**
+ * Approximate token count from text
+ * Uses a simple heuristic: ~4 characters per token for English text
+ */
+function estimateTokenCount(text: string): number {
+  // More accurate estimation for code and mixed content
+  // Average 4 chars per token for English, but code has more tokens per char
+  const wordCount = text.split(/\s+/).length;
+  const charCount = text.length;
+
+  // Blend of character and word-based estimation
+  const charBasedEstimate = charCount / 4;
+  const wordBasedEstimate = wordCount * 1.3;
+
+  return Math.ceil((charBasedEstimate + wordBasedEstimate) / 2);
 }
 
 /**
@@ -37,6 +86,7 @@ export interface ContextBuilderOptions {
 export class ContextBuilder {
   private runtime: DesignLibreRuntime;
   private calibrator: CoordinateCalibrator;
+  private customInstructions: string | undefined;
 
   constructor(runtime: DesignLibreRuntime, calibrator: CoordinateCalibrator) {
     this.runtime = runtime;
@@ -44,25 +94,152 @@ export class ContextBuilder {
   }
 
   /**
-   * Build the full AI context.
+   * Set custom instructions to include in the context.
+   */
+  setCustomInstructions(instructions: string | undefined): void {
+    this.customInstructions = instructions;
+  }
+
+  /**
+   * Get current custom instructions.
+   */
+  getCustomInstructions(): string | undefined {
+    return this.customInstructions;
+  }
+
+  /**
+   * Build the full AI context with token management.
    */
   build(options: ContextBuilderOptions = {}): AIContext {
+    const budget = options.tokenBudget ?? DEFAULT_TOKEN_BUDGET;
+    const maxAvailable = budget.maxTokens - budget.reserveForResponse;
+
+    // Build components
+    let systemPrompt = this.buildSystemPrompt(options);
+    let stateDescription = this.buildStateDescription(options);
+    const tools = this.getTools();
+
+    // Estimate tokens for tools (they're always included)
+    const toolsJson = JSON.stringify(tools);
+    const toolsTokens = estimateTokenCount(toolsJson);
+
+    // Calculate remaining budget
+    let remaining = maxAvailable - toolsTokens;
+
+    // Estimate tokens for each component
+    let systemTokens = estimateTokenCount(systemPrompt);
+    let stateTokens = estimateTokenCount(stateDescription);
+
+    // Smart truncation if needed
+    if (systemTokens + stateTokens > remaining) {
+      const result = this.smartTruncate(
+        systemPrompt,
+        stateDescription,
+        remaining,
+        budget.truncationPriority,
+        options
+      );
+      systemPrompt = result.systemPrompt;
+      stateDescription = result.stateDescription;
+      systemTokens = estimateTokenCount(systemPrompt);
+      stateTokens = estimateTokenCount(stateDescription);
+    }
+
+    const totalTokens = toolsTokens + systemTokens + stateTokens;
+
     return {
-      systemPrompt: this.buildSystemPrompt(options),
-      tools: this.getTools(),
-      stateDescription: this.buildStateDescription(options),
+      systemPrompt,
+      tools,
+      stateDescription,
+      estimatedTokens: totalTokens,
+    };
+  }
+
+  /**
+   * Smart truncation to fit within token budget.
+   */
+  private smartTruncate(
+    systemPrompt: string,
+    stateDescription: string,
+    maxTokens: number,
+    priority: ('sceneGraph' | 'stateDescription' | 'customInstructions')[],
+    options: ContextBuilderOptions
+  ): { systemPrompt: string; stateDescription: string } {
+    let currentSystem = systemPrompt;
+    let currentState = stateDescription;
+
+    for (const item of priority) {
+      const currentTokens = estimateTokenCount(currentSystem) + estimateTokenCount(currentState);
+      if (currentTokens <= maxTokens) break;
+
+      if (item === 'sceneGraph') {
+        // Remove or reduce scene graph from state description
+        const sceneMarker = 'SCENE CONTENTS:';
+        const sceneIndex = currentState.indexOf(sceneMarker);
+        if (sceneIndex !== -1) {
+          // Truncate scene graph section
+          const beforeScene = currentState.substring(0, sceneIndex);
+          currentState = beforeScene + '[Scene graph truncated due to context limits]';
+        }
+      } else if (item === 'stateDescription') {
+        // Reduce state description to essentials
+        const lines = currentState.split('\n');
+        // Keep first 10 lines (viewport, selection, tool info)
+        currentState = lines.slice(0, 10).join('\n');
+        if (lines.length > 10) {
+          currentState += '\n[Additional state information truncated]';
+        }
+      } else if (item === 'customInstructions') {
+        // Remove custom instructions from system prompt
+        if (options.customInstructions || this.customInstructions) {
+          const customSection = '\n\nCUSTOM INSTRUCTIONS:';
+          const customIndex = currentSystem.indexOf(customSection);
+          if (customIndex !== -1) {
+            currentSystem = currentSystem.substring(0, customIndex);
+          }
+        }
+      }
+    }
+
+    return { systemPrompt: currentSystem, stateDescription: currentState };
+  }
+
+  /**
+   * Estimate tokens for a potential message.
+   */
+  estimateTokens(text: string): number {
+    return estimateTokenCount(text);
+  }
+
+  /**
+   * Get a preview of the context (useful for UI display).
+   */
+  getContextPreview(options: ContextBuilderOptions = {}): {
+    systemPromptPreview: string;
+    statePreview: string;
+    toolCount: number;
+    estimatedTokens: number;
+  } {
+    const context = this.build(options);
+    return {
+      systemPromptPreview: context.systemPrompt.substring(0, 500) + '...',
+      statePreview: context.stateDescription.substring(0, 300) + '...',
+      toolCount: context.tools.length,
+      estimatedTokens: context.estimatedTokens,
     };
   }
 
   /**
    * Build the system prompt.
    */
-  buildSystemPrompt(_options: ContextBuilderOptions = {}): string {
+  buildSystemPrompt(options: ContextBuilderOptions = {}): string {
     const calibration = this.calibrator.getCalibrationPrompt();
     const tools = this.getToolDescriptions();
+    const projectInfo = options.projectName ? `\nPROJECT: ${options.projectName}\n` : '';
+    const customInstructions = options.customInstructions || this.customInstructions;
 
-    return `You are an AI design assistant for DesignLibre, a professional vector graphics editor.
-
+    let prompt = `You are an AI design assistant for DesignLibre, a professional vector graphics editor.
+${projectInfo}
 ${calibration}
 
 CAPABILITIES:
@@ -90,6 +267,13 @@ When you receive a screenshot, analyze it to understand:
 - The overall layout and composition
 
 Respond naturally and execute design requests using the provided tools.`;
+
+    // Add custom instructions if provided
+    if (customInstructions) {
+      prompt += `\n\nCUSTOM INSTRUCTIONS:\n${customInstructions}`;
+    }
+
+    return prompt;
   }
 
   /**
@@ -115,15 +299,56 @@ Respond naturally and execute design requests using the provided tools.`;
         parts.push('Selection: none');
       } else {
         parts.push(`Selection: ${selectedIds.length} element(s)`);
+
         // Describe selected elements
         const sceneGraph = this.runtime.getSceneGraph();
-        if (sceneGraph && selectedIds.length <= 5) {
+        const maxToShow = options.detailedSelection ? 10 : 5;
+
+        if (sceneGraph && selectedIds.length <= maxToShow) {
           for (const id of selectedIds) {
             const node = sceneGraph.getNode(id);
             if (node) {
               const x = 'x' in node ? Math.round(node.x as number) : 0;
               const y = 'y' in node ? Math.round(node.y as number) : 0;
-              parts.push(`  - "${node.name}" (${node.type}) at (${x}, ${y})`);
+              const w = 'width' in node ? Math.round(node.width as number) : 0;
+              const h = 'height' in node ? Math.round(node.height as number) : 0;
+
+              // Basic info
+              let desc = `  - "${node.name}" (${node.type}) at (${x}, ${y})`;
+
+              // Add dimensions for detailed selection
+              if (options.detailedSelection && w > 0 && h > 0) {
+                desc += ` size ${w}x${h}`;
+              }
+
+              // Add style info for detailed selection
+              if (options.detailedSelection) {
+                const fill = 'fills' in node && Array.isArray(node.fills) && node.fills.length > 0
+                  ? (node.fills[0] as { color?: { hex?: string } })?.color?.hex
+                  : undefined;
+                if (fill) {
+                  desc += ` fill:${fill}`;
+                }
+              }
+
+              parts.push(desc);
+            }
+          }
+        } else if (selectedIds.length > maxToShow) {
+          parts.push(`  (${selectedIds.length} elements selected - showing first ${maxToShow})`);
+          // Show first few
+          const sceneGraphInstance = this.runtime.getSceneGraph();
+          if (sceneGraphInstance) {
+            for (let i = 0; i < maxToShow && i < selectedIds.length; i++) {
+              const id = selectedIds[i];
+              if (id) {
+                const node = sceneGraphInstance.getNode(id);
+                if (node) {
+                  const x = 'x' in node ? Math.round(node.x as number) : 0;
+                  const y = 'y' in node ? Math.round(node.y as number) : 0;
+                  parts.push(`  - "${node.name}" (${node.type}) at (${x}, ${y})`);
+                }
+              }
             }
           }
         }

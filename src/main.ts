@@ -7,13 +7,16 @@
 import { createDesignLibreRuntime } from '@runtime/designlibre-runtime';
 import { createToolbar } from '@ui/components/toolbar';
 import { createCanvasContainer } from '@ui/components/canvas-container';
-import { createInspectorPanel } from '@ui/components/inspector-panel';
+import { createRightSidebarContainer, type RightSidebarContainer } from '@ui/components/right-sidebar-container';
 import { createLeftSidebar } from '@ui/components/left-sidebar';
 import { createViewSwitcher } from '@ui/components/view-switcher';
 // Available for UI toggle - currently hidden by default
 import { createCodePanel as _createCodePanel } from '@ui/components/code-panel';
 import { createTokensPanel as _createTokensPanel } from '@ui/components/tokens-panel';
 import { createTokenRegistry, createTokenExporter } from '@devtools/tokens';
+// AI Integration
+import { createAIController, getConfigManager } from '@ai/index';
+import type { AIController } from '@ai/index';
 import './ui/styles/main.css';
 
 // Re-export for external use
@@ -34,6 +37,34 @@ interface AppConfig {
   autosaveInterval?: number;
   /** Enable debug mode */
   debug?: boolean;
+  /** Enable AI integration */
+  enableAI?: boolean;
+  /** Show AI panel by default */
+  showAIPanel?: boolean;
+}
+
+/**
+ * Set up global keyboard shortcuts
+ */
+function setupKeyboardShortcuts(rightSidebar: RightSidebarContainer): void {
+  document.addEventListener('keydown', (e) => {
+    // Cmd/Ctrl + Shift + L - Toggle AI panel
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      rightSidebar.toggleAIPanel();
+    }
+
+    // Escape - Close AI panel if open
+    if (e.key === 'Escape' && rightSidebar.isAIPanelVisible()) {
+      // Only close if not in an input field
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        // Let the input handle Escape
+        return;
+      }
+      rightSidebar.hideAIPanel();
+    }
+  });
 }
 
 /**
@@ -108,8 +139,86 @@ async function initializeApp(config: AppConfig): Promise<void> {
   const viewSwitcher = createViewSwitcher(runtime, main);
   void viewSwitcher; // Mounted to DOM, reference not needed
 
-  // Create inspector panel (right side)
-  createInspectorPanel(runtime, main, { position: 'right', width: 280 });
+  // Initialize AI system (if enabled)
+  let aiController: AIController | null = null;
+  if (config.enableAI !== false) {
+    try {
+      // Get config manager for provider settings
+      const configManager = getConfigManager();
+      const aiConfig = configManager.getConfig();
+      const activeProviderConfig = configManager.getActiveProviderConfig();
+
+      // Build provider configurations for the AI controller
+      const providers: Record<string, unknown> = {};
+
+      // Add Anthropic if configured
+      if (aiConfig.providers.anthropic?.enabled && aiConfig.providers.anthropic.apiKey) {
+        providers['anthropic'] = {
+          apiKey: aiConfig.providers.anthropic.apiKey,
+          model: aiConfig.providers.anthropic.defaultModel,
+          maxTokens: aiConfig.providers.anthropic.maxTokens,
+          temperature: aiConfig.providers.anthropic.temperature,
+        };
+      }
+
+      // Add OpenAI if configured
+      if (aiConfig.providers.openai?.enabled && aiConfig.providers.openai.apiKey) {
+        providers['openai'] = {
+          apiKey: aiConfig.providers.openai.apiKey,
+          model: aiConfig.providers.openai.defaultModel,
+          maxTokens: aiConfig.providers.openai.maxTokens,
+          temperature: aiConfig.providers.openai.temperature,
+        };
+      }
+
+      // Add Ollama if configured
+      if (aiConfig.providers.ollama?.enabled) {
+        providers['ollama'] = {
+          baseUrl: aiConfig.providers.ollama.endpoint,
+          model: aiConfig.providers.ollama.defaultModel,
+        };
+      }
+
+      // Add llama.cpp if configured
+      if (aiConfig.providers.llamacpp?.enabled) {
+        providers['llamacpp'] = {
+          baseUrl: aiConfig.providers.llamacpp.endpoint,
+        };
+      }
+
+      // Create AI controller with the config
+      aiController = createAIController(runtime, {
+        providers,
+        defaultProvider: activeProviderConfig.type,
+        autoConnect: true,
+      });
+
+      // Connect to providers
+      await aiController.connect();
+
+      if (config.debug) {
+        console.log('AI system initialized', {
+          activeProvider: activeProviderConfig.type,
+          availableProviders: aiController.getProviderNames(),
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to initialize AI system:', error);
+    }
+  }
+
+  // Create right sidebar container (inspector panel + AI chat)
+  const rightSidebar = createRightSidebarContainer(runtime, main, aiController, {
+    inspectorWidth: 280,
+    aiPanelWidth: 360,
+    showAIPanel: config.showAIPanel ?? false,
+  });
+
+  // Set up keyboard shortcuts for AI panel
+  setupKeyboardShortcuts(rightSidebar);
+
+  // Reference retained for potential cleanup/extension
+  void aiController;
 
   // Create design token system (available for TokensPanel when enabled)
   const tokenRegistry = createTokenRegistry();
@@ -148,6 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
       documentName: 'New Document',
       autosave: true,
       debug: import.meta.env.DEV,
+      enableAI: true,
+      showAIPanel: false, // Hidden by default, use Cmd/Ctrl+Shift+L to toggle
     }).catch(console.error);
   }
 });
