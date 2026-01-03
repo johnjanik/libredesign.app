@@ -45,6 +45,14 @@ const ICONS = {
     <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
     <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
   </svg>`,
+  play: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>`,
+  vision: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
+  </svg>`,
 };
 
 /**
@@ -303,13 +311,23 @@ export class AISettingsPanel {
 
     // Model selection
     if (provider === 'ollama') {
-      // For Ollama, create a dynamic model selector that fetches from server
-      const modelContainer = document.createElement('div');
-      modelContainer.className = 'ollama-model-container';
-      container.appendChild(modelContainer);
+      // For Ollama, create dynamic model selectors for chat and vision
+      const ollamaConfig = providerConfig as { endpoint?: string; defaultModel: string; visionModel?: string };
 
-      // Fetch models from Ollama server
-      this.loadOllamaModels(modelContainer, providerConfig);
+      // Chat model selector
+      const chatModelContainer = document.createElement('div');
+      chatModelContainer.className = 'ollama-model-container';
+      container.appendChild(chatModelContainer);
+      this.loadOllamaModels(chatModelContainer, ollamaConfig, 'chat');
+
+      // Vision model selector
+      const visionModelContainer = document.createElement('div');
+      visionModelContainer.className = 'ollama-vision-model-container';
+      container.appendChild(visionModelContainer);
+      this.loadOllamaModels(visionModelContainer, ollamaConfig, 'vision');
+
+      // Server controls section
+      container.appendChild(this.createOllamaServerControls(ollamaConfig));
     } else {
       const models = AVAILABLE_MODELS[provider] || [];
       if (models.length > 0) {
@@ -855,8 +873,16 @@ export class AISettingsPanel {
   /**
    * Load and display Ollama models in the container
    */
-  private async loadOllamaModels(container: HTMLElement, providerConfig: { endpoint?: string; defaultModel: string }): Promise<void> {
+  private async loadOllamaModels(
+    container: HTMLElement,
+    providerConfig: { endpoint?: string; defaultModel: string; visionModel?: string },
+    modelType: 'chat' | 'vision' = 'chat'
+  ): Promise<void> {
     const endpoint = providerConfig.endpoint || 'http://localhost:11434';
+    const isVision = modelType === 'vision';
+    const currentModel = isVision ? (providerConfig.visionModel || 'llava:latest') : providerConfig.defaultModel;
+    const labelText = isVision ? 'Vision Model' : 'Chat Model';
+    const configKey = isVision ? 'visionModel' : 'defaultModel';
 
     // Clear container and show loading
     container.innerHTML = '';
@@ -868,11 +894,14 @@ export class AISettingsPanel {
     labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
 
     const labelEl = document.createElement('label');
-    labelEl.textContent = 'Model';
+    labelEl.innerHTML = isVision ? `${ICONS.vision} ${labelText}` : labelText;
     labelEl.style.cssText = `
       font-size: 12px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     `;
     labelRow.appendChild(labelEl);
 
@@ -903,15 +932,20 @@ export class AISettingsPanel {
     });
     refreshBtn.addEventListener('click', () => {
       this.ollamaModels = null; // Clear cache
-      this.loadOllamaModels(container, providerConfig);
+      this.loadOllamaModels(container, providerConfig, modelType);
     });
     labelRow.appendChild(refreshBtn);
 
     row.appendChild(labelRow);
 
+    // Select and test button row
+    const selectRow = document.createElement('div');
+    selectRow.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+
     // Select element
     const select = document.createElement('select');
     select.style.cssText = `
+      flex: 1;
       padding: 8px 12px;
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 6px;
@@ -929,8 +963,69 @@ export class AISettingsPanel {
     select.appendChild(loadingOption);
     select.disabled = true;
 
-    row.appendChild(select);
+    selectRow.appendChild(select);
+
+    // Test button
+    const testBtn = document.createElement('button');
+    testBtn.innerHTML = ICONS.refresh;
+    testBtn.title = `Test ${isVision ? 'vision' : 'chat'} model`;
+    testBtn.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    `;
+    testBtn.addEventListener('mouseenter', () => {
+      testBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      testBtn.style.color = 'var(--designlibre-accent, #4dabff)';
+    });
+    testBtn.addEventListener('mouseleave', () => {
+      testBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      testBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+    selectRow.appendChild(testBtn);
+
+    row.appendChild(selectRow);
+
+    // Status message
+    const statusEl = document.createElement('div');
+    statusEl.style.cssText = 'font-size: 11px; min-height: 16px;';
+    row.appendChild(statusEl);
+
     container.appendChild(row);
+
+    // Test button click handler
+    testBtn.addEventListener('click', async () => {
+      testBtn.disabled = true;
+      testBtn.innerHTML = ICONS.spinner;
+      statusEl.textContent = 'Testing...';
+      statusEl.style.color = 'var(--designlibre-text-muted, #6a6a6a)';
+
+      try {
+        const model = select.value;
+        const success = await this.testOllamaModel(endpoint, model, isVision);
+        if (success) {
+          statusEl.textContent = `✓ ${model} is working`;
+          statusEl.style.color = 'var(--designlibre-success, #4caf50)';
+        } else {
+          statusEl.textContent = `✗ ${model} test failed`;
+          statusEl.style.color = 'var(--designlibre-error, #f44336)';
+        }
+      } catch (error) {
+        statusEl.textContent = `✗ ${error instanceof Error ? error.message : 'Test failed'}`;
+        statusEl.style.color = 'var(--designlibre-error, #f44336)';
+      } finally {
+        testBtn.disabled = false;
+        testBtn.innerHTML = ICONS.refresh;
+      }
+    });
 
     // Fetch models
     try {
@@ -949,26 +1044,229 @@ export class AISettingsPanel {
         noModelsOption.textContent = 'No models found - run "ollama pull <model>"';
         noModelsOption.disabled = true;
         select.appendChild(noModelsOption);
+        statusEl.textContent = isVision
+          ? 'Try: ollama pull llava or ollama pull bakllava'
+          : 'Try: ollama pull llama3.1:8b';
+        statusEl.style.color = 'var(--designlibre-text-muted, #6a6a6a)';
       } else {
-        for (const model of models) {
+        // For vision, suggest vision-capable models first
+        const sortedModels = isVision
+          ? [...models].sort((a, b) => {
+              const aIsVision = /llava|bakllava|moondream|cogvlm/i.test(a.value);
+              const bIsVision = /llava|bakllava|moondream|cogvlm/i.test(b.value);
+              if (aIsVision && !bIsVision) return -1;
+              if (!aIsVision && bIsVision) return 1;
+              return 0;
+            })
+          : models;
+
+        for (const model of sortedModels) {
           const option = document.createElement('option');
           option.value = model.value;
           option.textContent = model.label;
-          option.selected = model.value === providerConfig.defaultModel;
+          option.selected = model.value === currentModel;
           select.appendChild(option);
         }
         select.disabled = false;
 
         select.addEventListener('change', () => {
-          this.configManager.updateProviderConfig('ollama', { defaultModel: select.value });
+          this.configManager.updateProviderConfig('ollama', { [configKey]: select.value });
         });
       }
     } catch (error) {
       select.innerHTML = '';
       const errorOption = document.createElement('option');
-      errorOption.textContent = 'Failed to load models - check Ollama is running';
+      errorOption.textContent = 'Ollama not running';
       errorOption.disabled = true;
       select.appendChild(errorOption);
+      statusEl.textContent = 'Start Ollama server to see available models';
+      statusEl.style.color = 'var(--designlibre-warning, #f59e0b)';
+    }
+  }
+
+  /**
+   * Create Ollama server controls section
+   */
+  private createOllamaServerControls(_providerConfig: { endpoint?: string }): HTMLElement {
+    const container = document.createElement('div');
+    container.style.cssText = `
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border-radius: 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = 'Server Controls';
+    title.style.cssText = `
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+    `;
+    container.appendChild(title);
+
+    const buttonRow = document.createElement('div');
+    buttonRow.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap;';
+
+    // Start server button
+    const startBtn = document.createElement('button');
+    startBtn.innerHTML = `${ICONS.play} Start Ollama`;
+    startBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
+    startBtn.addEventListener('mouseenter', () => {
+      startBtn.style.borderColor = 'var(--designlibre-success, #4caf50)';
+      startBtn.style.color = 'var(--designlibre-success, #4caf50)';
+    });
+    startBtn.addEventListener('mouseleave', () => {
+      startBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      startBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+
+    const statusSpan = document.createElement('span');
+    statusSpan.style.cssText = 'font-size: 12px; margin-left: 12px;';
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      startBtn.innerHTML = `${ICONS.spinner} Starting...`;
+      statusSpan.textContent = '';
+
+      try {
+        const started = await this.startOllamaServer();
+        if (started) {
+          statusSpan.textContent = '✓ Server started';
+          statusSpan.style.color = 'var(--designlibre-success, #4caf50)';
+          // Refresh models after starting
+          this.ollamaModels = null;
+          // Re-render to update model lists
+          setTimeout(() => {
+            const section = container.closest('.ai-settings-provider');
+            if (section) {
+              this.refreshSection(section as HTMLElement, 'ollama');
+            }
+          }, 1500);
+        } else {
+          statusSpan.textContent = '✗ Could not start server';
+          statusSpan.style.color = 'var(--designlibre-error, #f44336)';
+        }
+      } catch (error) {
+        statusSpan.textContent = error instanceof Error ? error.message : 'Failed to start';
+        statusSpan.style.color = 'var(--designlibre-error, #f44336)';
+      } finally {
+        startBtn.disabled = false;
+        startBtn.innerHTML = `${ICONS.play} Start Ollama`;
+      }
+    });
+
+    buttonRow.appendChild(startBtn);
+    buttonRow.appendChild(statusSpan);
+    container.appendChild(buttonRow);
+
+    // Help text
+    const helpText = document.createElement('div');
+    helpText.style.cssText = `
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      line-height: 1.5;
+    `;
+    helpText.innerHTML = `
+      <strong>Note:</strong> Ollama must be installed on your system.
+      <a href="https://ollama.com" target="_blank" style="color: var(--designlibre-accent, #4dabff);">Download Ollama</a>
+    `;
+    container.appendChild(helpText);
+
+    return container;
+  }
+
+  /**
+   * Test an Ollama model by sending a simple request
+   */
+  private async testOllamaModel(endpoint: string, model: string, isVision: boolean): Promise<boolean> {
+    try {
+      const messages = isVision
+        ? [{ role: 'user', content: 'Describe this image in one word.', images: [] }]
+        : [{ role: 'user', content: 'Say "hello" and nothing else.' }];
+
+      const response = await fetch(`${endpoint}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: false,
+          options: { num_predict: 10 },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Model test failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return !!data.message?.content;
+    } catch (error) {
+      console.error('Model test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start the Ollama server
+   */
+  private async startOllamaServer(): Promise<boolean> {
+    // Try to start Ollama using different methods based on platform
+    // This is a best-effort approach - may not work in all environments
+    try {
+      // First check if already running
+      const checkResponse = await fetch('http://localhost:11434/api/tags', {
+        method: 'GET',
+        signal: AbortSignal.timeout(2000),
+      }).catch(() => null);
+
+      if (checkResponse?.ok) {
+        // Already running
+        return true;
+      }
+
+      // Try to open Ollama app (works on macOS/Windows with Ollama app installed)
+      // This opens the Ollama app which starts the server
+      const ollamaUrls = [
+        'ollama://', // macOS app URL scheme
+      ];
+
+      for (const url of ollamaUrls) {
+        try {
+          window.open(url, '_blank');
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Wait and check if server started
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const verifyResponse = await fetch('http://localhost:11434/api/tags', {
+        method: 'GET',
+        signal: AbortSignal.timeout(2000),
+      }).catch(() => null);
+
+      return verifyResponse?.ok ?? false;
+    } catch (error) {
+      console.error('Failed to start Ollama:', error);
+      return false;
     }
   }
 

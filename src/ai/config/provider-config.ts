@@ -68,6 +68,8 @@ export interface OllamaProviderConfig extends BaseProviderConfig {
   endpoint: string;
   /** Keep model loaded duration */
   keepAlive: string;
+  /** Vision model for image understanding (e.g., llava, bakllava) */
+  visionModel?: string;
   /** Number of GPUs to use */
   numGpu?: number;
   /** Number of threads */

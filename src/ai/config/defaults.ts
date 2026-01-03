@@ -52,6 +52,7 @@ export const DEFAULT_OLLAMA_CONFIG: OllamaProviderConfig = {
   endpoint: 'http://localhost:11434',
   keepAlive: '5m',
   defaultModel: 'llama3.1:8b',
+  visionModel: 'llava:latest',
   maxTokens: 2048,
   temperature: 0.7,
   timeout: 120000,
