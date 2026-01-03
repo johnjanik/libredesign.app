@@ -12,6 +12,12 @@ import {
   downloadIOSProject,
   downloadTypeScriptProject,
 } from '@persistence/export/project-export';
+import {
+  SwiftUIImporter,
+  ComposeImporter,
+  type XcodeProjectImportOptions,
+  type AndroidProjectImportOptions,
+} from '@persistence/import';
 
 /**
  * Leaf (page) definition
@@ -1380,6 +1386,7 @@ export class LeftSidebar {
       { separator: true },
       { label: 'Templates', submenu: true, action: () => this.showTemplatesMenu(anchor) },
       { separator: true },
+      { label: 'Import Project...', submenu: true, action: () => this.showImportMenu(anchor) },
       { label: 'Export Project...', submenu: true, action: () => this.showExportMenu(anchor) },
       { separator: true },
       { label: 'Settings', action: () => this.showSettingsMenu(anchor) },
@@ -1649,6 +1656,539 @@ export class LeftSidebar {
     requestAnimationFrame(() => {
       document.addEventListener('mousedown', closeMenu);
     });
+  }
+
+  /**
+   * Show import project menu.
+   */
+  private showImportMenu(anchor: HTMLElement): void {
+    // Remove existing menu if present
+    const existingMenu = document.getElementById('designlibre-import-menu');
+    if (existingMenu) {
+      existingMenu.remove();
+      return;
+    }
+
+    const rect = anchor.getBoundingClientRect();
+    const menu = document.createElement('div');
+    menu.id = 'designlibre-import-menu';
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 300px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
+
+    const importItems = [
+      {
+        label: 'Import Xcode Project',
+        description: 'SwiftUI views from .xcodeproj folder',
+        icon: this.createAppleIcon(),
+        action: () => this.importXcodeProject(),
+      },
+      {
+        label: 'Import Android Project',
+        description: 'Jetpack Compose from Gradle project',
+        icon: this.createAndroidIcon(),
+        action: () => this.importAndroidProject(),
+      },
+    ];
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.textContent = 'Import from Project';
+    menu.appendChild(header);
+
+    // Info text
+    const infoText = document.createElement('div');
+    infoText.style.cssText = 'padding: 4px 12px 8px; font-size: 11px; color: #888; line-height: 1.4;';
+    infoText.textContent = 'Import UI elements from mobile projects. Designers can edit visual properties while code logic stays read-only.';
+    menu.appendChild(infoText);
+
+    for (const item of importItems) {
+      const menuItem = document.createElement('div');
+      menuItem.style.cssText = `
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+
+      // Icon container
+      const iconContainer = document.createElement('div');
+      iconContainer.style.cssText = 'flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;';
+      iconContainer.innerHTML = item.icon;
+      menuItem.appendChild(iconContainer);
+
+      // Text container
+      const textContainer = document.createElement('div');
+      textContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+      const label = document.createElement('span');
+      label.textContent = item.label;
+      label.style.fontWeight = '500';
+      textContainer.appendChild(label);
+
+      const desc = document.createElement('span');
+      desc.textContent = item.description;
+      desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+      textContainer.appendChild(desc);
+
+      menuItem.appendChild(textContainer);
+
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
+      menuItem.addEventListener('click', () => {
+        menu.remove();
+        item.action();
+      });
+
+      menu.appendChild(menuItem);
+    }
+
+    // Separator
+    const sep = document.createElement('div');
+    sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 8px 0;';
+    menu.appendChild(sep);
+
+    // Feature note
+    const note = document.createElement('div');
+    note.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #666; line-height: 1.4;';
+    note.innerHTML = '<strong>Live Sync:</strong> Changes sync bidirectionally. Code-controlled properties (state, bindings) are locked.';
+    menu.appendChild(note);
+
+    document.body.appendChild(menu);
+
+    // Close when clicking outside
+    const closeMenu = (e: MouseEvent) => {
+      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
+        menu.remove();
+        document.removeEventListener('mousedown', closeMenu);
+      }
+    };
+    requestAnimationFrame(() => {
+      document.addEventListener('mousedown', closeMenu);
+    });
+  }
+
+  /**
+   * Create Apple logo icon.
+   */
+  private createAppleIcon(): string {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+    </svg>`;
+  }
+
+  /**
+   * Create Android robot icon.
+   */
+  private createAndroidIcon(): string {
+    return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48C13.85 1.23 12.95 1 12 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31C6.97 3.26 6 5.01 6 7h12c0-1.99-.97-3.75-2.47-4.84zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/>
+    </svg>`;
+  }
+
+  /**
+   * Import Xcode (SwiftUI) project.
+   */
+  private async importXcodeProject(): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) {
+      alert('Scene graph not available');
+      return;
+    }
+
+    // Check if File System Access API is supported
+    if (!('showDirectoryPicker' in window)) {
+      alert('Your browser does not support the File System Access API. Please use Chrome, Edge, or a compatible browser.');
+      return;
+    }
+
+    try {
+      // Show directory picker
+      const directoryHandle = await (window as unknown as { showDirectoryPicker(options?: { mode?: string }): Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({
+        mode: 'read',
+      });
+
+      // Show import options dialog
+      const options = await this.showImportOptionsDialog('xcode', directoryHandle.name);
+      if (!options) return; // User cancelled
+
+      // Create importer
+      const importer = new SwiftUIImporter(sceneGraph);
+
+      // Show progress
+      const progressDialog = this.showImportProgressDialog('Xcode');
+
+      try {
+        const result = await importer.importXcodeProject(directoryHandle, options as XcodeProjectImportOptions);
+
+        progressDialog.remove();
+
+        // Show results
+        const message = `Import complete!\n\n` +
+          `• Files imported: ${result.files.length}\n` +
+          `• Total nodes created: ${result.totalNodeCount}\n` +
+          `• Asset colors found: ${result.assetColors.size}\n` +
+          (result.warnings.length > 0 ? `\nWarnings:\n${result.warnings.slice(0, 5).join('\n')}` : '');
+
+        alert(message);
+      } catch (importError) {
+        progressDialog.remove();
+        throw importError;
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled the picker
+        return;
+      }
+      console.error('Failed to import Xcode project:', error);
+      alert(`Failed to import Xcode project: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Import Android (Compose) project.
+   */
+  private async importAndroidProject(): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) {
+      alert('Scene graph not available');
+      return;
+    }
+
+    // Check if File System Access API is supported
+    if (!('showDirectoryPicker' in window)) {
+      alert('Your browser does not support the File System Access API. Please use Chrome, Edge, or a compatible browser.');
+      return;
+    }
+
+    try {
+      // Show directory picker
+      const directoryHandle = await (window as unknown as { showDirectoryPicker(options?: { mode?: string }): Promise<FileSystemDirectoryHandle> }).showDirectoryPicker({
+        mode: 'read',
+      });
+
+      // Show import options dialog
+      const options = await this.showImportOptionsDialog('android', directoryHandle.name);
+      if (!options) return; // User cancelled
+
+      // Create importer
+      const importer = new ComposeImporter(sceneGraph);
+
+      // Show progress
+      const progressDialog = this.showImportProgressDialog('Android');
+
+      try {
+        const result = await importer.importAndroidProject(directoryHandle, options as AndroidProjectImportOptions);
+
+        progressDialog.remove();
+
+        // Show results
+        const message = `Import complete!\n\n` +
+          `• Files imported: ${result.files.length}\n` +
+          `• Total nodes created: ${result.totalNodeCount}\n` +
+          `• Theme colors found: ${result.themeColors.size}\n` +
+          (result.warnings.length > 0 ? `\nWarnings:\n${result.warnings.slice(0, 5).join('\n')}` : '');
+
+        alert(message);
+      } catch (importError) {
+        progressDialog.remove();
+        throw importError;
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled the picker
+        return;
+      }
+      console.error('Failed to import Android project:', error);
+      alert(`Failed to import Android project: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Show import options dialog.
+   */
+  private showImportOptionsDialog(
+    projectType: 'xcode' | 'android',
+    projectName: string
+  ): Promise<XcodeProjectImportOptions | AndroidProjectImportOptions | null> {
+    return new Promise((resolve) => {
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'import-options-dialog-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000000;
+      `;
+
+      const dialog = document.createElement('div');
+      dialog.style.cssText = `
+        background: #1e1e1e;
+        border: 1px solid #3d3d3d;
+        border-radius: 8px;
+        padding: 24px;
+        min-width: 400px;
+        max-width: 500px;
+        color: #e4e4e4;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 13px;
+      `;
+
+      // Title
+      const title = document.createElement('h2');
+      title.style.cssText = 'margin: 0 0 8px 0; font-size: 18px; font-weight: 600;';
+      title.textContent = projectType === 'xcode' ? 'Import Xcode Project' : 'Import Android Project';
+      dialog.appendChild(title);
+
+      // Project name
+      const projectInfo = document.createElement('div');
+      projectInfo.style.cssText = 'margin-bottom: 20px; color: #888;';
+      projectInfo.textContent = `Project: ${projectName}`;
+      dialog.appendChild(projectInfo);
+
+      // Options container
+      const optionsContainer = document.createElement('div');
+      optionsContainer.style.cssText = 'display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;';
+
+      // Scale option
+      const scaleRow = this.createOptionRow('Scale Factor', 'Number multiplier for sizes', 'number', '1');
+      optionsContainer.appendChild(scaleRow.container);
+
+      // Expand loops option
+      const expandLoopsRow = this.createOptionRow('Expand Loops', 'Show multiple instances for ForEach/LazyColumn', 'checkbox', 'true');
+      optionsContainer.appendChild(expandLoopsRow.container);
+
+      // Loop count option
+      const loopCountRow = this.createOptionRow('Loop Expansion Count', 'Number of items to show for loops', 'number', '3');
+      optionsContainer.appendChild(loopCountRow.container);
+
+      // Include conditionals option
+      const conditionalsRow = this.createOptionRow('Include Conditionals', 'Show both branches of if/else', 'checkbox', 'false');
+      optionsContainer.appendChild(conditionalsRow.container);
+
+      // Preserve folder structure option
+      const folderRow = this.createOptionRow('Preserve Folder Structure', 'Create groups matching folder hierarchy', 'checkbox', 'true');
+      optionsContainer.appendChild(folderRow.container);
+
+      dialog.appendChild(optionsContainer);
+
+      // Buttons
+      const buttonRow = document.createElement('div');
+      buttonRow.style.cssText = 'display: flex; justify-content: flex-end; gap: 12px;';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = `
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid #3d3d3d;
+        border-radius: 4px;
+        color: #e4e4e4;
+        cursor: pointer;
+        font-size: 13px;
+      `;
+      cancelBtn.addEventListener('click', () => {
+        overlay.remove();
+        resolve(null);
+      });
+      buttonRow.appendChild(cancelBtn);
+
+      const importBtn = document.createElement('button');
+      importBtn.textContent = 'Import';
+      importBtn.style.cssText = `
+        padding: 8px 20px;
+        background: #4dabff;
+        border: none;
+        border-radius: 4px;
+        color: #000;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+      `;
+      importBtn.addEventListener('click', () => {
+        const options: XcodeProjectImportOptions | AndroidProjectImportOptions = {
+          scale: parseFloat((scaleRow.input as HTMLInputElement).value) || 1,
+          expandLoops: (expandLoopsRow.input as HTMLInputElement).checked,
+          loopExpansionCount: parseInt((loopCountRow.input as HTMLInputElement).value, 10) || 3,
+          includeConditionals: (conditionalsRow.input as HTMLInputElement).checked,
+          preserveFolderStructure: (folderRow.input as HTMLInputElement).checked,
+        };
+        overlay.remove();
+        resolve(options);
+      });
+      buttonRow.appendChild(importBtn);
+
+      dialog.appendChild(buttonRow);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // Close on escape
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          overlay.remove();
+          document.removeEventListener('keydown', handleEscape);
+          resolve(null);
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
+
+      // Close on overlay click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove();
+          resolve(null);
+        }
+      });
+    });
+  }
+
+  /**
+   * Create an option row for the import dialog.
+   */
+  private createOptionRow(
+    label: string,
+    description: string,
+    type: 'checkbox' | 'number',
+    defaultValue: string
+  ): { container: HTMLElement; input: HTMLElement } {
+    const container = document.createElement('div');
+    container.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 16px;';
+
+    const labelContainer = document.createElement('div');
+    labelContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = label;
+    labelEl.style.fontWeight = '500';
+    labelContainer.appendChild(labelEl);
+
+    const descEl = document.createElement('span');
+    descEl.textContent = description;
+    descEl.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+    labelContainer.appendChild(descEl);
+
+    container.appendChild(labelContainer);
+
+    let input: HTMLInputElement;
+
+    if (type === 'checkbox') {
+      input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = defaultValue === 'true';
+      input.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+    } else {
+      input = document.createElement('input');
+      input.type = 'number';
+      input.value = defaultValue;
+      input.min = '0.1';
+      input.max = '10';
+      input.step = '0.1';
+      input.style.cssText = `
+        width: 60px;
+        padding: 4px 8px;
+        background: #2d2d2d;
+        border: 1px solid #3d3d3d;
+        border-radius: 4px;
+        color: #e4e4e4;
+        font-size: 13px;
+        text-align: center;
+      `;
+    }
+
+    container.appendChild(input);
+
+    return { container, input };
+  }
+
+  /**
+   * Show import progress dialog.
+   */
+  private showImportProgressDialog(projectType: string): HTMLElement {
+    const overlay = document.createElement('div');
+    overlay.id = 'import-progress-dialog';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000000;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 32px 48px;
+      text-align: center;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    `;
+
+    // Spinner
+    const spinner = document.createElement('div');
+    spinner.style.cssText = `
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 16px;
+      border: 3px solid #3d3d3d;
+      border-top-color: #4dabff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    `;
+    dialog.appendChild(spinner);
+
+    // Add keyframes
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
+
+    // Text
+    const text = document.createElement('div');
+    text.style.fontSize = '14px';
+    text.textContent = `Importing ${projectType} project...`;
+    dialog.appendChild(text);
+
+    const subtext = document.createElement('div');
+    subtext.style.cssText = 'font-size: 12px; color: #888; margin-top: 8px;';
+    subtext.textContent = 'Parsing source files and creating nodes';
+    dialog.appendChild(subtext);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    return overlay;
   }
 
   /**
