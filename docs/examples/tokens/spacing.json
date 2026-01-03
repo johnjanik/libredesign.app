@@ -1,0 +1,350 @@
+{
+  "$schema": "https://designlibre.app/schemas/tokens-v1.json",
+  "version": "1.0.0",
+
+  "$metadata": {
+    "type": "spacing",
+    "name": "Spacing",
+    "description": "Spacing tokens based on a 4px grid system",
+    "createdAt": "2025-06-15T10:30:00Z",
+    "updatedAt": "2026-01-03T14:22:00Z"
+  },
+
+  "tokens": {
+    "base": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$description": "Base spacing unit (4px grid)"
+    },
+
+    "scale": {
+      "$description": "Spacing scale (multiples of 4px base)",
+
+      "0": {
+        "$type": "dimension",
+        "$value": "0px"
+      },
+      "px": {
+        "$type": "dimension",
+        "$value": "1px",
+        "$description": "1px for fine adjustments"
+      },
+      "0.5": {
+        "$type": "dimension",
+        "$value": "2px",
+        "$description": "0.5x base (2px)"
+      },
+      "1": {
+        "$type": "dimension",
+        "$value": "4px",
+        "$description": "1x base (4px)"
+      },
+      "1.5": {
+        "$type": "dimension",
+        "$value": "6px",
+        "$description": "1.5x base (6px)"
+      },
+      "2": {
+        "$type": "dimension",
+        "$value": "8px",
+        "$description": "2x base (8px)"
+      },
+      "2.5": {
+        "$type": "dimension",
+        "$value": "10px"
+      },
+      "3": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "3x base (12px)"
+      },
+      "3.5": {
+        "$type": "dimension",
+        "$value": "14px"
+      },
+      "4": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "4x base (16px)"
+      },
+      "5": {
+        "$type": "dimension",
+        "$value": "20px"
+      },
+      "6": {
+        "$type": "dimension",
+        "$value": "24px",
+        "$description": "6x base (24px)"
+      },
+      "7": {
+        "$type": "dimension",
+        "$value": "28px"
+      },
+      "8": {
+        "$type": "dimension",
+        "$value": "32px",
+        "$description": "8x base (32px)"
+      },
+      "9": {
+        "$type": "dimension",
+        "$value": "36px"
+      },
+      "10": {
+        "$type": "dimension",
+        "$value": "40px"
+      },
+      "11": {
+        "$type": "dimension",
+        "$value": "44px"
+      },
+      "12": {
+        "$type": "dimension",
+        "$value": "48px"
+      },
+      "14": {
+        "$type": "dimension",
+        "$value": "56px"
+      },
+      "16": {
+        "$type": "dimension",
+        "$value": "64px"
+      },
+      "20": {
+        "$type": "dimension",
+        "$value": "80px"
+      },
+      "24": {
+        "$type": "dimension",
+        "$value": "96px"
+      },
+      "28": {
+        "$type": "dimension",
+        "$value": "112px"
+      },
+      "32": {
+        "$type": "dimension",
+        "$value": "128px"
+      },
+      "36": {
+        "$type": "dimension",
+        "$value": "144px"
+      },
+      "40": {
+        "$type": "dimension",
+        "$value": "160px"
+      },
+      "44": {
+        "$type": "dimension",
+        "$value": "176px"
+      },
+      "48": {
+        "$type": "dimension",
+        "$value": "192px"
+      },
+      "52": {
+        "$type": "dimension",
+        "$value": "208px"
+      },
+      "56": {
+        "$type": "dimension",
+        "$value": "224px"
+      },
+      "60": {
+        "$type": "dimension",
+        "$value": "240px"
+      },
+      "64": {
+        "$type": "dimension",
+        "$value": "256px"
+      },
+      "72": {
+        "$type": "dimension",
+        "$value": "288px"
+      },
+      "80": {
+        "$type": "dimension",
+        "$value": "320px"
+      },
+      "96": {
+        "$type": "dimension",
+        "$value": "384px"
+      }
+    },
+
+    "semantic": {
+      "$description": "Semantic spacing aliases",
+
+      "none": {
+        "$type": "dimension",
+        "$value": "{scale.0}"
+      },
+      "xs": {
+        "$type": "dimension",
+        "$value": "{scale.1}",
+        "$description": "Extra small (4px)"
+      },
+      "sm": {
+        "$type": "dimension",
+        "$value": "{scale.2}",
+        "$description": "Small (8px)"
+      },
+      "md": {
+        "$type": "dimension",
+        "$value": "{scale.4}",
+        "$description": "Medium (16px)"
+      },
+      "lg": {
+        "$type": "dimension",
+        "$value": "{scale.6}",
+        "$description": "Large (24px)"
+      },
+      "xl": {
+        "$type": "dimension",
+        "$value": "{scale.8}",
+        "$description": "Extra large (32px)"
+      },
+      "2xl": {
+        "$type": "dimension",
+        "$value": "{scale.12}",
+        "$description": "2x large (48px)"
+      },
+      "3xl": {
+        "$type": "dimension",
+        "$value": "{scale.16}",
+        "$description": "3x large (64px)"
+      },
+      "4xl": {
+        "$type": "dimension",
+        "$value": "{scale.24}",
+        "$description": "4x large (96px)"
+      }
+    },
+
+    "component": {
+      "$description": "Component-specific spacing",
+
+      "button": {
+        "paddingX": {
+          "$type": "dimension",
+          "$value": "{scale.4}",
+          "$description": "Button horizontal padding"
+        },
+        "paddingY": {
+          "$type": "dimension",
+          "$value": "{scale.2}",
+          "$description": "Button vertical padding"
+        },
+        "gap": {
+          "$type": "dimension",
+          "$value": "{scale.2}",
+          "$description": "Gap between button icon and text"
+        }
+      },
+
+      "card": {
+        "padding": {
+          "$type": "dimension",
+          "$value": "{scale.6}",
+          "$description": "Card internal padding"
+        },
+        "gap": {
+          "$type": "dimension",
+          "$value": "{scale.4}",
+          "$description": "Gap between card elements"
+        }
+      },
+
+      "input": {
+        "paddingX": {
+          "$type": "dimension",
+          "$value": "{scale.3}",
+          "$description": "Input horizontal padding"
+        },
+        "paddingY": {
+          "$type": "dimension",
+          "$value": "{scale.2}",
+          "$description": "Input vertical padding"
+        }
+      },
+
+      "modal": {
+        "padding": {
+          "$type": "dimension",
+          "$value": "{scale.6}"
+        },
+        "headerGap": {
+          "$type": "dimension",
+          "$value": "{scale.4}"
+        },
+        "footerGap": {
+          "$type": "dimension",
+          "$value": "{scale.3}"
+        }
+      }
+    },
+
+    "layout": {
+      "$description": "Layout spacing",
+
+      "page": {
+        "paddingX": {
+          "$type": "dimension",
+          "$value": "{scale.6}",
+          "$description": "Page horizontal padding"
+        },
+        "paddingY": {
+          "$type": "dimension",
+          "$value": "{scale.8}",
+          "$description": "Page vertical padding"
+        },
+        "maxWidth": {
+          "$type": "dimension",
+          "$value": "1280px",
+          "$description": "Maximum content width"
+        }
+      },
+
+      "section": {
+        "gap": {
+          "$type": "dimension",
+          "$value": "{scale.16}",
+          "$description": "Gap between major sections"
+        }
+      },
+
+      "stack": {
+        "sm": {
+          "$type": "dimension",
+          "$value": "{scale.2}",
+          "$description": "Small stack gap"
+        },
+        "md": {
+          "$type": "dimension",
+          "$value": "{scale.4}",
+          "$description": "Medium stack gap"
+        },
+        "lg": {
+          "$type": "dimension",
+          "$value": "{scale.6}",
+          "$description": "Large stack gap"
+        }
+      },
+
+      "grid": {
+        "gap": {
+          "$type": "dimension",
+          "$value": "{scale.6}",
+          "$description": "Default grid gap"
+        },
+        "columnGap": {
+          "$type": "dimension",
+          "$value": "{scale.6}"
+        },
+        "rowGap": {
+          "$type": "dimension",
+          "$value": "{scale.6}"
+        }
+      }
+    }
+  }
+}

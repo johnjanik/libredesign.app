@@ -1,0 +1,289 @@
+{
+  "$schema": "https://designlibre.app/schemas/tokens-v1.json",
+  "version": "1.0.0",
+
+  "$metadata": {
+    "type": "mixed",
+    "name": "Motion",
+    "description": "Animation duration and easing tokens for consistent motion design",
+    "createdAt": "2025-06-15T10:30:00Z",
+    "updatedAt": "2026-01-03T14:22:00Z"
+  },
+
+  "tokens": {
+    "duration": {
+      "$description": "Animation duration scale",
+
+      "instant": {
+        "$type": "duration",
+        "$value": 0,
+        "$description": "No animation"
+      },
+      "fastest": {
+        "$type": "duration",
+        "$value": 50,
+        "$description": "50ms - micro-interactions"
+      },
+      "faster": {
+        "$type": "duration",
+        "$value": 100,
+        "$description": "100ms - quick feedback"
+      },
+      "fast": {
+        "$type": "duration",
+        "$value": 150,
+        "$description": "150ms - button states"
+      },
+      "normal": {
+        "$type": "duration",
+        "$value": 200,
+        "$description": "200ms - default transitions"
+      },
+      "slow": {
+        "$type": "duration",
+        "$value": 300,
+        "$description": "300ms - content transitions"
+      },
+      "slower": {
+        "$type": "duration",
+        "$value": 400,
+        "$description": "400ms - complex animations"
+      },
+      "slowest": {
+        "$type": "duration",
+        "$value": 500,
+        "$description": "500ms - page transitions"
+      }
+    },
+
+    "easing": {
+      "$description": "Cubic bezier easing curves",
+
+      "linear": {
+        "$type": "cubicBezier",
+        "$value": [0, 0, 1, 1],
+        "$description": "Linear - constant speed"
+      },
+
+      "ease": {
+        "$type": "cubicBezier",
+        "$value": [0.25, 0.1, 0.25, 1],
+        "$description": "Standard ease"
+      },
+
+      "easeIn": {
+        "$type": "cubicBezier",
+        "$value": [0.4, 0, 1, 1],
+        "$description": "Accelerate - elements leaving"
+      },
+
+      "easeOut": {
+        "$type": "cubicBezier",
+        "$value": [0, 0, 0.2, 1],
+        "$description": "Decelerate - elements entering"
+      },
+
+      "easeInOut": {
+        "$type": "cubicBezier",
+        "$value": [0.4, 0, 0.2, 1],
+        "$description": "Standard ease in-out"
+      },
+
+      "emphasized": {
+        "$type": "cubicBezier",
+        "$value": [0.2, 0, 0, 1],
+        "$description": "Emphasized deceleration (Material 3)"
+      },
+
+      "emphasizedAccelerate": {
+        "$type": "cubicBezier",
+        "$value": [0.3, 0, 0.8, 0.15],
+        "$description": "Emphasized acceleration"
+      },
+
+      "spring": {
+        "$type": "cubicBezier",
+        "$value": [0.175, 0.885, 0.32, 1.275],
+        "$description": "Springy overshoot"
+      },
+
+      "bounce": {
+        "$type": "cubicBezier",
+        "$value": [0.68, -0.55, 0.265, 1.55],
+        "$description": "Bouncy effect"
+      }
+    },
+
+    "transition": {
+      "$description": "Pre-composed transitions",
+
+      "default": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.normal}",
+          "timingFunction": "{easing.easeOut}"
+        },
+        "$description": "Default transition"
+      },
+
+      "fast": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.fast}",
+          "timingFunction": "{easing.easeOut}"
+        },
+        "$description": "Fast transition for micro-interactions"
+      },
+
+      "slow": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.slow}",
+          "timingFunction": "{easing.easeInOut}"
+        },
+        "$description": "Slow transition for content"
+      },
+
+      "enter": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.slow}",
+          "timingFunction": "{easing.easeOut}"
+        },
+        "$description": "Elements entering the screen"
+      },
+
+      "exit": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.normal}",
+          "timingFunction": "{easing.easeIn}"
+        },
+        "$description": "Elements leaving the screen"
+      },
+
+      "emphasized": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.slower}",
+          "timingFunction": "{easing.emphasized}"
+        },
+        "$description": "Emphasized transition for important changes"
+      }
+    },
+
+    "component": {
+      "$description": "Component-specific motion",
+
+      "button": {
+        "hover": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.fast}",
+            "timingFunction": "{easing.easeOut}"
+          }
+        },
+        "press": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.faster}",
+            "timingFunction": "{easing.easeOut}"
+          }
+        }
+      },
+
+      "modal": {
+        "enter": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.slow}",
+            "timingFunction": "{easing.emphasized}"
+          }
+        },
+        "exit": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.normal}",
+            "timingFunction": "{easing.easeIn}"
+          }
+        }
+      },
+
+      "tooltip": {
+        "enter": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.fast}",
+            "timingFunction": "{easing.easeOut}",
+            "delay": 200
+          },
+          "$description": "Delayed tooltip appearance"
+        },
+        "exit": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.faster}",
+            "timingFunction": "{easing.easeIn}"
+          }
+        }
+      },
+
+      "dropdown": {
+        "enter": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.normal}",
+            "timingFunction": "{easing.emphasized}"
+          }
+        },
+        "exit": {
+          "$type": "transition",
+          "$value": {
+            "duration": "{duration.fast}",
+            "timingFunction": "{easing.easeIn}"
+          }
+        }
+      },
+
+      "accordion": {
+        "$type": "transition",
+        "$value": {
+          "duration": "{duration.slow}",
+          "timingFunction": "{easing.easeInOut}"
+        }
+      },
+
+      "skeleton": {
+        "$type": "transition",
+        "$value": {
+          "duration": 1500,
+          "timingFunction": "{easing.easeInOut}"
+        },
+        "$description": "Skeleton loading pulse"
+      }
+    },
+
+    "reducedMotion": {
+      "$description": "Values for users who prefer reduced motion",
+      "$extensions": {
+        "com.designlibre": {
+          "tags": ["a11y", "reduced-motion"]
+        }
+      },
+
+      "duration": {
+        "$type": "duration",
+        "$value": 0,
+        "$description": "No animation for reduced motion"
+      },
+
+      "transition": {
+        "$type": "transition",
+        "$value": {
+          "duration": 0,
+          "timingFunction": "{easing.linear}"
+        }
+      }
+    }
+  }
+}

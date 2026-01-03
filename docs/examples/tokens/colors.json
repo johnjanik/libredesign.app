@@ -1,0 +1,314 @@
+{
+  "$schema": "https://designlibre.app/schemas/tokens-v1.json",
+  "version": "1.0.0",
+
+  "$metadata": {
+    "type": "color",
+    "name": "Colors",
+    "description": "Brand and semantic color tokens for the Acme Design System",
+    "createdAt": "2025-06-15T10:30:00Z",
+    "updatedAt": "2026-01-03T14:22:00Z"
+  },
+
+  "tokens": {
+    "brand": {
+      "$description": "Primary brand colors",
+
+      "primary": {
+        "50": {
+          "$type": "color",
+          "$value": "#E3F2FD",
+          "$description": "Lightest primary shade"
+        },
+        "100": {
+          "$type": "color",
+          "$value": "#BBDEFB"
+        },
+        "200": {
+          "$type": "color",
+          "$value": "#90CAF9"
+        },
+        "300": {
+          "$type": "color",
+          "$value": "#64B5F6"
+        },
+        "400": {
+          "$type": "color",
+          "$value": "#42A5F5"
+        },
+        "500": {
+          "$type": "color",
+          "$value": "#2196F3",
+          "$description": "Default primary color"
+        },
+        "600": {
+          "$type": "color",
+          "$value": "#1E88E5"
+        },
+        "700": {
+          "$type": "color",
+          "$value": "#1976D2"
+        },
+        "800": {
+          "$type": "color",
+          "$value": "#1565C0"
+        },
+        "900": {
+          "$type": "color",
+          "$value": "#0D47A1",
+          "$description": "Darkest primary shade"
+        }
+      },
+
+      "secondary": {
+        "50": {
+          "$type": "color",
+          "$value": "#FCE4EC"
+        },
+        "100": {
+          "$type": "color",
+          "$value": "#F8BBD9"
+        },
+        "200": {
+          "$type": "color",
+          "$value": "#F48FB1"
+        },
+        "300": {
+          "$type": "color",
+          "$value": "#F06292"
+        },
+        "400": {
+          "$type": "color",
+          "$value": "#EC407A"
+        },
+        "500": {
+          "$type": "color",
+          "$value": "#E91E63",
+          "$description": "Default secondary color"
+        },
+        "600": {
+          "$type": "color",
+          "$value": "#D81B60"
+        },
+        "700": {
+          "$type": "color",
+          "$value": "#C2185B"
+        },
+        "800": {
+          "$type": "color",
+          "$value": "#AD1457"
+        },
+        "900": {
+          "$type": "color",
+          "$value": "#880E4F"
+        }
+      }
+    },
+
+    "neutral": {
+      "$description": "Grayscale colors for text, backgrounds, and borders",
+
+      "white": {
+        "$type": "color",
+        "$value": "#FFFFFF"
+      },
+      "black": {
+        "$type": "color",
+        "$value": "#000000"
+      },
+      "50": {
+        "$type": "color",
+        "$value": "#FAFAFA"
+      },
+      "100": {
+        "$type": "color",
+        "$value": "#F5F5F5"
+      },
+      "200": {
+        "$type": "color",
+        "$value": "#EEEEEE"
+      },
+      "300": {
+        "$type": "color",
+        "$value": "#E0E0E0"
+      },
+      "400": {
+        "$type": "color",
+        "$value": "#BDBDBD"
+      },
+      "500": {
+        "$type": "color",
+        "$value": "#9E9E9E"
+      },
+      "600": {
+        "$type": "color",
+        "$value": "#757575"
+      },
+      "700": {
+        "$type": "color",
+        "$value": "#616161"
+      },
+      "800": {
+        "$type": "color",
+        "$value": "#424242"
+      },
+      "900": {
+        "$type": "color",
+        "$value": "#212121"
+      }
+    },
+
+    "semantic": {
+      "$description": "Semantic colors for feedback and status",
+
+      "success": {
+        "light": {
+          "$type": "color",
+          "$value": "#E8F5E9"
+        },
+        "default": {
+          "$type": "color",
+          "$value": "#4CAF50",
+          "$description": "Success green"
+        },
+        "dark": {
+          "$type": "color",
+          "$value": "#2E7D32"
+        }
+      },
+
+      "warning": {
+        "light": {
+          "$type": "color",
+          "$value": "#FFF3E0"
+        },
+        "default": {
+          "$type": "color",
+          "$value": "#FF9800",
+          "$description": "Warning orange"
+        },
+        "dark": {
+          "$type": "color",
+          "$value": "#EF6C00"
+        }
+      },
+
+      "error": {
+        "light": {
+          "$type": "color",
+          "$value": "#FFEBEE"
+        },
+        "default": {
+          "$type": "color",
+          "$value": "#F44336",
+          "$description": "Error red"
+        },
+        "dark": {
+          "$type": "color",
+          "$value": "#C62828"
+        }
+      },
+
+      "info": {
+        "light": {
+          "$type": "color",
+          "$value": "#E3F2FD"
+        },
+        "default": {
+          "$type": "color",
+          "$value": "#2196F3",
+          "$description": "Info blue"
+        },
+        "dark": {
+          "$type": "color",
+          "$value": "#1565C0"
+        }
+      }
+    },
+
+    "background": {
+      "$description": "Background colors",
+
+      "primary": {
+        "$type": "color",
+        "$value": "{neutral.white}",
+        "$description": "Primary background"
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "{neutral.50}",
+        "$description": "Secondary/elevated background"
+      },
+      "tertiary": {
+        "$type": "color",
+        "$value": "{neutral.100}",
+        "$description": "Tertiary background for contrast"
+      },
+      "inverse": {
+        "$type": "color",
+        "$value": "{neutral.900}",
+        "$description": "Inverse background for dark sections"
+      }
+    },
+
+    "text": {
+      "$description": "Text colors",
+
+      "primary": {
+        "$type": "color",
+        "$value": "{neutral.900}",
+        "$description": "Primary text color",
+        "$extensions": {
+          "com.designlibre": {
+            "cssProperty": "color"
+          }
+        }
+      },
+      "secondary": {
+        "$type": "color",
+        "$value": "{neutral.600}",
+        "$description": "Secondary/muted text"
+      },
+      "tertiary": {
+        "$type": "color",
+        "$value": "{neutral.500}",
+        "$description": "Tertiary/disabled text"
+      },
+      "inverse": {
+        "$type": "color",
+        "$value": "{neutral.white}",
+        "$description": "Text on dark backgrounds"
+      },
+      "link": {
+        "$type": "color",
+        "$value": "{brand.primary.500}",
+        "$description": "Link text color"
+      }
+    },
+
+    "border": {
+      "$description": "Border colors",
+
+      "default": {
+        "$type": "color",
+        "$value": "{neutral.300}",
+        "$description": "Default border"
+      },
+      "light": {
+        "$type": "color",
+        "$value": "{neutral.200}",
+        "$description": "Subtle border"
+      },
+      "dark": {
+        "$type": "color",
+        "$value": "{neutral.400}",
+        "$description": "Emphasized border"
+      },
+      "focus": {
+        "$type": "color",
+        "$value": "{brand.primary.500}",
+        "$description": "Focus ring color"
+      }
+    }
+  }
+}

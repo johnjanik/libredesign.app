@@ -1,0 +1,187 @@
+{
+  "$schema": "https://designlibre.app/schemas/tokens-v1.json",
+  "version": "1.0.0",
+
+  "$metadata": {
+    "type": "borderRadius",
+    "name": "Border Radii",
+    "description": "Border radius tokens for consistent corner rounding",
+    "createdAt": "2025-06-15T10:30:00Z",
+    "updatedAt": "2026-01-03T14:22:00Z"
+  },
+
+  "tokens": {
+    "scale": {
+      "$description": "Border radius scale",
+
+      "none": {
+        "$type": "borderRadius",
+        "$value": "0px",
+        "$description": "No rounding"
+      },
+      "xs": {
+        "$type": "borderRadius",
+        "$value": "2px",
+        "$description": "Extra small (subtle rounding)"
+      },
+      "sm": {
+        "$type": "borderRadius",
+        "$value": "4px",
+        "$description": "Small"
+      },
+      "md": {
+        "$type": "borderRadius",
+        "$value": "6px",
+        "$description": "Medium (default)"
+      },
+      "lg": {
+        "$type": "borderRadius",
+        "$value": "8px",
+        "$description": "Large"
+      },
+      "xl": {
+        "$type": "borderRadius",
+        "$value": "12px",
+        "$description": "Extra large"
+      },
+      "2xl": {
+        "$type": "borderRadius",
+        "$value": "16px",
+        "$description": "2x large"
+      },
+      "3xl": {
+        "$type": "borderRadius",
+        "$value": "24px",
+        "$description": "3x large"
+      },
+      "full": {
+        "$type": "borderRadius",
+        "$value": "9999px",
+        "$description": "Fully rounded (pills, circles)"
+      }
+    },
+
+    "component": {
+      "$description": "Component-specific radii",
+
+      "button": {
+        "default": {
+          "$type": "borderRadius",
+          "$value": "{scale.md}",
+          "$description": "Default button radius"
+        },
+        "pill": {
+          "$type": "borderRadius",
+          "$value": "{scale.full}",
+          "$description": "Pill-shaped button"
+        }
+      },
+
+      "card": {
+        "$type": "borderRadius",
+        "$value": "{scale.lg}",
+        "$description": "Card corner radius"
+      },
+
+      "input": {
+        "$type": "borderRadius",
+        "$value": "{scale.md}",
+        "$description": "Input field radius"
+      },
+
+      "modal": {
+        "$type": "borderRadius",
+        "$value": "{scale.xl}",
+        "$description": "Modal corner radius"
+      },
+
+      "tooltip": {
+        "$type": "borderRadius",
+        "$value": "{scale.sm}",
+        "$description": "Tooltip radius"
+      },
+
+      "badge": {
+        "$type": "borderRadius",
+        "$value": "{scale.full}",
+        "$description": "Badge/tag radius"
+      },
+
+      "avatar": {
+        "square": {
+          "$type": "borderRadius",
+          "$value": "{scale.lg}"
+        },
+        "rounded": {
+          "$type": "borderRadius",
+          "$value": "{scale.full}"
+        }
+      },
+
+      "checkbox": {
+        "$type": "borderRadius",
+        "$value": "{scale.xs}",
+        "$description": "Checkbox corner radius"
+      },
+
+      "toggle": {
+        "track": {
+          "$type": "borderRadius",
+          "$value": "{scale.full}"
+        },
+        "thumb": {
+          "$type": "borderRadius",
+          "$value": "{scale.full}"
+        }
+      }
+    },
+
+    "asymmetric": {
+      "$description": "Asymmetric radius combinations",
+
+      "topOnly": {
+        "$type": "borderRadius",
+        "$value": {
+          "topLeft": "8px",
+          "topRight": "8px",
+          "bottomRight": "0px",
+          "bottomLeft": "0px"
+        },
+        "$description": "Rounded top corners only"
+      },
+
+      "bottomOnly": {
+        "$type": "borderRadius",
+        "$value": {
+          "topLeft": "0px",
+          "topRight": "0px",
+          "bottomRight": "8px",
+          "bottomLeft": "8px"
+        },
+        "$description": "Rounded bottom corners only"
+      },
+
+      "leftOnly": {
+        "$type": "borderRadius",
+        "$value": {
+          "topLeft": "8px",
+          "topRight": "0px",
+          "bottomRight": "0px",
+          "bottomLeft": "8px"
+        },
+        "$description": "Rounded left corners only"
+      },
+
+      "rightOnly": {
+        "$type": "borderRadius",
+        "$value": {
+          "topLeft": "0px",
+          "topRight": "8px",
+          "bottomRight": "8px",
+          "bottomLeft": "0px"
+        },
+        "$description": "Rounded right corners only"
+      }
+    }
+  }
+}
