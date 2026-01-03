@@ -94,6 +94,7 @@ export class AIPanel {
   private messages: ChatMessage[] = [];
   private isStreaming = false;
   private currentStreamContent = '';
+  private streamingMessageIndex: number | null = null;
   private currentAttachments: MessageAttachment[] = [];
   private currentHasScreenshot = false;
   private unsubscribers: Array<() => void> = [];
@@ -370,6 +371,7 @@ export class AIPanel {
       // The AI controller should support cancellation
       // For now, just update the UI state
       this.isStreaming = false;
+      this.streamingMessageIndex = null;
       this.messageInput?.setStreaming(false);
       this.currentStreamContent = '';
     }
@@ -521,6 +523,7 @@ export class AIPanel {
     } finally {
       // Reset streaming state
       this.isStreaming = false;
+      this.streamingMessageIndex = null;
       this.messageInput?.setStreaming(false);
       this.currentAttachments = [];
       this.currentHasScreenshot = false;
@@ -531,11 +534,16 @@ export class AIPanel {
     if (chunk.type === 'text' && chunk.text) {
       this.currentStreamContent += chunk.text;
 
-      // Update or add streaming message
-      const lastMsg = this.messages[this.messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant' && this.isStreaming) {
-        lastMsg.content = this.currentStreamContent;
+      // Update existing streaming message or create new one
+      if (this.streamingMessageIndex !== null) {
+        // Update existing message in place
+        const msg = this.messages[this.streamingMessageIndex];
+        if (msg) {
+          msg.content = this.currentStreamContent;
+        }
       } else {
+        // Create new assistant message and track its index
+        this.streamingMessageIndex = this.messages.length;
         this.messages.push({
           role: 'assistant',
           content: this.currentStreamContent,
@@ -549,12 +557,14 @@ export class AIPanel {
   private handleMessageComplete(): void {
     this.isStreaming = false;
     this.currentStreamContent = '';
+    this.streamingMessageIndex = null;
     this.messageInput?.setStreaming(false);
     this.renderMessages();
   }
 
   private handleError(error: Error): void {
     this.isStreaming = false;
+    this.streamingMessageIndex = null;
     this.messageInput?.setStreaming(false);
     this.messages.push({
       role: 'assistant',
