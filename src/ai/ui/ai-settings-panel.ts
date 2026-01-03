@@ -4,9 +4,10 @@
  * Settings panel for configuring AI providers, API keys, and preferences.
  */
 
-import type { ProviderType } from '../config/provider-config';
+import type { ProviderType, ToolTierConfig } from '../config/provider-config';
 import { getConfigManager, testProviderConnection } from '../config';
 import { AVAILABLE_MODELS } from '../config/provider-config';
+import { TOOL_TIERS } from '../tools/tool-categories';
 
 /**
  * Settings panel options
@@ -442,6 +443,22 @@ export class AISettingsPanel {
       }
     );
     container.appendChild(activeProviderRow);
+
+    // Tool Tier
+    const toolTierOptions = Object.values(TOOL_TIERS).map((tier) => ({
+      value: tier.id,
+      label: `${tier.name} - ${tier.description}`,
+    }));
+
+    const toolTierRow = this.createSelectRow(
+      'AI Tool Level',
+      toolTierOptions,
+      config.toolTier,
+      (value) => {
+        this.configManager.setToolTier(value as ToolTierConfig);
+      }
+    );
+    container.appendChild(toolTierRow);
 
     // Auto-connect
     const autoConnectRow = this.createCheckboxRow(

@@ -84,6 +84,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   fallbackChain: ['ollama', 'anthropic', 'openai'],
   autoConnect: true,
   showStatus: true,
+  toolTier: 'basic', // Start with basic tools
   providers: {
     anthropic: DEFAULT_ANTHROPIC_CONFIG,
     openai: DEFAULT_OPENAI_CONFIG,

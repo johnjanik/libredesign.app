@@ -101,6 +101,11 @@ export type ProviderConfig =
   | LlamaCppProviderConfig;
 
 /**
+ * Tool tier levels
+ */
+export type ToolTierConfig = 'basic' | 'advanced' | 'professional';
+
+/**
  * Global AI configuration
  */
 export interface AIConfig {
@@ -112,6 +117,8 @@ export interface AIConfig {
   autoConnect: boolean;
   /** Show provider status in UI */
   showStatus: boolean;
+  /** Tool tier level (determines which tools are available) */
+  toolTier: ToolTierConfig;
   /** Provider-specific configurations */
   providers: {
     anthropic: AnthropicProviderConfig;

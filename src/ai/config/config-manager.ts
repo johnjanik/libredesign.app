@@ -18,6 +18,7 @@ import type {
   OllamaProviderConfig,
   LlamaCppProviderConfig,
   ProviderStatusInfo,
+  ToolTierConfig,
 } from './provider-config';
 import {
   DEFAULT_AI_CONFIG,
@@ -33,6 +34,7 @@ export interface ConfigManagerEvents {
   'config:providerChanged': { provider: ProviderType; config: ProviderConfig };
   'config:activeProviderChanged': { provider: ProviderType };
   'config:apiKeyChanged': { provider: ProviderType };
+  'config:toolTierChanged': { tier: ToolTierConfig };
   'config:loaded': { config: AIConfig };
   'config:saved': { config: AIConfig };
   'config:error': { error: Error };
@@ -256,6 +258,23 @@ export class ConfigManager extends EventEmitter<ConfigManagerEvents> {
   }
 
   /**
+   * Get the current tool tier
+   */
+  getToolTier(): ToolTierConfig {
+    return this.config.toolTier;
+  }
+
+  /**
+   * Set the tool tier
+   */
+  setToolTier(tier: ToolTierConfig): void {
+    this.config.toolTier = tier;
+    this.saveConfig();
+    this.emit('config:toolTierChanged', { tier });
+    this.emit('config:changed', { config: this.config });
+  }
+
+  /**
    * Update global settings
    */
   updateGlobalSettings(updates: Partial<Pick<AIConfig, 'autoConnect' | 'showStatus'>>): void {
@@ -448,6 +467,9 @@ export class ConfigManager extends EventEmitter<ConfigManagerEvents> {
     }
     if (partial.showStatus !== undefined) {
       config.showStatus = partial.showStatus;
+    }
+    if (partial.toolTier) {
+      config.toolTier = partial.toolTier;
     }
 
     if (partial.providers) {

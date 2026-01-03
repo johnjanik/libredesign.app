@@ -316,6 +316,50 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     },
   },
 
+  rename_layer: {
+    name: 'rename_layer',
+    description: 'Rename a layer',
+    category: 'layer_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        name: { type: 'string', description: 'New name for the layer' },
+      },
+      required: ['name'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  duplicate_layer: {
+    name: 'duplicate_layer',
+    description: 'Duplicate a layer',
+    category: 'layer_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        offset: {
+          type: 'object',
+          description: 'Offset for the duplicate',
+          properties: {
+            x: { type: 'number' },
+            y: { type: 'number' },
+          },
+        },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        duplicateId: { type: 'string' },
+      },
+    },
+  },
+
   // =========================================================================
   // P1: Creation Tools
   // =========================================================================
@@ -600,6 +644,54 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     },
   },
 
+  align_top: {
+    name: 'align_top',
+    description: 'Align selected layers to the top',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  align_center_v: {
+    name: 'align_center_v',
+    description: 'Align selected layers to vertical center',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  align_bottom: {
+    name: 'align_bottom',
+    description: 'Align selected layers to the bottom',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
   set_position: {
     name: 'set_position',
     description: 'Set the position of a layer',
@@ -770,6 +862,891 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
       },
     },
   },
+
+  // =========================================================================
+  // ADVANCED TIER TOOLS
+  // =========================================================================
+
+  // Advanced Selection
+  select_children: {
+    name: 'select_children',
+    description: 'Select all children of the specified layer',
+    category: 'selection',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Parent layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        selectedIds: { type: 'array', items: { type: 'string' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  select_parent: {
+    name: 'select_parent',
+    description: 'Select the parent of the current selection',
+    category: 'selection',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        parentId: { type: 'string' },
+      },
+    },
+  },
+
+  select_siblings: {
+    name: 'select_siblings',
+    description: 'Select all siblings of the current selection',
+    category: 'selection',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        selectedIds: { type: 'array', items: { type: 'string' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  select_similar: {
+    name: 'select_similar',
+    description: 'Select layers with similar properties',
+    category: 'selection',
+    parameters: {
+      type: 'object',
+      properties: {
+        property: {
+          type: 'string',
+          enum: ['fill', 'stroke', 'font', 'size', 'type'],
+          description: 'Property to match',
+        },
+      },
+      required: ['property'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        selectedIds: { type: 'array', items: { type: 'string' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  invert_selection: {
+    name: 'invert_selection',
+    description: 'Invert the current selection',
+    category: 'selection',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        selectedIds: { type: 'array', items: { type: 'string' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  // Layer Organization
+  rename_layers_bulk: {
+    name: 'rename_layers_bulk',
+    description: 'Rename multiple layers using a pattern',
+    category: 'layer_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pattern: { type: 'string', description: 'Name pattern with {n} for number, {name} for original name' },
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+      required: ['pattern'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        renamedCount: { type: 'number' },
+      },
+    },
+  },
+
+  flatten_layers: {
+    name: 'flatten_layers',
+    description: 'Flatten selected layers into a single image',
+    category: 'layer_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        flattenedId: { type: 'string' },
+      },
+    },
+  },
+
+  reorder_layers: {
+    name: 'reorder_layers',
+    description: 'Reorder layers within their parent',
+    category: 'layer_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID to move' },
+        position: {
+          type: 'string',
+          enum: ['front', 'back', 'forward', 'backward'],
+          description: 'New position',
+        },
+      },
+      required: ['position'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // More Shapes
+  create_polygon: {
+    name: 'create_polygon',
+    description: 'Create a regular polygon',
+    category: 'creation',
+    parameters: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X position' },
+        y: { type: 'number', description: 'Y position' },
+        radius: { type: 'number', description: 'Radius of the polygon', minimum: 1 },
+        sides: { type: 'number', description: 'Number of sides', minimum: 3, maximum: 100 },
+        fill: { ...COLOR_SCHEMA, description: 'Fill color' },
+        name: { type: 'string', description: 'Layer name' },
+      },
+      required: ['x', 'y', 'radius', 'sides'],
+    },
+    returns: {
+      type: 'object',
+      properties: { layerId: { type: 'string' } },
+    },
+  },
+
+  create_star: {
+    name: 'create_star',
+    description: 'Create a star shape',
+    category: 'creation',
+    parameters: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X position' },
+        y: { type: 'number', description: 'Y position' },
+        outerRadius: { type: 'number', description: 'Outer radius', minimum: 1 },
+        innerRadius: { type: 'number', description: 'Inner radius', minimum: 0 },
+        points: { type: 'number', description: 'Number of points', minimum: 3, maximum: 100 },
+        fill: { ...COLOR_SCHEMA, description: 'Fill color' },
+        name: { type: 'string', description: 'Layer name' },
+      },
+      required: ['x', 'y', 'outerRadius', 'innerRadius', 'points'],
+    },
+    returns: {
+      type: 'object',
+      properties: { layerId: { type: 'string' } },
+    },
+  },
+
+  create_arrow: {
+    name: 'create_arrow',
+    description: 'Create an arrow shape',
+    category: 'creation',
+    parameters: {
+      type: 'object',
+      properties: {
+        startX: { type: 'number', description: 'Start X position' },
+        startY: { type: 'number', description: 'Start Y position' },
+        endX: { type: 'number', description: 'End X position' },
+        endY: { type: 'number', description: 'End Y position' },
+        stroke: { ...COLOR_SCHEMA, description: 'Stroke color' },
+        strokeWidth: { type: 'number', description: 'Stroke width', default: 2 },
+        name: { type: 'string', description: 'Layer name' },
+      },
+      required: ['startX', 'startY', 'endX', 'endY'],
+    },
+    returns: {
+      type: 'object',
+      properties: { layerId: { type: 'string' } },
+    },
+  },
+
+  // Advanced Styling
+  set_fill_gradient: {
+    name: 'set_fill_gradient',
+    description: 'Set a gradient fill on a layer',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        type: {
+          type: 'string',
+          enum: ['linear', 'radial', 'angular', 'diamond'],
+          description: 'Gradient type',
+        },
+        stops: {
+          type: 'array',
+          description: 'Color stops',
+          items: {
+            type: 'object',
+            properties: {
+              position: { type: 'number', minimum: 0, maximum: 1 },
+              color: COLOR_SCHEMA,
+            },
+          },
+        },
+        angle: { type: 'number', description: 'Gradient angle in degrees (for linear)' },
+      },
+      required: ['type', 'stops'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  remove_fill: {
+    name: 'remove_fill',
+    description: 'Remove the fill from a layer',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  remove_stroke: {
+    name: 'remove_stroke',
+    description: 'Remove the stroke from a layer',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  swap_fill_stroke: {
+    name: 'swap_fill_stroke',
+    description: 'Swap fill and stroke colors',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  copy_style: {
+    name: 'copy_style',
+    description: 'Copy the style from a layer',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID to copy style from' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  paste_style: {
+    name: 'paste_style',
+    description: 'Paste previously copied style to layers',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Effects
+  add_drop_shadow: {
+    name: 'add_drop_shadow',
+    description: 'Add a drop shadow effect to a layer',
+    category: 'effects',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        color: { ...COLOR_SCHEMA, description: 'Shadow color' },
+        offsetX: { type: 'number', description: 'Horizontal offset', default: 0 },
+        offsetY: { type: 'number', description: 'Vertical offset', default: 4 },
+        blur: { type: 'number', description: 'Blur radius', minimum: 0, default: 8 },
+        spread: { type: 'number', description: 'Spread radius', default: 0 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  add_blur: {
+    name: 'add_blur',
+    description: 'Add a blur effect to a layer',
+    category: 'effects',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        radius: { type: 'number', description: 'Blur radius', minimum: 0, default: 10 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  remove_effects: {
+    name: 'remove_effects',
+    description: 'Remove all effects from a layer',
+    category: 'effects',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_blend_mode: {
+    name: 'set_blend_mode',
+    description: 'Set the blend mode of a layer',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        mode: {
+          type: 'string',
+          enum: ['normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'],
+          description: 'Blend mode',
+        },
+      },
+      required: ['mode'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_individual_corners: {
+    name: 'set_individual_corners',
+    description: 'Set individual corner radii for a rectangle',
+    category: 'styling',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        topLeft: { type: 'number', minimum: 0 },
+        topRight: { type: 'number', minimum: 0 },
+        bottomRight: { type: 'number', minimum: 0 },
+        bottomLeft: { type: 'number', minimum: 0 },
+      },
+      required: ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Color Tools
+  get_selection_colors: {
+    name: 'get_selection_colors',
+    description: 'Get all colors used in the selection',
+    category: 'color',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        fills: { type: 'array', items: COLOR_SCHEMA },
+        strokes: { type: 'array', items: COLOR_SCHEMA },
+      },
+    },
+  },
+
+  replace_color: {
+    name: 'replace_color',
+    description: 'Replace one color with another in the selection',
+    category: 'color',
+    parameters: {
+      type: 'object',
+      properties: {
+        fromColor: { ...COLOR_SCHEMA, description: 'Color to replace' },
+        toColor: { ...COLOR_SCHEMA, description: 'New color' },
+        tolerance: { type: 'number', description: 'Color matching tolerance (0-1)', minimum: 0, maximum: 1, default: 0.1 },
+      },
+      required: ['fromColor', 'toColor'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        replacedCount: { type: 'number' },
+      },
+    },
+  },
+
+  // Typography
+  set_font_family: {
+    name: 'set_font_family',
+    description: 'Set the font family of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        fontFamily: { type: 'string', description: 'Font family name' },
+      },
+      required: ['fontFamily'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_font_size: {
+    name: 'set_font_size',
+    description: 'Set the font size of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        size: { type: 'number', description: 'Font size in pixels', minimum: 1 },
+      },
+      required: ['size'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_font_weight: {
+    name: 'set_font_weight',
+    description: 'Set the font weight of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        weight: {
+          type: 'string',
+          enum: ['100', '200', '300', '400', '500', '600', '700', '800', '900', 'thin', 'light', 'regular', 'medium', 'semibold', 'bold', 'extrabold', 'black'],
+          description: 'Font weight',
+        },
+      },
+      required: ['weight'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_text_alignment: {
+    name: 'set_text_alignment',
+    description: 'Set the text alignment of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        alignment: {
+          type: 'string',
+          enum: ['left', 'center', 'right', 'justify'],
+          description: 'Text alignment',
+        },
+      },
+      required: ['alignment'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_line_height: {
+    name: 'set_line_height',
+    description: 'Set the line height of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        lineHeight: { type: 'number', description: 'Line height value' },
+        unit: { type: 'string', enum: ['pixels', 'percent', 'auto'], default: 'percent' },
+      },
+      required: ['lineHeight'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_letter_spacing: {
+    name: 'set_letter_spacing',
+    description: 'Set the letter spacing of a text layer',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        spacing: { type: 'number', description: 'Letter spacing in pixels or percent' },
+        unit: { type: 'string', enum: ['pixels', 'percent'], default: 'pixels' },
+      },
+      required: ['spacing'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  replace_text: {
+    name: 'replace_text',
+    description: 'Replace text content in text layers',
+    category: 'typography',
+    parameters: {
+      type: 'object',
+      properties: {
+        find: { type: 'string', description: 'Text to find' },
+        replace: { type: 'string', description: 'Replacement text' },
+        matchCase: { type: 'boolean', description: 'Case-sensitive matching', default: false },
+      },
+      required: ['find', 'replace'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        replacedCount: { type: 'number' },
+      },
+    },
+  },
+
+  // Advanced Layout
+  distribute_horizontal: {
+    name: 'distribute_horizontal',
+    description: 'Distribute selected layers horizontally with equal spacing',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        spacing: { type: 'number', description: 'Fixed spacing (auto if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  distribute_vertical: {
+    name: 'distribute_vertical',
+    description: 'Distribute selected layers vertically with equal spacing',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        spacing: { type: 'number', description: 'Fixed spacing (auto if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  tidy_up: {
+    name: 'tidy_up',
+    description: 'Automatically arrange selected layers in a grid',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        columns: { type: 'number', description: 'Number of columns (auto if not provided)' },
+        spacing: { type: 'number', description: 'Spacing between items', default: 10 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  scale: {
+    name: 'scale',
+    description: 'Scale a layer by a factor',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        factor: { type: 'number', description: 'Scale factor (1.5 = 150%)', minimum: 0.01 },
+        origin: {
+          type: 'string',
+          enum: ['center', 'top-left', 'top-right', 'bottom-left', 'bottom-right'],
+          description: 'Scale origin point',
+          default: 'center',
+        },
+      },
+      required: ['factor'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  move_by: {
+    name: 'move_by',
+    description: 'Move a layer by a relative offset',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        dx: { type: 'number', description: 'Horizontal offset' },
+        dy: { type: 'number', description: 'Vertical offset' },
+      },
+      required: ['dx', 'dy'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  flip_horizontal: {
+    name: 'flip_horizontal',
+    description: 'Flip a layer horizontally',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  flip_vertical: {
+    name: 'flip_vertical',
+    description: 'Flip a layer vertically',
+    category: 'layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Auto Layout
+  add_auto_layout: {
+    name: 'add_auto_layout',
+    description: 'Add auto layout to a frame',
+    category: 'auto_layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID (uses selection if not provided)' },
+        direction: { type: 'string', enum: ['horizontal', 'vertical'], default: 'horizontal' },
+        gap: { type: 'number', description: 'Gap between items', default: 10 },
+        padding: { type: 'number', description: 'Padding around content', default: 10 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  remove_auto_layout: {
+    name: 'remove_auto_layout',
+    description: 'Remove auto layout from a frame',
+    category: 'auto_layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_layout_direction: {
+    name: 'set_layout_direction',
+    description: 'Set the direction of an auto layout frame',
+    category: 'auto_layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID (uses selection if not provided)' },
+        direction: { type: 'string', enum: ['horizontal', 'vertical'] },
+      },
+      required: ['direction'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_layout_gap: {
+    name: 'set_layout_gap',
+    description: 'Set the gap between items in an auto layout frame',
+    category: 'auto_layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID (uses selection if not provided)' },
+        gap: { type: 'number', description: 'Gap in pixels', minimum: 0 },
+      },
+      required: ['gap'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_layout_padding: {
+    name: 'set_layout_padding',
+    description: 'Set the padding of an auto layout frame',
+    category: 'auto_layout',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID (uses selection if not provided)' },
+        top: { type: 'number', minimum: 0 },
+        right: { type: 'number', minimum: 0 },
+        bottom: { type: 'number', minimum: 0 },
+        left: { type: 'number', minimum: 0 },
+        all: { type: 'number', description: 'Set all sides to the same value', minimum: 0 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Export
+  export_png: {
+    name: 'export_png',
+    description: 'Export a layer or frame as PNG',
+    category: 'export',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        scale: { type: 'number', description: 'Export scale (1 = 1x, 2 = 2x)', minimum: 0.01, maximum: 4, default: 1 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        url: { type: 'string', description: 'Data URL of the exported image' },
+      },
+    },
+  },
+
+  export_svg: {
+    name: 'export_svg',
+    description: 'Export a layer or frame as SVG',
+    category: 'export',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        svg: { type: 'string', description: 'SVG markup' },
+      },
+    },
+  },
 };
 
 /**
@@ -784,6 +1761,15 @@ export function getToolDefinition(name: string): ToolDefinition | undefined {
  */
 export function getAllToolDefinitions(): ToolDefinition[] {
   return Object.values(TOOL_DEFINITIONS);
+}
+
+/**
+ * Get tool definitions for a list of tool names
+ */
+export function getToolDefinitions(toolNames: readonly string[]): ToolDefinition[] {
+  return toolNames
+    .map((name) => TOOL_DEFINITIONS[name])
+    .filter((def): def is ToolDefinition => def !== undefined);
 }
 
 /**

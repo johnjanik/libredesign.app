@@ -9,8 +9,10 @@ import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { NodeId } from '@core/types/common';
 import type { CoordinateCalibrator } from '../calibration/coordinate-calibrator';
 import type { AITool, AIToolParameter } from '../providers/ai-provider';
-import { getAllToolDefinitions } from '../tools/tool-registry';
+import type { ToolTierConfig } from '../config/provider-config';
+import { getAllToolDefinitions, getToolDefinitions } from '../tools/tool-registry';
 import type { ToolDefinition, JSONSchema } from '../tools/tool-registry';
+import { getToolsForTier } from '../tools/tool-categories';
 
 /**
  * Built context for AI
@@ -54,6 +56,8 @@ export interface ContextBuilderOptions {
   detailedSelection?: boolean | undefined;
   /** Project name for context */
   projectName?: string | undefined;
+  /** Tool tier to filter available tools */
+  toolTier?: ToolTierConfig | undefined;
 }
 
 /**
@@ -119,7 +123,7 @@ export class ContextBuilder {
     // Build components
     let systemPrompt = this.buildSystemPrompt(options);
     let stateDescription = this.buildStateDescription(options);
-    const tools = this.getTools();
+    const tools = this.getTools(options.toolTier);
 
     // Estimate tokens for tools (they're always included)
     const toolsJson = JSON.stringify(tools);
@@ -425,10 +429,17 @@ Respond naturally and execute design requests using the provided tools.`;
 
   /**
    * Get tool definitions for function calling.
-   * Uses the comprehensive tool registry for all available tools.
+   * Uses the comprehensive tool registry and filters by tier if specified.
    */
-  getTools(): AITool[] {
-    const definitions = getAllToolDefinitions();
+  getTools(tier?: ToolTierConfig): AITool[] {
+    // Get all definitions or filter by tier
+    let definitions: ToolDefinition[];
+    if (tier) {
+      const tierTools = getToolsForTier(tier);
+      definitions = getToolDefinitions(tierTools);
+    } else {
+      definitions = getAllToolDefinitions();
+    }
     return definitions.map((def) => this.toolDefinitionToAITool(def));
   }
 
