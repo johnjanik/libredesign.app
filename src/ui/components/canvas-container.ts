@@ -45,6 +45,7 @@ export class CanvasContainer {
   private animationFrameId: number | null = null;
   private isRunning = false;
   private resizeObserver: ResizeObserver | null = null;
+  private settingsHandler: ((e: Event) => void) | null = null;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -57,11 +58,26 @@ export class CanvasContainer {
       backgroundColor: options.backgroundColor ?? '#0a0a0a',
       showPixelGrid: options.showPixelGrid ?? true,
       gridColor: options.gridColor ?? 'rgba(255, 255, 255, 0.1)',
-      showOrigin: options.showOrigin ?? true,  // Default ON for debugging
+      showOrigin: options.showOrigin ?? this.loadShowOriginSetting(),
       originColor: options.originColor ?? '#ff0000',
     };
 
     this.setup();
+  }
+
+  /**
+   * Load showOrigin setting from localStorage.
+   */
+  private loadShowOriginSetting(): boolean {
+    try {
+      const stored = localStorage.getItem('designlibre-show-origin');
+      if (stored !== null) {
+        return stored === 'true';
+      }
+    } catch {
+      // localStorage not available
+    }
+    return true; // Default ON
   }
 
   private setup(): void {
@@ -92,6 +108,15 @@ export class CanvasContainer {
       this.handleResize();
     });
     this.resizeObserver.observe(this.container);
+
+    // Listen for settings changes
+    this.settingsHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { showOrigin?: boolean };
+      if (detail.showOrigin !== undefined) {
+        this.setShowOrigin(detail.showOrigin);
+      }
+    };
+    window.addEventListener('designlibre-settings-changed', this.settingsHandler);
 
     // Start render loop
     this.startRenderLoop();
@@ -424,6 +449,11 @@ export class CanvasContainer {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
+    }
+
+    if (this.settingsHandler) {
+      window.removeEventListener('designlibre-settings-changed', this.settingsHandler);
+      this.settingsHandler = null;
     }
 
     if (this.overlayCanvas) {

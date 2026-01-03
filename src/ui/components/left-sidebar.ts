@@ -2344,6 +2344,15 @@ export class LeftSidebar {
     );
     menu.appendChild(textScaleSetting);
 
+    // Show Origin Crosshair toggle
+    const showOriginSetting = this.createToggleSetting(
+      'Show Origin Crosshair',
+      'Display red crosshair at canvas origin (0,0)',
+      this.getShowOriginSetting(),
+      (enabled) => this.setShowOriginSetting(enabled)
+    );
+    menu.appendChild(showOriginSetting);
+
     document.body.appendChild(menu);
 
     // Close when clicking outside
@@ -2573,6 +2582,25 @@ export class LeftSidebar {
   private applyTextScale(): void {
     const scale = this.getTextScaleSetting();
     document.documentElement.style.setProperty('--designlibre-text-scale', String(scale));
+  }
+
+  /**
+   * Get show origin crosshair setting from localStorage.
+   */
+  private getShowOriginSetting(): boolean {
+    const stored = localStorage.getItem('designlibre-show-origin');
+    return stored === null ? true : stored === 'true';
+  }
+
+  /**
+   * Set show origin crosshair setting and dispatch event.
+   */
+  private setShowOriginSetting(enabled: boolean): void {
+    localStorage.setItem('designlibre-show-origin', String(enabled));
+    // Dispatch custom event for CanvasContainer to listen to
+    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+      detail: { showOrigin: enabled }
+    }));
   }
 
   /**
