@@ -8,7 +8,8 @@ import type { ProviderType, ToolTierConfig } from '../config/provider-config';
 import { getConfigManager, testProviderConnection } from '../config';
 import { AVAILABLE_MODELS } from '../config/provider-config';
 import { TOOL_TIERS } from '../tools/tool-categories';
-import { getOAuthClient } from '../auth/oauth-client';
+// OAuth import preserved for future use when Anthropic opens OAuth to third-party apps
+// import { getOAuthClient } from '../auth/oauth-client';
 
 /**
  * Settings panel options
@@ -285,15 +286,10 @@ export class AISettingsPanel {
     container.style.cssText = 'display: flex; flex-direction: column; gap: 16px;';
 
     // Authentication (for cloud providers)
-    if (provider === 'anthropic') {
-      // Add OAuth sign-in option for Anthropic
-      container.appendChild(this.createAnthropicAuthSection());
-
-      // Also show API key option as alternative
-      const apiKey = this.configManager.getApiKey(provider);
-      const apiKeyRow = this.createApiKeyInput(provider, apiKey);
-      container.appendChild(apiKeyRow);
-    } else if (provider === 'openai') {
+    // Note: Anthropic OAuth is not publicly available for third-party apps.
+    // The OAuth code is preserved in createAnthropicAuthSection() for future use
+    // if/when Anthropic opens OAuth access to developers.
+    if (provider === 'anthropic' || provider === 'openai') {
       const apiKey = this.configManager.getApiKey(provider);
       const apiKeyRow = this.createApiKeyInput(provider, apiKey);
       container.appendChild(apiKeyRow);
@@ -731,6 +727,9 @@ export class AISettingsPanel {
     return row;
   }
 
+  // OAuth section commented out - Anthropic doesn't offer public OAuth for third-party apps
+  // This code is preserved for future use if/when Anthropic opens OAuth access
+  /*
   private createAnthropicAuthSection(): HTMLElement {
     const section = document.createElement('div');
     section.style.cssText = `
@@ -743,6 +742,7 @@ export class AISettingsPanel {
       border: 1px solid var(--designlibre-border, #3d3d3d);
     `;
 
+    const { getOAuthClient } = await import('../auth/oauth-client');
     const oauthClient = getOAuthClient();
     const isAuthenticated = oauthClient.isAuthenticated();
 
@@ -911,6 +911,7 @@ export class AISettingsPanel {
 
     return section;
   }
+  */
 
   private createSelectRow(
     label: string,
