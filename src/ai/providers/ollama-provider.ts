@@ -503,8 +503,8 @@ export class OllamaProvider implements AIProvider {
               yield { type: 'text', text: data.message.content };
             }
 
-            // Handle tool calls in streaming response
-            if (data.message?.tool_calls) {
+            // Handle tool calls in streaming response (check length to avoid empty arrays)
+            if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
               hasNativeToolCalls = true;
               for (const tc of data.message.tool_calls) {
                 yield {
@@ -562,7 +562,7 @@ export class OllamaProvider implements AIProvider {
             accumulatedContent += data.message.content;
             yield { type: 'text', text: data.message.content };
           }
-          if (data.message?.tool_calls) {
+          if (data.message?.tool_calls && data.message.tool_calls.length > 0) {
             hasNativeToolCalls = true;
             for (const tc of data.message.tool_calls) {
               yield {
