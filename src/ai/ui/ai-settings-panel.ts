@@ -65,6 +65,7 @@ export class AISettingsPanel {
   private options: AISettingsPanelOptions;
   private configManager = getConfigManager();
   private showApiKeys: Map<ProviderType, boolean> = new Map();
+  private ollamaModels: Array<{ value: string; label: string }> | null = null;
 
   constructor(container: HTMLElement, options: AISettingsPanelOptions = {}) {
     this.container = container;
@@ -300,17 +301,27 @@ export class AISettingsPanel {
     }
 
     // Model selection
-    const models = AVAILABLE_MODELS[provider] || [];
-    if (models.length > 0) {
-      const modelRow = this.createSelectRow(
-        'Model',
-        models.map((m) => ({ value: m.id, label: `${m.name} (${m.contextWindow.toLocaleString()} tokens)` })),
-        providerConfig.defaultModel,
-        (value) => {
-          this.configManager.updateProviderConfig(provider, { defaultModel: value });
-        }
-      );
-      container.appendChild(modelRow);
+    if (provider === 'ollama') {
+      // For Ollama, create a dynamic model selector that fetches from server
+      const modelContainer = document.createElement('div');
+      modelContainer.className = 'ollama-model-container';
+      container.appendChild(modelContainer);
+
+      // Fetch models from Ollama server
+      this.loadOllamaModels(modelContainer, providerConfig);
+    } else {
+      const models = AVAILABLE_MODELS[provider] || [];
+      if (models.length > 0) {
+        const modelRow = this.createSelectRow(
+          'Model',
+          models.map((m) => ({ value: m.id, label: `${m.name} (${m.contextWindow.toLocaleString()} tokens)` })),
+          providerConfig.defaultModel,
+          (value) => {
+            this.configManager.updateProviderConfig(provider, { defaultModel: value });
+          }
+        );
+        container.appendChild(modelRow);
+      }
     }
 
     // Temperature
@@ -822,6 +833,158 @@ export class AISettingsPanel {
 
     const newSection = this.createProviderSection(provider);
     parent.replaceChild(newSection, section);
+  }
+
+  /**
+   * Load and display Ollama models in the container
+   */
+  private async loadOllamaModels(container: HTMLElement, providerConfig: { endpoint?: string; defaultModel: string }): Promise<void> {
+    const endpoint = providerConfig.endpoint || 'http://localhost:11434';
+
+    // Clear container and show loading
+    container.innerHTML = '';
+
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
+
+    const labelRow = document.createElement('div');
+    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+
+    const labelEl = document.createElement('label');
+    labelEl.textContent = 'Model';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+    labelRow.appendChild(labelEl);
+
+    // Refresh button
+    const refreshBtn = document.createElement('button');
+    refreshBtn.innerHTML = ICONS.refresh;
+    refreshBtn.title = 'Refresh models from Ollama';
+    refreshBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 4px;
+      transition: all 0.15s;
+    `;
+    refreshBtn.addEventListener('mouseenter', () => {
+      refreshBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      refreshBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    refreshBtn.addEventListener('mouseleave', () => {
+      refreshBtn.style.background = 'transparent';
+      refreshBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+    refreshBtn.addEventListener('click', () => {
+      this.ollamaModels = null; // Clear cache
+      this.loadOllamaModels(container, providerConfig);
+    });
+    labelRow.appendChild(refreshBtn);
+
+    row.appendChild(labelRow);
+
+    // Select element
+    const select = document.createElement('select');
+    select.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    `;
+
+    // Show loading option
+    const loadingOption = document.createElement('option');
+    loadingOption.textContent = 'Loading models...';
+    loadingOption.disabled = true;
+    select.appendChild(loadingOption);
+    select.disabled = true;
+
+    row.appendChild(select);
+    container.appendChild(row);
+
+    // Fetch models
+    try {
+      // Use cached models if available
+      let models = this.ollamaModels;
+      if (!models) {
+        models = await this.fetchOllamaModels(endpoint);
+        this.ollamaModels = models;
+      }
+
+      // Clear and populate select
+      select.innerHTML = '';
+
+      if (models.length === 0) {
+        const noModelsOption = document.createElement('option');
+        noModelsOption.textContent = 'No models found - run "ollama pull <model>"';
+        noModelsOption.disabled = true;
+        select.appendChild(noModelsOption);
+      } else {
+        for (const model of models) {
+          const option = document.createElement('option');
+          option.value = model.value;
+          option.textContent = model.label;
+          option.selected = model.value === providerConfig.defaultModel;
+          select.appendChild(option);
+        }
+        select.disabled = false;
+
+        select.addEventListener('change', () => {
+          this.configManager.updateProviderConfig('ollama', { defaultModel: select.value });
+        });
+      }
+    } catch (error) {
+      select.innerHTML = '';
+      const errorOption = document.createElement('option');
+      errorOption.textContent = 'Failed to load models - check Ollama is running';
+      errorOption.disabled = true;
+      select.appendChild(errorOption);
+    }
+  }
+
+  /**
+   * Fetch available models from Ollama server
+   */
+  private async fetchOllamaModels(endpoint: string): Promise<Array<{ value: string; label: string }>> {
+    try {
+      const response = await fetch(`${endpoint}/api/tags`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models: ${response.statusText}`);
+      }
+      const data = await response.json();
+      const models = data.models || [];
+
+      return models.map((m: { name: string; size: number; modified_at: string }) => ({
+        value: m.name,
+        label: `${m.name} (${this.formatSize(m.size)})`,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch Ollama models:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Format file size for display
+   */
+  private formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
   private applyStyles(): void {
