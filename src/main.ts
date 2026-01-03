@@ -10,6 +10,12 @@ import { createCanvasContainer } from '@ui/components/canvas-container';
 import { createRightSidebarContainer, type RightSidebarContainer } from '@ui/components/right-sidebar-container';
 import { createLeftSidebar } from '@ui/components/left-sidebar';
 import { createViewSwitcher } from '@ui/components/view-switcher';
+// New UI components
+import { createNavRail } from '@ui/components/nav-rail';
+import { createSidePanel } from '@ui/components/side-panel';
+import { createWorkspaceSelector } from '@ui/components/workspace-selector';
+import { createProjectSelector } from '@ui/components/project-selector';
+import { createWorkspaceManager } from '@runtime/workspace-manager';
 // Available for UI toggle - currently hidden by default
 import { createCodePanel as _createCodePanel } from '@ui/components/code-panel';
 import { createTokensPanel as _createTokensPanel } from '@ui/components/tokens-panel';
@@ -41,6 +47,8 @@ interface AppConfig {
   enableAI?: boolean;
   /** Show AI panel by default */
   showAIPanel?: boolean;
+  /** Use new UI layout (NavRail + SidePanel) */
+  useNewUI?: boolean;
 }
 
 /**
@@ -131,9 +139,75 @@ async function initializeApp(config: AppConfig): Promise<void> {
   // Create toolbar FIRST (before view switcher captures canvas)
   createToolbar(runtime, canvasContainer, { position: 'bottom' });
 
-  // Create left sidebar (added to main first for proper ordering)
-  const leftSidebar = createLeftSidebar(runtime, main, { width: 240 });
-  leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
+  // Create workspace manager for new UI
+  const workspaceManager = createWorkspaceManager();
+
+  // Choose UI layout based on config
+  if (config.useNewUI) {
+    // ========================================
+    // NEW UI LAYOUT: NavRail + SidePanel
+    // ========================================
+
+    // Create nav rail (leftmost vertical strip)
+    const navRail = createNavRail(runtime, main, {
+      position: 'left',
+      workspaceManager,
+    });
+
+    // Create side panel (collapsible, resizable)
+    const sidePanel = createSidePanel(runtime, main, {
+      width: 280,
+      minWidth: 200,
+      maxWidth: 480,
+    });
+
+    // Get side panel content container
+    const sidePanelContent = sidePanel.getContentElement();
+    if (sidePanelContent) {
+      // Add workspace selector
+      createWorkspaceSelector(workspaceManager, sidePanelContent);
+
+      // Add project selector (Tree/Branch)
+      createProjectSelector(workspaceManager, sidePanelContent);
+
+      // Add divider
+      sidePanel.addDivider();
+
+      // Create the existing left sidebar layers inside side panel
+      const leftSidebar = createLeftSidebar(runtime, sidePanelContent, {
+        width: 0, // Full width of parent
+        collapsed: false,
+      });
+      leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
+    }
+
+    // Connect nav rail sidebar toggle to side panel
+    window.addEventListener('designlibre-sidebar-toggle', ((e: CustomEvent) => {
+      if (e.detail.open) {
+        sidePanel.expand();
+      } else {
+        sidePanel.collapse();
+      }
+    }) as EventListener);
+
+    // Sync nav rail state if side panel is toggled externally
+    window.addEventListener('designlibre-side-panel-toggle', ((e: CustomEvent) => {
+      navRail.setSidebarOpen(!e.detail.collapsed);
+    }) as EventListener);
+
+    // References retained for potential cleanup
+    void navRail;
+    void sidePanel;
+  } else {
+    // ========================================
+    // CLASSIC UI LAYOUT: Left sidebar only
+    // ========================================
+    const leftSidebar = createLeftSidebar(runtime, main, { width: 240 });
+    leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
+  }
+
+  // Workspace manager available for external use
+  void workspaceManager;
 
   // Create view switcher (captures canvasContainer and adds code view)
   const viewSwitcher = createViewSwitcher(runtime, main);
@@ -252,6 +326,11 @@ async function initializeApp(config: AppConfig): Promise<void> {
 document.addEventListener('DOMContentLoaded', () => {
   const appElement = document.getElementById('app');
   if (appElement) {
+    // Check URL param for UI mode: ?ui=new or ?ui=classic
+    const urlParams = new URLSearchParams(window.location.search);
+    const uiMode = urlParams.get('ui');
+    const useNewUI = uiMode === 'new' || (uiMode !== 'classic' && true); // Default to new UI
+
     initializeApp({
       container: appElement,
       documentName: 'New Document',
@@ -259,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
       debug: import.meta.env.DEV,
       enableAI: true,
       showAIPanel: false, // Hidden by default, use Cmd/Ctrl+Shift+L to toggle
+      useNewUI,
     }).catch(console.error);
   }
 });
@@ -266,3 +346,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export for programmatic use
 export { initializeApp, createDesignLibreRuntime };
 export type { AppConfig };
+
+// Export new UI components
+export { createNavRail } from '@ui/components/nav-rail';
+export { createSidePanel } from '@ui/components/side-panel';
+export { createWorkspaceSelector } from '@ui/components/workspace-selector';
+export { createProjectSelector } from '@ui/components/project-selector';
+export { createLayerTree } from '@ui/components/layer-tree';
+export { createWorkspaceManager } from '@runtime/workspace-manager';
+export { Modal, openModal, confirm, alert } from '@ui/components/modal';
