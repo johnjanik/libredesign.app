@@ -385,6 +385,11 @@ export class NavRail {
   private openTrunkDropdown(): void {
     if (!this.options.workspaceManager) return;
 
+    // Close project dropdown if open
+    if (this.projectDropdownOpen) {
+      this.closeProjectDropdown();
+    }
+
     this.trunkDropdownOpen = true;
     const button = this.buttons.get('trunk');
     if (button) {
