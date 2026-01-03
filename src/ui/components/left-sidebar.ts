@@ -2589,7 +2589,7 @@ export class LeftSidebar {
    */
   private getShowOriginSetting(): boolean {
     const stored = localStorage.getItem('designlibre-show-origin');
-    return stored === null ? true : stored === 'true';
+    return stored === null ? false : stored === 'true';
   }
 
   /**

@@ -77,7 +77,7 @@ export class CanvasContainer {
     } catch {
       // localStorage not available
     }
-    return true; // Default ON
+    return false; // Default OFF (still available via API for AI orientation)
   }
 
   private setup(): void {
