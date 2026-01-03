@@ -9,4 +9,5 @@ export * from './figma-importer';
 export * from './sketch-importer';
 export * from './designlibre-bundler';
 export * from './image-importer';
+export * from './ai-png-importer';
 export * from './font-handler';

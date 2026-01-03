@@ -2924,6 +2924,58 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     },
   },
 
+  import_png_as_leaf: {
+    name: 'import_png_as_leaf',
+    description: 'Import PNG images as separate leaves using AI vision analysis. Each PNG becomes a frame with all detected UI elements as child nodes.',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        imagePaths: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Paths to PNG files to import',
+        },
+        x: { type: 'number', description: 'X position for first leaf', default: 0 },
+        y: { type: 'number', description: 'Y position for first leaf', default: 0 },
+        includeOriginalImage: {
+          type: 'boolean',
+          description: 'Include original image as faded background',
+          default: false,
+        },
+        visionModel: {
+          type: 'string',
+          description: 'Ollama vision model to use (e.g., llava:latest)',
+        },
+      },
+      required: ['imagePaths'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        leaves: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              leafId: { type: 'string' },
+              elementCount: { type: 'number' },
+              description: { type: 'string' },
+            },
+          },
+        },
+        totalElements: { type: 'number' },
+      },
+    },
+    examples: [
+      {
+        description: 'Import multiple screenshots as editable design leaves',
+        args: { imagePaths: ['/path/to/screen1.png', '/path/to/screen2.png'] },
+        result: { leaves: [{ leafId: 'leaf-1', elementCount: 15 }, { leafId: 'leaf-2', elementCount: 12 }], totalElements: 27 },
+      },
+    ],
+  },
+
   // Analysis & Audit
   accessibility_audit: {
     name: 'accessibility_audit',
