@@ -7,7 +7,7 @@
 /**
  * Tool tier levels
  */
-export type ToolTier = 'basic' | 'advanced' | 'professional';
+export type ToolTier = 'basic' | 'essential' | 'advanced';
 
 /**
  * Tool category definition
@@ -366,20 +366,20 @@ export const TOOL_TIERS = {
   basic: {
     id: 'basic',
     name: 'Basic',
-    description: 'Essential design operations (~35 tools)',
+    description: 'Core design operations (~35 tools)',
     tools: BASIC_TOOLS,
     toolCount: BASIC_TOOLS.length,
   },
-  advanced: {
-    id: 'advanced',
-    name: 'Advanced',
+  essential: {
+    id: 'essential',
+    name: 'Essential',
     description: 'Extended design capabilities (~95 tools)',
     tools: [...BASIC_TOOLS, ...ADVANCED_TOOLS],
     toolCount: BASIC_TOOLS.length + ADVANCED_TOOLS.length,
   },
-  professional: {
-    id: 'professional',
-    name: 'Professional',
+  advanced: {
+    id: 'advanced',
+    name: 'Advanced',
     description: 'Full professional suite (~195 tools)',
     tools: ALL_TOOLS,
     toolCount: ALL_TOOLS.length,
@@ -685,8 +685,8 @@ export function getToolsForTier(tier: ToolTier): readonly string[] {
  */
 export function getToolTier(toolName: string): ToolTier | undefined {
   if ((BASIC_TOOLS as readonly string[]).includes(toolName)) return 'basic';
-  if ((ADVANCED_TOOLS as readonly string[]).includes(toolName)) return 'advanced';
-  if ((PROFESSIONAL_TOOLS as readonly string[]).includes(toolName)) return 'professional';
+  if ((ADVANCED_TOOLS as readonly string[]).includes(toolName)) return 'essential';
+  if ((PROFESSIONAL_TOOLS as readonly string[]).includes(toolName)) return 'advanced';
   return undefined;
 }
 

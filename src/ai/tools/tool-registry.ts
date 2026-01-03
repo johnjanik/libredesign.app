@@ -1747,6 +1747,1635 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
       },
     },
   },
+
+  // =========================================================================
+  // PROFESSIONAL TIER TOOLS
+  // =========================================================================
+
+  // Components
+  create_component: {
+    name: 'create_component',
+    description: 'Create a component from the selected layers',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        name: { type: 'string', description: 'Component name' },
+        description: { type: 'string', description: 'Component description' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string' },
+      },
+    },
+  },
+
+  create_component_set: {
+    name: 'create_component_set',
+    description: 'Create a component set from multiple component variants',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        componentIds: { type: 'array', items: { type: 'string' }, description: 'Component IDs to combine' },
+        name: { type: 'string', description: 'Component set name' },
+      },
+      required: ['componentIds'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        componentSetId: { type: 'string' },
+      },
+    },
+  },
+
+  create_instance: {
+    name: 'create_instance',
+    description: 'Create an instance of a component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string', description: 'Component ID to instantiate' },
+        x: { type: 'number', description: 'X position' },
+        y: { type: 'number', description: 'Y position' },
+      },
+      required: ['componentId'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string' },
+      },
+    },
+  },
+
+  detach_instance: {
+    name: 'detach_instance',
+    description: 'Detach an instance from its main component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string', description: 'Instance ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        frameId: { type: 'string' },
+      },
+    },
+  },
+
+  reset_instance: {
+    name: 'reset_instance',
+    description: 'Reset instance overrides to match main component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string', description: 'Instance ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  push_overrides_to_main: {
+    name: 'push_overrides_to_main',
+    description: 'Push instance overrides to the main component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string', description: 'Instance ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  swap_component: {
+    name: 'swap_component',
+    description: 'Swap an instance to use a different component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string', description: 'Instance ID (uses selection if not provided)' },
+        newComponentId: { type: 'string', description: 'Component ID to swap to' },
+      },
+      required: ['newComponentId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  go_to_main_component: {
+    name: 'go_to_main_component',
+    description: 'Navigate to the main component of an instance',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        instanceId: { type: 'string', description: 'Instance ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string' },
+      },
+    },
+  },
+
+  list_component_instances: {
+    name: 'list_component_instances',
+    description: 'List all instances of a component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string', description: 'Component ID' },
+      },
+      required: ['componentId'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        instances: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  add_component_property: {
+    name: 'add_component_property',
+    description: 'Add a property to a component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string', description: 'Component ID' },
+        propertyName: { type: 'string', description: 'Property name' },
+        propertyType: { type: 'string', enum: ['boolean', 'text', 'instance_swap', 'variant'], description: 'Property type' },
+        defaultValue: { type: 'string', description: 'Default value' },
+      },
+      required: ['componentId', 'propertyName', 'propertyType'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_component_description: {
+    name: 'set_component_description',
+    description: 'Set the description of a component',
+    category: 'components',
+    parameters: {
+      type: 'object',
+      properties: {
+        componentId: { type: 'string', description: 'Component ID' },
+        description: { type: 'string', description: 'Component description' },
+      },
+      required: ['componentId', 'description'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Styles
+  create_color_style: {
+    name: 'create_color_style',
+    description: 'Create a reusable color style',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Style name' },
+        color: { ...COLOR_SCHEMA, description: 'Color value' },
+        description: { type: 'string', description: 'Style description' },
+      },
+      required: ['name', 'color'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        styleId: { type: 'string' },
+      },
+    },
+  },
+
+  create_text_style: {
+    name: 'create_text_style',
+    description: 'Create a reusable text style',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Style name' },
+        fontFamily: { type: 'string', description: 'Font family' },
+        fontSize: { type: 'number', description: 'Font size' },
+        fontWeight: { type: 'string', description: 'Font weight' },
+        lineHeight: { type: 'number', description: 'Line height' },
+        letterSpacing: { type: 'number', description: 'Letter spacing' },
+      },
+      required: ['name', 'fontFamily', 'fontSize'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        styleId: { type: 'string' },
+      },
+    },
+  },
+
+  create_effect_style: {
+    name: 'create_effect_style',
+    description: 'Create a reusable effect style',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Style name' },
+        effects: { type: 'array', description: 'Array of effects' },
+      },
+      required: ['name', 'effects'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        styleId: { type: 'string' },
+      },
+    },
+  },
+
+  apply_style: {
+    name: 'apply_style',
+    description: 'Apply a style to layers',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        styleId: { type: 'string', description: 'Style ID to apply' },
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+      required: ['styleId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  detach_style: {
+    name: 'detach_style',
+    description: 'Detach styles from layers',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        styleType: { type: 'string', enum: ['fill', 'stroke', 'text', 'effect', 'all'], description: 'Type of style to detach' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  list_local_styles: {
+    name: 'list_local_styles',
+    description: 'List all local styles in the file',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {
+        styleType: { type: 'string', enum: ['color', 'text', 'effect', 'all'], description: 'Type of styles to list' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        styles: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  find_unused_styles: {
+    name: 'find_unused_styles',
+    description: 'Find styles that are not used anywhere',
+    category: 'styles',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        unusedStyles: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  // Variables
+  create_variable: {
+    name: 'create_variable',
+    description: 'Create a design variable',
+    category: 'variables',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Variable name' },
+        type: { type: 'string', enum: ['color', 'number', 'string', 'boolean'], description: 'Variable type' },
+        value: { type: 'string', description: 'Initial value' },
+        collection: { type: 'string', description: 'Variable collection name' },
+      },
+      required: ['name', 'type', 'value'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        variableId: { type: 'string' },
+      },
+    },
+  },
+
+  set_variable_value: {
+    name: 'set_variable_value',
+    description: 'Set the value of a variable',
+    category: 'variables',
+    parameters: {
+      type: 'object',
+      properties: {
+        variableId: { type: 'string', description: 'Variable ID' },
+        value: { type: 'string', description: 'New value' },
+        mode: { type: 'string', description: 'Variable mode (for multi-mode variables)' },
+      },
+      required: ['variableId', 'value'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  bind_to_variable: {
+    name: 'bind_to_variable',
+    description: 'Bind a layer property to a variable',
+    category: 'variables',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID' },
+        property: { type: 'string', description: 'Property to bind (e.g., "fill", "width")' },
+        variableId: { type: 'string', description: 'Variable ID' },
+      },
+      required: ['layerId', 'property', 'variableId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  list_variables: {
+    name: 'list_variables',
+    description: 'List all variables in the file',
+    category: 'variables',
+    parameters: {
+      type: 'object',
+      properties: {
+        collection: { type: 'string', description: 'Filter by collection name' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        variables: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  switch_variable_mode: {
+    name: 'switch_variable_mode',
+    description: 'Switch the active variable mode',
+    category: 'variables',
+    parameters: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', description: 'Mode name to switch to' },
+        collection: { type: 'string', description: 'Variable collection' },
+      },
+      required: ['mode'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Prototyping
+  add_interaction: {
+    name: 'add_interaction',
+    description: 'Add a prototype interaction to a layer',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        trigger: { type: 'string', enum: ['on_click', 'on_hover', 'on_press', 'on_drag', 'after_delay', 'mouse_enter', 'mouse_leave'], description: 'Interaction trigger' },
+        action: { type: 'string', enum: ['navigate', 'open_overlay', 'close_overlay', 'back', 'scroll_to', 'open_url'], description: 'Action type' },
+        destinationId: { type: 'string', description: 'Destination frame ID' },
+      },
+      required: ['trigger', 'action'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  remove_interactions: {
+    name: 'remove_interactions',
+    description: 'Remove all prototype interactions from a layer',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_transition: {
+    name: 'set_transition',
+    description: 'Set the transition animation for an interaction',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID' },
+        transitionType: { type: 'string', enum: ['instant', 'dissolve', 'smart_animate', 'move_in', 'move_out', 'push', 'slide_in', 'slide_out'], description: 'Transition type' },
+        duration: { type: 'number', description: 'Duration in milliseconds', default: 300 },
+        easing: { type: 'string', enum: ['linear', 'ease_in', 'ease_out', 'ease_in_out', 'ease_in_back', 'ease_out_back', 'spring'], description: 'Easing function' },
+      },
+      required: ['transitionType'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  list_all_interactions: {
+    name: 'list_all_interactions',
+    description: 'List all prototype interactions in the file',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Filter by page ID' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        interactions: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  set_starting_frame: {
+    name: 'set_starting_frame',
+    description: 'Set the starting frame for a prototype flow',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        frameId: { type: 'string', description: 'Frame ID to set as starting point' },
+      },
+      required: ['frameId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  set_device_frame: {
+    name: 'set_device_frame',
+    description: 'Set the device frame for prototyping',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        device: { type: 'string', enum: ['iphone_14', 'iphone_14_pro', 'iphone_se', 'android_small', 'android_large', 'ipad', 'desktop', 'none'], description: 'Device type' },
+      },
+      required: ['device'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  preview_prototype: {
+    name: 'preview_prototype',
+    description: 'Start prototype preview mode',
+    category: 'prototyping',
+    parameters: {
+      type: 'object',
+      properties: {
+        frameId: { type: 'string', description: 'Starting frame ID' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // Code Generation
+  generate_css: {
+    name: 'generate_css',
+    description: 'Generate CSS code for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        includeLayout: { type: 'boolean', description: 'Include layout properties', default: true },
+        useVariables: { type: 'boolean', description: 'Use CSS variables', default: false },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        css: { type: 'string' },
+      },
+    },
+  },
+
+  generate_tailwind: {
+    name: 'generate_tailwind',
+    description: 'Generate Tailwind CSS classes for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        classes: { type: 'string' },
+        html: { type: 'string' },
+      },
+    },
+  },
+
+  generate_swift: {
+    name: 'generate_swift',
+    description: 'Generate SwiftUI code for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        componentName: { type: 'string', description: 'SwiftUI view name' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        code: { type: 'string' },
+      },
+    },
+  },
+
+  generate_android: {
+    name: 'generate_android',
+    description: 'Generate Jetpack Compose code for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        componentName: { type: 'string', description: 'Composable function name' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        code: { type: 'string' },
+      },
+    },
+  },
+
+  generate_react: {
+    name: 'generate_react',
+    description: 'Generate React component code for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        componentName: { type: 'string', description: 'Component name' },
+        styleFormat: { type: 'string', enum: ['inline', 'css', 'styled-components', 'tailwind'], description: 'Style format', default: 'inline' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        code: { type: 'string' },
+      },
+    },
+  },
+
+  generate_html: {
+    name: 'generate_html',
+    description: 'Generate HTML/CSS code for selected layers',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        inlineStyles: { type: 'boolean', description: 'Use inline styles vs separate CSS', default: false },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        html: { type: 'string' },
+        css: { type: 'string' },
+      },
+    },
+  },
+
+  copy_as_code: {
+    name: 'copy_as_code',
+    description: 'Copy layer properties as code to clipboard',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        format: { type: 'string', enum: ['css', 'swift', 'android', 'react', 'tailwind'], description: 'Code format' },
+      },
+      required: ['format'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  inspect_properties: {
+    name: 'inspect_properties',
+    description: 'Get detailed design properties for development handoff',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        geometry: { type: 'object' },
+        fills: { type: 'array' },
+        strokes: { type: 'array' },
+        effects: { type: 'array' },
+        typography: { type: 'object' },
+      },
+    },
+  },
+
+  export_to_json: {
+    name: 'export_to_json',
+    description: 'Export layer data as JSON',
+    category: 'code_generation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID (uses selection if not provided)' },
+        includeChildren: { type: 'boolean', description: 'Include child layers', default: true },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        json: { type: 'string' },
+      },
+    },
+  },
+
+  // Page Management
+  create_page: {
+    name: 'create_page',
+    description: 'Create a new page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Page name' },
+      },
+      required: ['name'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string' },
+      },
+    },
+  },
+
+  rename_page: {
+    name: 'rename_page',
+    description: 'Rename a page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Page ID (uses current page if not provided)' },
+        name: { type: 'string', description: 'New page name' },
+      },
+      required: ['name'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  delete_page: {
+    name: 'delete_page',
+    description: 'Delete a page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Page ID to delete' },
+      },
+      required: ['pageId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  duplicate_page: {
+    name: 'duplicate_page',
+    description: 'Duplicate a page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Page ID to duplicate (uses current page if not provided)' },
+        name: { type: 'string', description: 'New page name' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string' },
+      },
+    },
+  },
+
+  go_to_page: {
+    name: 'go_to_page',
+    description: 'Navigate to a specific page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Page ID to navigate to' },
+      },
+      required: ['pageId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  list_pages: {
+    name: 'list_pages',
+    description: 'List all pages in the file',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        pages: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' } } } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  set_page_background: {
+    name: 'set_page_background',
+    description: 'Set the background color of a page',
+    category: 'page_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        pageId: { type: 'string', description: 'Page ID (uses current page if not provided)' },
+        color: { ...COLOR_SCHEMA, description: 'Background color' },
+      },
+      required: ['color'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  // File Management
+  get_file_info: {
+    name: 'get_file_info',
+    description: 'Get information about the current file',
+    category: 'file_management',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        lastModified: { type: 'string' },
+        pageCount: { type: 'number' },
+        layerCount: { type: 'number' },
+      },
+    },
+  },
+
+  get_version_history: {
+    name: 'get_version_history',
+    description: 'Get the version history of the file',
+    category: 'file_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Maximum versions to return', default: 10 },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        versions: { type: 'array', items: { type: 'object' } },
+      },
+    },
+  },
+
+  save_version: {
+    name: 'save_version',
+    description: 'Save a named version of the file',
+    category: 'file_management',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Version name' },
+        description: { type: 'string', description: 'Version description' },
+      },
+      required: ['name'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        versionId: { type: 'string' },
+      },
+    },
+  },
+
+  get_file_stats: {
+    name: 'get_file_stats',
+    description: 'Get statistics about the file',
+    category: 'file_management',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        totalLayers: { type: 'number' },
+        components: { type: 'number' },
+        instances: { type: 'number' },
+        styles: { type: 'number' },
+        fonts: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+
+  // Collaboration
+  add_comment: {
+    name: 'add_comment',
+    description: 'Add a comment to the design',
+    category: 'collaboration',
+    parameters: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', description: 'Comment text' },
+        x: { type: 'number', description: 'X position for comment pin' },
+        y: { type: 'number', description: 'Y position for comment pin' },
+        layerId: { type: 'string', description: 'Layer to attach comment to' },
+      },
+      required: ['message'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        commentId: { type: 'string' },
+      },
+    },
+  },
+
+  reply_to_comment: {
+    name: 'reply_to_comment',
+    description: 'Reply to an existing comment',
+    category: 'collaboration',
+    parameters: {
+      type: 'object',
+      properties: {
+        commentId: { type: 'string', description: 'Comment ID to reply to' },
+        message: { type: 'string', description: 'Reply text' },
+      },
+      required: ['commentId', 'message'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        replyId: { type: 'string' },
+      },
+    },
+  },
+
+  resolve_comment: {
+    name: 'resolve_comment',
+    description: 'Mark a comment as resolved',
+    category: 'collaboration',
+    parameters: {
+      type: 'object',
+      properties: {
+        commentId: { type: 'string', description: 'Comment ID to resolve' },
+      },
+      required: ['commentId'],
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  list_comments: {
+    name: 'list_comments',
+    description: 'List all comments in the file',
+    category: 'collaboration',
+    parameters: {
+      type: 'object',
+      properties: {
+        includeResolved: { type: 'boolean', description: 'Include resolved comments', default: false },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        comments: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  // AI Tools
+  generate_image: {
+    name: 'generate_image',
+    description: 'Generate an image using AI',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Image generation prompt' },
+        width: { type: 'number', description: 'Image width', default: 512 },
+        height: { type: 'number', description: 'Image height', default: 512 },
+        style: { type: 'string', enum: ['realistic', 'illustration', 'abstract', 'ui'], description: 'Image style' },
+      },
+      required: ['prompt'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string' },
+        imageUrl: { type: 'string' },
+      },
+    },
+  },
+
+  remove_background: {
+    name: 'remove_background',
+    description: 'Remove the background from an image',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Image layer ID (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean' },
+        layerId: { type: 'string' },
+      },
+    },
+  },
+
+  generate_copy: {
+    name: 'generate_copy',
+    description: 'Generate text content using AI',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: ['headline', 'body', 'cta', 'tagline', 'description'], description: 'Type of copy' },
+        context: { type: 'string', description: 'Context for the copy' },
+        length: { type: 'string', enum: ['short', 'medium', 'long'], description: 'Desired length' },
+        tone: { type: 'string', enum: ['professional', 'casual', 'playful', 'formal'], description: 'Tone of voice' },
+      },
+      required: ['type'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        text: { type: 'string' },
+        alternatives: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+
+  rewrite_text: {
+    name: 'rewrite_text',
+    description: 'Rewrite text using AI',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Text layer ID (uses selection if not provided)' },
+        instruction: { type: 'string', description: 'Rewriting instruction (e.g., "make it shorter", "more formal")' },
+      },
+      required: ['instruction'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        newText: { type: 'string' },
+        applied: { type: 'boolean' },
+      },
+    },
+  },
+
+  translate_text: {
+    name: 'translate_text',
+    description: 'Translate text to another language',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Text layer ID (uses selection if not provided)' },
+        targetLanguage: { type: 'string', description: 'Target language code (e.g., "es", "fr", "de")' },
+      },
+      required: ['targetLanguage'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        translatedText: { type: 'string' },
+        applied: { type: 'boolean' },
+      },
+    },
+  },
+
+  suggest_layout: {
+    name: 'suggest_layout',
+    description: 'Get AI suggestions for layout improvements',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Frame ID to analyze (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        suggestions: { type: 'array', items: { type: 'object' } },
+      },
+    },
+  },
+
+  auto_rename_layers: {
+    name: 'auto_rename_layers',
+    description: 'Automatically rename layers based on their content',
+    category: 'ai',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        renamedCount: { type: 'number' },
+        changes: { type: 'array', items: { type: 'object' } },
+      },
+    },
+  },
+
+  // Analysis & Audit
+  accessibility_audit: {
+    name: 'accessibility_audit',
+    description: 'Run an accessibility audit on the design',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {
+        frameId: { type: 'string', description: 'Frame ID to audit (uses selection if not provided)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        issues: { type: 'array', items: { type: 'object' } },
+        warnings: { type: 'array', items: { type: 'object' } },
+        passed: { type: 'number' },
+      },
+    },
+  },
+
+  contrast_check: {
+    name: 'contrast_check',
+    description: 'Check color contrast ratios',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerId: { type: 'string', description: 'Layer ID to check (uses selection if not provided)' },
+        wcagLevel: { type: 'string', enum: ['AA', 'AAA'], description: 'WCAG level to check against', default: 'AA' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        ratio: { type: 'number' },
+        passes: { type: 'boolean' },
+        recommendation: { type: 'string' },
+      },
+    },
+  },
+
+  consistency_audit: {
+    name: 'consistency_audit',
+    description: 'Check for design inconsistencies',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {
+        checkTypes: { type: 'array', items: { type: 'string', enum: ['colors', 'fonts', 'spacing', 'sizing'] }, description: 'Types of checks to perform' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        issues: { type: 'array', items: { type: 'object' } },
+        score: { type: 'number' },
+      },
+    },
+  },
+
+  find_detached_styles: {
+    name: 'find_detached_styles',
+    description: 'Find layers with detached styles',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        layers: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  spell_check: {
+    name: 'spell_check',
+    description: 'Check spelling in text layers',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Language code', default: 'en' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        errors: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  list_fonts_used: {
+    name: 'list_fonts_used',
+    description: 'List all fonts used in the file',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        fonts: { type: 'array', items: { type: 'object' } },
+        count: { type: 'number' },
+      },
+    },
+  },
+
+  find_missing_fonts: {
+    name: 'find_missing_fonts',
+    description: 'Find layers with missing fonts',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        missingFonts: { type: 'array', items: { type: 'string' } },
+        affectedLayers: { type: 'array', items: { type: 'object' } },
+      },
+    },
+  },
+
+  replace_font: {
+    name: 'replace_font',
+    description: 'Replace one font with another throughout the file',
+    category: 'analysis',
+    parameters: {
+      type: 'object',
+      properties: {
+        fromFont: { type: 'string', description: 'Font to replace' },
+        toFont: { type: 'string', description: 'Replacement font' },
+      },
+      required: ['fromFont', 'toFont'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        replacedCount: { type: 'number' },
+      },
+    },
+  },
+
+  // Automation
+  batch_rename: {
+    name: 'batch_rename',
+    description: 'Rename multiple layers using a pattern',
+    category: 'automation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        pattern: { type: 'string', description: 'Naming pattern (use {n} for number, {name} for original)' },
+        startNumber: { type: 'number', description: 'Starting number', default: 1 },
+      },
+      required: ['pattern'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        renamedCount: { type: 'number' },
+      },
+    },
+  },
+
+  batch_resize: {
+    name: 'batch_resize',
+    description: 'Resize multiple layers at once',
+    category: 'automation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        width: { type: 'number', description: 'New width (optional)' },
+        height: { type: 'number', description: 'New height (optional)' },
+        scale: { type: 'number', description: 'Scale factor (optional)' },
+      },
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        resizedCount: { type: 'number' },
+      },
+    },
+  },
+
+  batch_export: {
+    name: 'batch_export',
+    description: 'Export multiple layers at once',
+    category: 'automation',
+    parameters: {
+      type: 'object',
+      properties: {
+        layerIds: { type: 'array', items: { type: 'string' }, description: 'Layer IDs (uses selection if not provided)' },
+        format: { type: 'string', enum: ['png', 'jpg', 'svg', 'pdf'], description: 'Export format' },
+        scale: { type: 'number', description: 'Export scale', default: 1 },
+      },
+      required: ['format'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        exportedCount: { type: 'number' },
+        files: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+
+  apply_to_all: {
+    name: 'apply_to_all',
+    description: 'Apply a property change to all matching layers',
+    category: 'automation',
+    parameters: {
+      type: 'object',
+      properties: {
+        selector: { type: 'object', description: 'Criteria to match layers', properties: { type: { type: 'string' }, name: { type: 'string' }, hasStyle: { type: 'string' } } },
+        changes: { type: 'object', description: 'Properties to change' },
+      },
+      required: ['selector', 'changes'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        appliedCount: { type: 'number' },
+      },
+    },
+  },
+
+  // General Utilities
+  undo: {
+    name: 'undo',
+    description: 'Undo the last action',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  redo: {
+    name: 'redo',
+    description: 'Redo the last undone action',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  copy: {
+    name: 'copy',
+    description: 'Copy selected layers to clipboard',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  paste: {
+    name: 'paste',
+    description: 'Paste from clipboard',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        pastedIds: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+
+  paste_here: {
+    name: 'paste_here',
+    description: 'Paste at current cursor position',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {
+        x: { type: 'number', description: 'X position' },
+        y: { type: 'number', description: 'Y position' },
+      },
+      required: ['x', 'y'],
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        pastedIds: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  },
+
+  zoom_to_100: {
+    name: 'zoom_to_100',
+    description: 'Set zoom to 100%',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  zoom_in: {
+    name: 'zoom_in',
+    description: 'Zoom in one step',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        newZoom: { type: 'number' },
+      },
+    },
+  },
+
+  zoom_out: {
+    name: 'zoom_out',
+    description: 'Zoom out one step',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        newZoom: { type: 'number' },
+      },
+    },
+  },
+
+  toggle_rulers: {
+    name: 'toggle_rulers',
+    description: 'Toggle rulers visibility',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        visible: { type: 'boolean' },
+      },
+    },
+  },
+
+  toggle_grid: {
+    name: 'toggle_grid',
+    description: 'Toggle grid visibility',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        visible: { type: 'boolean' },
+      },
+    },
+  },
+
+  toggle_guides: {
+    name: 'toggle_guides',
+    description: 'Toggle guides visibility',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        visible: { type: 'boolean' },
+      },
+    },
+  },
+
+  toggle_outlines: {
+    name: 'toggle_outlines',
+    description: 'Toggle outline view mode',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: {
+        outlineMode: { type: 'boolean' },
+      },
+    },
+  },
+
+  collapse_all_layers: {
+    name: 'collapse_all_layers',
+    description: 'Collapse all layers in the layer panel',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
+
+  expand_all_layers: {
+    name: 'expand_all_layers',
+    description: 'Expand all layers in the layer panel',
+    category: 'utility',
+    parameters: {
+      type: 'object',
+      properties: {},
+    },
+    returns: {
+      type: 'object',
+      properties: { success: { type: 'boolean' } },
+    },
+  },
 };
 
 /**

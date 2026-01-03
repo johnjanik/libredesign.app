@@ -103,7 +103,7 @@ export type ProviderConfig =
 /**
  * Tool tier levels
  */
-export type ToolTierConfig = 'basic' | 'advanced' | 'professional';
+export type ToolTierConfig = 'basic' | 'essential' | 'advanced';
 
 /**
  * Global AI configuration
