@@ -1,0 +1,425 @@
+{
+  "$schema": "https://designlibre.app/schemas/manifest-v1.json",
+  "version": "1.0.0",
+
+  "project": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "Acme Design System",
+    "slug": "acme-design-system",
+    "description": "The official design system for Acme Corporation products",
+    "designVersion": "2.1.0",
+    "authors": [
+      {
+        "name": "Jane Designer",
+        "email": "jane@acme.com",
+        "role": "owner"
+      },
+      {
+        "name": "Bob Developer",
+        "email": "bob@acme.com",
+        "role": "maintainer"
+      }
+    ],
+    "license": "MIT",
+    "repository": "https://github.com/acme/design-system",
+    "homepage": "https://design.acme.com",
+    "keywords": ["design-system", "components", "acme"],
+    "createdAt": "2025-06-15T10:30:00Z",
+    "updatedAt": "2026-01-03T14:22:00Z"
+  },
+
+  "pages": [
+    {
+      "id": "page-001",
+      "name": "Overview",
+      "path": "pages/overview.json",
+      "type": "canvas",
+      "order": 0,
+      "group": "Documentation",
+      "description": "Design system overview and principles",
+      "status": "approved"
+    },
+    {
+      "id": "page-002",
+      "name": "Color Palette",
+      "path": "pages/colors.json",
+      "type": "specs",
+      "order": 1,
+      "group": "Foundations",
+      "status": "approved"
+    },
+    {
+      "id": "page-003",
+      "name": "Typography",
+      "path": "pages/typography.json",
+      "type": "specs",
+      "order": 2,
+      "group": "Foundations",
+      "status": "approved"
+    },
+    {
+      "id": "page-004",
+      "name": "Button",
+      "path": "pages/button.json",
+      "type": "component",
+      "order": 10,
+      "group": "Components",
+      "status": "approved",
+      "thumbnail": "thumbnails/button.png"
+    },
+    {
+      "id": "page-005",
+      "name": "Card",
+      "path": "pages/card.json",
+      "type": "component",
+      "order": 11,
+      "group": "Components",
+      "status": "in-review"
+    },
+    {
+      "id": "page-006",
+      "name": "Login Flow",
+      "path": "pages/login-flow.json",
+      "type": "prototype",
+      "order": 100,
+      "group": "Prototypes",
+      "status": "draft"
+    }
+  ],
+
+  "components": {
+    "directory": "components",
+    "naming": "PascalCase",
+    "organization": "by-category",
+    "autoDocument": true,
+    "categories": [
+      {
+        "id": "primitives",
+        "name": "Primitives",
+        "description": "Basic building blocks: icons, dividers, spacers",
+        "icon": "cube"
+      },
+      {
+        "id": "inputs",
+        "name": "Inputs",
+        "description": "Form controls and input elements",
+        "icon": "text-cursor"
+      },
+      {
+        "id": "buttons",
+        "name": "Buttons",
+        "description": "Action triggers and CTAs",
+        "icon": "pointer"
+      },
+      {
+        "id": "cards",
+        "name": "Cards",
+        "description": "Content containers and surfaces",
+        "icon": "rectangle"
+      },
+      {
+        "id": "navigation",
+        "name": "Navigation",
+        "description": "Menus, tabs, and navigation elements",
+        "icon": "menu"
+      },
+      {
+        "id": "feedback",
+        "name": "Feedback",
+        "description": "Alerts, toasts, and status indicators",
+        "icon": "bell"
+      },
+      {
+        "id": "overlays",
+        "name": "Overlays",
+        "description": "Modals, popovers, and tooltips",
+        "icon": "layers"
+      }
+    ],
+    "externalLibraries": [
+      {
+        "id": "acme-icons",
+        "name": "Acme Icons",
+        "source": {
+          "type": "git",
+          "url": "https://github.com/acme/icons",
+          "branch": "main"
+        },
+        "version": "1.5.0",
+        "autoUpdate": false
+      }
+    ]
+  },
+
+  "tokens": {
+    "directory": "tokens",
+    "format": "designlibre",
+    "files": [
+      {
+        "path": "colors.json",
+        "type": "colors",
+        "description": "Brand and semantic colors"
+      },
+      {
+        "path": "typography.json",
+        "type": "typography",
+        "description": "Font families, sizes, and line heights"
+      },
+      {
+        "path": "spacing.json",
+        "type": "spacing",
+        "description": "Spacing scale (4px base unit)"
+      },
+      {
+        "path": "shadows.json",
+        "type": "shadows",
+        "description": "Elevation and shadow tokens"
+      },
+      {
+        "path": "radii.json",
+        "type": "radii",
+        "description": "Border radius scale"
+      },
+      {
+        "path": "motion.json",
+        "type": "motion",
+        "description": "Animation durations and easings"
+      }
+    ],
+    "transform": {
+      "css": {
+        "enabled": true,
+        "outputPath": "generated/tokens/tokens.css",
+        "prefix": "acme"
+      },
+      "tailwind": {
+        "enabled": true,
+        "outputPath": "generated/tokens/tailwind.config.js"
+      },
+      "swift": {
+        "enabled": true,
+        "outputPath": "generated/tokens/DesignTokens.swift"
+      },
+      "kotlin": {
+        "enabled": true,
+        "outputPath": "generated/tokens/DesignTokens.kt"
+      }
+    }
+  },
+
+  "assets": {
+    "directory": "assets",
+    "subdirectories": {
+      "images": "images",
+      "icons": "icons",
+      "fonts": "fonts",
+      "videos": "videos",
+      "lottie": "lottie"
+    },
+    "lfs": {
+      "enabled": true,
+      "patterns": [
+        "*.png",
+        "*.jpg",
+        "*.jpeg",
+        "*.gif",
+        "*.webp",
+        "*.svg",
+        "*.woff",
+        "*.woff2",
+        "*.ttf",
+        "*.otf",
+        "*.mp4",
+        "*.webm",
+        "*.json"
+      ],
+      "threshold": 102400
+    },
+    "optimization": {
+      "maxDimension": 4096,
+      "jpegQuality": 85,
+      "generateWebp": true,
+      "responsiveSizes": [320, 640, 1024, 1920]
+    }
+  },
+
+  "exports": {
+    "outputDirectory": "generated",
+    "targets": [
+      {
+        "id": "react-web",
+        "platform": "react",
+        "outputPath": "react",
+        "enabled": true,
+        "options": {
+          "platform": "react",
+          "language": "typescript",
+          "styling": "css-modules",
+          "structure": "folder",
+          "includeTypes": true,
+          "includeStories": true,
+          "includeTests": true
+        }
+      },
+      {
+        "id": "react-native",
+        "platform": "react-native",
+        "outputPath": "react-native",
+        "enabled": true,
+        "options": {
+          "platform": "react-native",
+          "language": "typescript",
+          "styling": "inline",
+          "structure": "folder",
+          "includeTypes": true,
+          "includeStories": false,
+          "includeTests": false
+        }
+      },
+      {
+        "id": "ios",
+        "platform": "swiftui",
+        "outputPath": "ios",
+        "enabled": true,
+        "options": {
+          "platform": "swiftui",
+          "minimumVersion": "16.0",
+          "includePreviews": true,
+          "generateAssetCatalog": true,
+          "includeAccessibility": true
+        }
+      },
+      {
+        "id": "android",
+        "platform": "compose",
+        "outputPath": "android",
+        "enabled": true,
+        "options": {
+          "platform": "compose",
+          "minSdk": 24,
+          "packageName": "com.acme.design",
+          "includePreviews": true,
+          "materialVersion": 3
+        }
+      },
+      {
+        "id": "html",
+        "platform": "html-css",
+        "outputPath": "html",
+        "enabled": false,
+        "options": {
+          "platform": "html-css",
+          "cssMethodology": "bem",
+          "includeReset": true,
+          "preprocessor": "scss"
+        }
+      }
+    ],
+    "settings": {
+      "includeSourceReference": true,
+      "watchMode": false,
+      "preserveManualEdits": true,
+      "formatting": {
+        "indentSize": 2,
+        "useTabs": false,
+        "lineWidth": 100,
+        "trailingComma": true,
+        "singleQuote": true
+      }
+    }
+  },
+
+  "sync": {
+    "vcs": {
+      "provider": "git",
+      "defaultBranch": "main",
+      "remote": "origin",
+      "commitTemplate": "[design] {message}",
+      "ignore": [
+        ".DS_Store",
+        "node_modules/",
+        "*.local",
+        ".env*",
+        "generated/",
+        "thumbnails/"
+      ]
+    },
+    "branchProtection": [
+      {
+        "pattern": "main",
+        "requirePullRequest": true,
+        "requiredApprovals": 1,
+        "allowedMergers": ["maintainers"]
+      },
+      {
+        "pattern": "release/*",
+        "requirePullRequest": true,
+        "requiredApprovals": 2,
+        "allowedMergers": ["jane@acme.com", "bob@acme.com"]
+      }
+    ],
+    "autoCommit": {
+      "enabled": false,
+      "interval": 300,
+      "messagePrefix": "[auto]"
+    }
+  },
+
+  "editor": {
+    "canvas": {
+      "backgroundColor": "#1a1a1a",
+      "showGrid": true,
+      "gridSize": 8,
+      "snapToGrid": true,
+      "snapToObjects": true,
+      "rulerUnits": "px"
+    },
+    "defaultFrame": {
+      "width": 1440,
+      "height": 900,
+      "preset": "desktop-1440"
+    },
+    "autosave": {
+      "enabled": true,
+      "intervalSeconds": 30
+    },
+    "ui": {
+      "theme": "dark",
+      "panelLayout": "default",
+      "showLayerPanel": true,
+      "showInspectorPanel": true
+    },
+    "shortcuts": "default"
+  },
+
+  "plugins": [
+    {
+      "id": "spell-check",
+      "name": "Spell Checker",
+      "version": "1.0.0",
+      "source": { "type": "builtin" },
+      "settings": {
+        "language": "en-US",
+        "checkOnType": true
+      },
+      "enabled": true
+    },
+    {
+      "id": "a11y-checker",
+      "name": "Accessibility Checker",
+      "version": "2.1.0",
+      "source": { "type": "builtin" },
+      "settings": {
+        "contrastLevel": "AA",
+        "checkTouchTargets": true
+      },
+      "enabled": true
+    }
+  ],
+
+  "meta": {
+    "figmaFileId": "abc123xyz",
+    "migratedFrom": "figma",
+    "migrationDate": "2025-06-15T10:30:00Z"
+  }
+}
