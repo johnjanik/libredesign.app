@@ -3,9 +3,10 @@
  */
 
 import { generateNodeId } from '@core/utils/uuid';
-import type { NodeId } from '@core/types/common';
+import type { NodeId, BlendMode } from '@core/types/common';
 import type { VectorPath } from '@core/types/geometry';
 import type { Paint } from '@core/types/paint';
+import type { Effect } from '@core/types/effect';
 import { rgba } from '@core/types/color';
 import { solidPaint } from '@core/types/paint';
 import type {
@@ -17,6 +18,7 @@ import type {
   ImageNodeData,
   ImageScaleMode,
   TextNodeData,
+  TextStyleRange,
   ComponentNodeData,
   InstanceNodeData,
   BooleanOperationNodeData,
@@ -90,6 +92,15 @@ export interface CreateFrameOptions {
   width?: number;
   height?: number;
   cornerRadius?: number;
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  strokeAlign?: 'INSIDE' | 'CENTER' | 'OUTSIDE';
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
+  clipsContent?: boolean;
 }
 
 /** Create a frame node */
@@ -109,9 +120,15 @@ export function createFrame(options: CreateFrameOptions = {}): FrameNodeData {
     width: options.width ?? 100,
     height: options.height ?? 100,
     ...DEFAULT_APPEARANCE,
-    fills: [solidPaint(rgba(1, 1, 1, 1))],
+    fills: options.fills ?? [solidPaint(rgba(1, 1, 1, 1))],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    strokeAlign: options.strokeAlign ?? 'INSIDE',
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
-    clipsContent: true,
+    clipsContent: options.clipsContent ?? true,
     autoLayout: DEFAULT_AUTO_LAYOUT,
     cornerRadius: options.cornerRadius ?? 0,
   };
@@ -121,6 +138,17 @@ export function createFrame(options: CreateFrameOptions = {}): FrameNodeData {
 export interface CreateGroupOptions {
   id?: NodeId;
   name?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
 }
 
 /** Create a group node */
@@ -135,7 +163,17 @@ export function createGroup(options: CreateGroupOptions = {}): GroupNodeData {
     childIds: [],
     pluginData: {},
     ...DEFAULT_TRANSFORM,
+    x: options.x ?? 0,
+    y: options.y ?? 0,
+    width: options.width ?? 100,
+    height: options.height ?? 100,
     ...DEFAULT_APPEARANCE,
+    fills: options.fills ?? [],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: false,
   };
@@ -229,7 +267,22 @@ export interface CreateTextOptions {
   name?: string;
   x?: number;
   y?: number;
+  width?: number;
+  height?: number;
   characters?: string;
+  // Text-specific properties
+  textStyles?: TextStyleRange[];
+  textAutoResize?: 'NONE' | 'WIDTH_AND_HEIGHT' | 'HEIGHT';
+  textAlignHorizontal?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
+  textAlignVertical?: 'TOP' | 'CENTER' | 'BOTTOM';
+  paragraphSpacing?: number;
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
 }
 
 /** Create a text node */
@@ -247,23 +300,29 @@ export function createText(options: CreateTextOptions = {}): TextNodeData {
     ...DEFAULT_TRANSFORM,
     x: options.x ?? 0,
     y: options.y ?? 0,
-    width: 100,
-    height: 20,
+    width: options.width ?? 100,
+    height: options.height ?? 20,
     ...DEFAULT_APPEARANCE,
+    fills: options.fills ?? [],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: false,
     characters,
-    textStyles: [
+    textStyles: options.textStyles ?? [
       {
         start: 0,
         end: characters.length,
         ...DEFAULT_TEXT_STYLE,
       },
     ],
-    textAutoResize: 'WIDTH_AND_HEIGHT',
-    textAlignHorizontal: 'LEFT',
-    textAlignVertical: 'TOP',
-    paragraphSpacing: 0,
+    textAutoResize: options.textAutoResize ?? 'WIDTH_AND_HEIGHT',
+    textAlignHorizontal: options.textAlignHorizontal ?? 'LEFT',
+    textAlignVertical: options.textAlignVertical ?? 'TOP',
+    paragraphSpacing: options.paragraphSpacing ?? 0,
   };
 }
 
@@ -275,6 +334,15 @@ export interface CreateComponentOptions {
   y?: number;
   width?: number;
   height?: number;
+  cornerRadius?: number;
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
+  clipsContent?: boolean;
 }
 
 /** Create a component node */
@@ -294,9 +362,14 @@ export function createComponent(options: CreateComponentOptions = {}): Component
     width: options.width ?? 100,
     height: options.height ?? 100,
     ...DEFAULT_APPEARANCE,
-    fills: [solidPaint(rgba(1, 1, 1, 1))],
+    fills: options.fills ?? [solidPaint(rgba(1, 1, 1, 1))],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
-    clipsContent: true,
+    clipsContent: options.clipsContent ?? true,
     propertyDefinitions: {},
   };
 }
@@ -308,6 +381,16 @@ export interface CreateInstanceOptions {
   componentId: NodeId;
   x?: number;
   y?: number;
+  width?: number;
+  height?: number;
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
+  clipsContent?: boolean;
 }
 
 /** Create an instance node */
@@ -324,9 +407,17 @@ export function createInstance(options: CreateInstanceOptions): InstanceNodeData
     ...DEFAULT_TRANSFORM,
     x: options.x ?? 0,
     y: options.y ?? 0,
+    width: options.width ?? 100,
+    height: options.height ?? 100,
     ...DEFAULT_APPEARANCE,
+    fills: options.fills ?? [],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
-    clipsContent: true,
+    clipsContent: options.clipsContent ?? true,
     componentId: options.componentId,
     overrides: [],
     exposedInstances: [],
@@ -337,7 +428,18 @@ export function createInstance(options: CreateInstanceOptions): InstanceNodeData
 export interface CreateBooleanOperationOptions {
   id?: NodeId;
   name?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   operation?: 'UNION' | 'SUBTRACT' | 'INTERSECT' | 'EXCLUDE';
+  // Appearance properties
+  fills?: Paint[];
+  strokes?: Paint[];
+  strokeWeight?: number;
+  opacity?: number;
+  blendMode?: BlendMode;
+  effects?: Effect[];
 }
 
 /** Create a boolean operation node */
@@ -354,7 +456,17 @@ export function createBooleanOperation(
     childIds: [],
     pluginData: {},
     ...DEFAULT_TRANSFORM,
+    x: options.x ?? 0,
+    y: options.y ?? 0,
+    width: options.width ?? 100,
+    height: options.height ?? 100,
     ...DEFAULT_APPEARANCE,
+    fills: options.fills ?? [],
+    strokes: options.strokes ?? [],
+    strokeWeight: options.strokeWeight ?? 1,
+    opacity: options.opacity ?? 1,
+    blendMode: options.blendMode ?? 'NORMAL',
+    effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: false,
     booleanOperation: options.operation ?? 'UNION',

@@ -48,6 +48,12 @@ const ICONS = {
   dropdown: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <polyline points="6 9 12 15 18 9"/>
   </svg>`,
+  chevronRight: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="9 6 15 12 9 18"/>
+  </svg>`,
+  chevronDown: `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>`,
   search: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
   </svg>`,
@@ -94,6 +100,7 @@ export class LeftSidebar {
   private leaves: Leaf[] = [{ id: 'leaf-1', name: 'Leaf 1' }];
   private activeLeafId = 'leaf-1';
   private leafCounter = 1;
+  private expandedNodeIds: Set<string> = new Set();
 
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
@@ -913,15 +920,8 @@ export class LeftSidebar {
       // Get current page ID from runtime
       const currentPageId = this.runtime.getCurrentPageId();
       if (currentPageId) {
-        const childIds = sceneGraph.getChildIds(currentPageId);
-
-        for (const childId of childIds) {
-          const node = sceneGraph.getNode(childId);
-          if (node) {
-            const layerItem = this.createLayerItem(node, selectedIds.includes(childId), 0);
-            list.appendChild(layerItem);
-          }
-        }
+        // Recursively render all layers
+        this.renderLayerChildren(list, currentPageId, selectedIds, sceneGraph, 0);
       }
     }
 
@@ -942,10 +942,46 @@ export class LeftSidebar {
     return section;
   }
 
+  private renderLayerChildren(
+    container: HTMLElement,
+    parentId: NodeId,
+    selectedIds: NodeId[],
+    sceneGraph: ReturnType<DesignLibreRuntime['getSceneGraph']>,
+    depth: number
+  ): void {
+    if (!sceneGraph) return;
+
+    const childIds = sceneGraph.getChildIds(parentId);
+    for (const childId of childIds) {
+      const node = sceneGraph.getNode(childId);
+      if (node) {
+        const nodeChildIds = sceneGraph.getChildIds(childId);
+        const hasChildren = nodeChildIds.length > 0;
+        const isExpanded = this.expandedNodeIds.has(childId);
+
+        const layerItem = this.createLayerItem(
+          node,
+          selectedIds.includes(childId),
+          depth,
+          hasChildren,
+          isExpanded
+        );
+        container.appendChild(layerItem);
+
+        // Recursively render children if expanded
+        if (hasChildren && isExpanded) {
+          this.renderLayerChildren(container, childId, selectedIds, sceneGraph, depth + 1);
+        }
+      }
+    }
+  }
+
   private createLayerItem(
     node: { id: NodeId; name: string; type: string; visible?: boolean },
     isSelected: boolean,
-    depth: number
+    depth: number,
+    hasChildren: boolean = false,
+    isExpanded: boolean = false
   ): HTMLElement {
     const item = document.createElement('div');
     item.className = 'designlibre-layer-item';
@@ -953,7 +989,7 @@ export class LeftSidebar {
     item.style.cssText = `
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       padding: 4px 8px;
       padding-left: ${8 + depth * 16}px;
       cursor: pointer;
@@ -963,9 +999,46 @@ export class LeftSidebar {
       transition: background 0.15s;
     `;
 
+    // Expand/collapse button for nodes with children
+    const expandBtn = document.createElement('button');
+    if (hasChildren) {
+      expandBtn.innerHTML = isExpanded ? ICONS.chevronDown : ICONS.chevronRight;
+      expandBtn.title = isExpanded ? 'Collapse' : 'Expand';
+      expandBtn.style.cssText = `
+        width: 16px;
+        height: 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        border-radius: 2px;
+        padding: 0;
+        flex-shrink: 0;
+      `;
+      expandBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.expandedNodeIds.has(node.id)) {
+          this.expandedNodeIds.delete(node.id);
+        } else {
+          this.expandedNodeIds.add(node.id);
+        }
+        this.renderLayersSection();
+      });
+    } else {
+      // Spacer for alignment
+      expandBtn.style.cssText = `
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      `;
+    }
+
     // Icon based on type
     const icon = document.createElement('span');
-    icon.style.cssText = `display: flex; opacity: 0.6;`;
+    icon.style.cssText = `display: flex; opacity: 0.6; flex-shrink: 0;`;
     switch (node.type) {
       case 'FRAME':
         icon.innerHTML = ICONS.frame;
@@ -1008,8 +1081,10 @@ export class LeftSidebar {
       border-radius: 2px;
       opacity: 0;
       transition: opacity 0.15s;
+      flex-shrink: 0;
     `;
 
+    item.appendChild(expandBtn);
     item.appendChild(icon);
     item.appendChild(name);
     item.appendChild(visibilityBtn);
