@@ -1,0 +1,1661 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{tcolorbox}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usepackage{pgfgantt}
+\usepackage{array}
+\usepackage{multirow}
+
+% Page geometry
+\geometry{margin=1in}
+
+% Colors
+\definecolor{codebackground}{RGB}{245,245,245}
+\definecolor{codeborder}{RGB}{200,200,200}
+\definecolor{keyword}{RGB}{0,0,180}
+\definecolor{string}{RGB}{0,128,0}
+\definecolor{comment}{RGB}{128,128,128}
+\definecolor{primary}{RGB}{99,102,241}
+\definecolor{secondary}{RGB}{100,116,139}
+\definecolor{success}{RGB}{34,197,94}
+\definecolor{warning}{RGB}{234,179,8}
+\definecolor{danger}{RGB}{239,68,68}
+\definecolor{info}{RGB}{14,165,233}
+
+% Code listing style
+\lstdefinelanguage{TypeScript}{
+  keywords={abstract, any, as, async, await, boolean, break, case, catch, class, const, constructor, continue, declare, default, delete, do, else, enum, export, extends, false, finally, for, from, function, get, if, implements, import, in, instanceof, interface, let, module, namespace, never, new, null, number, object, of, package, private, protected, public, readonly, require, return, set, static, string, super, switch, symbol, this, throw, true, try, type, typeof, undefined, unique, unknown, var, void, while, with, yield},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]',
+  morestring=[b]",
+  morestring=[b]`
+}
+
+\lstset{
+  language=TypeScript,
+  backgroundcolor=\color{codebackground},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  captionpos=b,
+  commentstyle=\color{comment},
+  frame=single,
+  framerule=0.5pt,
+  rulecolor=\color{codeborder},
+  keywordstyle=\color{keyword}\bfseries,
+  stringstyle=\color{string},
+  numbers=left,
+  numberstyle=\tiny\color{secondary},
+  numbersep=8pt,
+  showstringspaces=false,
+  tabsize=2,
+  xleftmargin=15pt,
+  framexleftmargin=15pt
+}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textit{Design Tool Pain Points \& Solutions Specification}}
+\fancyhead[R]{\textit{v1.0}}
+\fancyfoot[C]{\thepage}
+
+% Title formatting
+\titleformat{\section}{\Large\bfseries\color{primary}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{secondary}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{secondary}}{\thesubsubsection}{1em}{}
+
+% Custom boxes
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{problembox}[1][]{
+  colback=red!5!white,
+  colframe=danger,
+  fonttitle=\bfseries,
+  title=#1,
+  breakable
+}
+
+\newtcolorbox{solutionbox}[1][]{
+  colback=green!5!white,
+  colframe=success,
+  fonttitle=\bfseries,
+  title=#1,
+  breakable
+}
+
+\newtcolorbox{uservoice}[1][User Voice]{
+  colback=blue!5!white,
+  colframe=info,
+  fonttitle=\bfseries,
+  title=#1,
+  breakable,
+  left=10pt,
+  right=10pt
+}
+
+\newtcolorbox{implementation}[1][]{
+  colback=purple!5!white,
+  colframe=primary,
+  fonttitle=\bfseries,
+  title=#1,
+  breakable
+}
+
+\newtcolorbox{priority}[1][]{
+  colback=yellow!5!white,
+  colframe=warning,
+  fonttitle=\bfseries,
+  title=#1,
+  breakable
+}
+
+% Document info
+\title{
+  \vspace{-1cm}
+  \textbf{Technical Specification Document}\\[0.5cm]
+  \Large Addressing Critical Design Tool Pain Points\\[0.3cm]
+  \large Consumer Requirements \& Implementation Strategy
+}
+\author{Product Engineering Specification}
+\date{January 2026 \\ Version 1.0}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\vspace{1cm}
+
+\begin{abstract}
+This specification document provides a comprehensive analysis of the eight most critical pain points identified through extensive user research across design communities, forums, and social platforms. For each issue, we document the specific user complaints, articulate what consumers actually want, and propose detailed implementation strategies. The goal is to create a design tool experience that addresses these fundamental gaps while maintaining stability and professional-grade performance.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Executive Summary}
+%==============================================================================
+
+\subsection{Document Purpose}
+
+This specification serves as the authoritative reference for addressing critical user experience gaps in modern design tooling. Through analysis of thousands of user complaints, forum discussions, and feature requests, we have identified eight fundamental areas requiring immediate attention.
+
+\subsection{Identified Pain Points}
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|c|X|c|c|}
+\hline
+\textbf{\#} & \textbf{Pain Point} & \textbf{Severity} & \textbf{Priority} \\
+\hline
+1 & UI/UX Redesign Backlash & Critical & P0 \\
+\hline
+2 & Performance Degradation with Large Files & Critical & P0 \\
+\hline
+3 & Pricing Model Frustrations & High & P1 \\
+\hline
+4 & AI Features Perceived as Gimmicky & Medium & P2 \\
+\hline
+5 & Lack of Proper Offline Mode & Critical & P0 \\
+\hline
+6 & No Native Linux Desktop Application & High & P1 \\
+\hline
+7 & Inadequate Version Control / Branching & High & P1 \\
+\hline
+8 & Annotation Visibility \& Collaboration Gaps & Medium & P1 \\
+\hline
+\end{tabularx}
+\caption{Pain Point Severity and Priority Matrix}
+\end{table}
+
+\subsection{Design Philosophy}
+
+Our implementation strategy adheres to the following core principles:
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{User Agency}: Provide options, not mandates. Users choose their experience.
+  \item \textbf{Progressive Enhancement}: New features enhance, never diminish, existing workflows.
+  \item \textbf{Performance First}: Every feature must pass performance benchmarks before release.
+  \item \textbf{Professional Focus}: Prioritize power users who drive adoption within organizations.
+  \item \textbf{Stability Guarantee}: Rock-solid reliability is non-negotiable.
+\end{enumerate}
+
+%==============================================================================
+\section{Issue \#1: UI/UX Redesign Backlash}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+The UI3 redesign has generated significant negative response from the professional design community. Core complaints include:
+\begin{itemize}[noitemsep]
+  \item Essential tools relocated to hidden menus requiring additional clicks
+  \item Toolbar moved from top (established convention) to bottom of screen
+  \item Nested component instances collapsed by default, breaking inspection workflows
+  \item Floating panels overlap canvas content, obscuring work
+  \item Interface perceived as ``dumbed down'' for non-professionals
+  \item No option to revert to previous UI version
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``You got rid of one of the most intuitive designs and replaced it with an awful version without giving users an option to switch back.''
+
+``The interface is so horrifyingly oversimplified that it makes Microsoft Paint look like feature-rich professional software. Essential features are buried so deep within cryptic menus that finding a tool feels like trying to find the minotaur at the end of a labyrinth.''
+
+``Nested instances collapsed by default is the most frustrating one for me. I have to manually open every accordion for every instance I need to adjust. It's a huge time-waster.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{UI Version Toggle}: Ability to switch between UI versions (classic/modern)
+  \item \textbf{Toolbar Position Choice}: Option to place toolbar at top, bottom, or side
+  \item \textbf{Panel Behavior Control}: Configure whether panels float or dock
+  \item \textbf{Instance Expansion Memory}: Remember expansion state per component
+  \item \textbf{Quick Access Customization}: User-defined toolbar with frequently used tools
+  \item \textbf{Gradual Transition}: Phased rollout with opt-in, not forced migration
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan}
+
+\subsubsection{Phase 1: UI Preference System (Weeks 1--3)}
+
+\begin{lstlisting}
+// types/ui-preferences.ts
+
+export type ToolbarPosition = 'top' | 'bottom' | 'left' | 'right';
+export type PanelBehavior = 'floating' | 'docked' | 'auto';
+export type UITheme = 'classic' | 'modern' | 'custom';
+
+export interface UIPreferences {
+  readonly theme: UITheme;
+  readonly toolbarPosition: ToolbarPosition;
+  readonly panelBehavior: PanelBehavior;
+  readonly instanceExpansion: 'collapsed' | 'expanded' | 'remember';
+  readonly quickAccessTools: readonly string[];
+  readonly showAdvancedOptions: boolean;
+  readonly compactMode: boolean;
+  readonly keyboardShortcutProfile: 'default' | 'vim' | 'custom';
+}
+
+export interface UIPreferenceStore {
+  preferences: UIPreferences;
+  setPreference<K extends keyof UIPreferences>(
+    key: K,
+    value: UIPreferences[K]
+  ): void;
+  resetToDefaults(): void;
+  exportPreferences(): string;
+  importPreferences(json: string): void;
+}
+\end{lstlisting}
+
+\subsubsection{Phase 2: Customizable Toolbar (Weeks 4--6)}
+
+\begin{lstlisting}
+// components/CustomizableToolbar.tsx
+
+interface ToolbarConfig {
+  readonly position: ToolbarPosition;
+  readonly items: readonly ToolbarItem[];
+  readonly showLabels: boolean;
+  readonly iconSize: 'small' | 'medium' | 'large';
+  readonly grouping: 'flat' | 'grouped' | 'dropdown';
+}
+
+interface ToolbarItem {
+  readonly id: string;
+  readonly icon: string;
+  readonly label: string;
+  readonly shortcut?: string;
+  readonly action: () => void;
+  readonly isVisible: boolean;
+  readonly order: number;
+}
+
+export const CustomizableToolbar: React.FC<{
+  config: ToolbarConfig;
+  onConfigChange: (config: ToolbarConfig) => void;
+}> = ({ config, onConfigChange }) => {
+  // Drag-and-drop reordering
+  // Right-click to add/remove items
+  // Position snapping to screen edges
+};
+\end{lstlisting}
+
+\subsubsection{Phase 3: Classic UI Mode (Weeks 7--10)}
+
+\begin{implementation}[Technical Approach]
+\begin{enumerate}[noitemsep]
+  \item Create abstraction layer for UI component rendering
+  \item Implement ``Classic'' theme with UI2-equivalent layouts
+  \item Ensure feature parity between themes (no functionality loss)
+  \item Store preference in user profile for cross-device sync
+  \item Provide migration assistant for users transitioning between modes
+\end{enumerate}
+\end{implementation}
+
+%==============================================================================
+\section{Issue \#2: Performance Degradation}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Users report severe performance degradation when working with:
+\begin{itemize}[noitemsep]
+  \item Large files with many pages and components
+  \item Complex nested component hierarchies
+  \item Design systems with extensive variant libraries
+  \item Files with numerous prototyping connections
+  \item Real-time collaboration with multiple editors
+\end{itemize}
+Symptoms include: typing lag, canvas pan/zoom stuttering, multi-second delays when switching pages, library update freezes, and browser/app crashes.
+\end{problembox}
+
+\begin{uservoice}
+``I'm still having serious performance issues, especially when a file becomes larger with complex components. The main thing that can't be handled well right now is Components inside Components.''
+
+``It's very laggy when doing anything—typing, moving elements, double-clicking layers. It's slowing my production and lags during stakeholder presentations which is causing issues with my clients.''
+
+``Excruciatingly slow, and the number of times I have devs saying they can't open it or it just gets stuck loading is crazy.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Consistent 60fps}: Smooth canvas interaction regardless of file complexity
+  \item \textbf{Instant Page Switching}: Sub-100ms page navigation
+  \item \textbf{Background Processing}: Library updates without blocking UI
+  \item \textbf{Predictable Memory Usage}: Clear limits with graceful degradation
+  \item \textbf{Performance Monitoring}: Real-time metrics for optimization
+  \item \textbf{Large File Support}: Handle 500+ page files without degradation
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan}
+
+\subsubsection{Architecture: GPU-Accelerated Rendering Pipeline}
+
+\begin{lstlisting}
+// rendering/GPURenderer.ts
+
+export class GPUCanvasRenderer {
+  private device: GPUDevice;
+  private context: GPUCanvasContext;
+  private renderPipeline: GPURenderPipeline;
+  private layerCache: Map<string, GPUTexture> = new Map();
+  
+  // Hybrid rendering: GPU for canvas, CPU for UI
+  private readonly BATCH_SIZE = 1000; // Elements per draw call
+  private readonly CACHE_THRESHOLD = 100; // Cache layers with >100 children
+  
+  async initialize(canvas: HTMLCanvasElement): Promise<void> {
+    const adapter = await navigator.gpu.requestAdapter({
+      powerPreference: 'high-performance'
+    });
+    
+    this.device = await adapter!.requestDevice({
+      requiredFeatures: ['texture-compression-bc'],
+      requiredLimits: {
+        maxTextureDimension2D: 16384,
+        maxBufferSize: 256 * 1024 * 1024, // 256MB
+      }
+    });
+    
+    this.context = canvas.getContext('webgpu')!;
+    this.setupRenderPipeline();
+  }
+  
+  // Frustum culling: only render visible elements
+  private cullInvisibleElements(
+    elements: readonly CanvasElement[],
+    viewport: Viewport
+  ): CanvasElement[] {
+    return elements.filter(el => 
+      this.intersectsViewport(el.bounds, viewport)
+    );
+  }
+  
+  // Level-of-detail: simplify distant elements
+  private applyLOD(
+    element: CanvasElement,
+    zoomLevel: number
+  ): RenderableElement {
+    if (zoomLevel < 0.1) {
+      return this.createBoundingBoxProxy(element);
+    }
+    if (zoomLevel < 0.25) {
+      return this.createSimplifiedProxy(element);
+    }
+    return element;
+  }
+  
+  // Incremental rendering for large operations
+  async renderLargeFile(
+    file: DesignFile,
+    onProgress: (percent: number) => void
+  ): Promise<void> {
+    const totalElements = file.getAllElements().length;
+    let rendered = 0;
+    
+    for (const page of file.pages) {
+      for (const chunk of this.chunkElements(page.elements, this.BATCH_SIZE)) {
+        await this.renderBatch(chunk);
+        rendered += chunk.length;
+        onProgress((rendered / totalElements) * 100);
+        
+        // Yield to main thread to keep UI responsive
+        await new Promise(r => requestAnimationFrame(r));
+      }
+    }
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Virtual Scrolling for Layer Panel}
+
+\begin{lstlisting}
+// components/VirtualLayerTree.tsx
+
+interface VirtualTreeProps {
+  nodes: readonly LayerNode[];
+  estimatedNodeHeight: number;
+  overscanCount: number;
+  onNodeExpand: (nodeId: string) => void;
+}
+
+export const VirtualLayerTree: React.FC<VirtualTreeProps> = ({
+  nodes,
+  estimatedNodeHeight = 32,
+  overscanCount = 5,
+}) => {
+  const flattenedNodes = useMemo(() => 
+    flattenTree(nodes), [nodes]
+  );
+  
+  const rowVirtualizer = useVirtualizer({
+    count: flattenedNodes.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => estimatedNodeHeight,
+    overscan: overscanCount,
+  });
+  
+  return (
+    <div ref={containerRef} className="layer-tree-container">
+      <div style={{ height: rowVirtualizer.getTotalSize() }}>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => (
+          <LayerNodeRow
+            key={flattenedNodes[virtualRow.index].id}
+            node={flattenedNodes[virtualRow.index]}
+            style={{
+              position: 'absolute',
+              top: virtualRow.start,
+              height: virtualRow.size,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+\end{lstlisting}
+
+\subsubsection{Background Processing with Web Workers}
+
+\begin{lstlisting}
+// workers/LibraryUpdateWorker.ts
+
+// Runs in dedicated Web Worker thread
+self.onmessage = async (event: MessageEvent<LibraryUpdateMessage>) => {
+  const { libraryId, components, currentInstances } = event.data;
+  
+  // Heavy computation happens off main thread
+  const updates = await computeLibraryDiff(components, currentInstances);
+  const patches = generateMinimalPatches(updates);
+  
+  // Stream results back incrementally
+  for (const patch of patches) {
+    self.postMessage({
+      type: 'PATCH_READY',
+      patch,
+      progress: patches.indexOf(patch) / patches.length
+    });
+  }
+  
+  self.postMessage({ type: 'COMPLETE' });
+};
+
+// Main thread usage
+const libraryWorker = new Worker(
+  new URL('./workers/LibraryUpdateWorker.ts', import.meta.url)
+);
+
+libraryWorker.onmessage = (event) => {
+  if (event.data.type === 'PATCH_READY') {
+    // Apply patches incrementally without blocking UI
+    requestIdleCallback(() => applyPatch(event.data.patch));
+  }
+};
+\end{lstlisting}
+
+\subsubsection{Performance Metrics Dashboard}
+
+\begin{lstlisting}
+// services/PerformanceMonitor.ts
+
+export interface PerformanceMetrics {
+  fps: number;
+  frameTime: number;
+  memoryUsage: number;
+  memoryLimit: number;
+  layerCount: number;
+  componentInstanceCount: number;
+  renderTime: number;
+  networkLatency: number;
+}
+
+export class PerformanceMonitor {
+  private metrics: PerformanceMetrics;
+  private observers: Set<(metrics: PerformanceMetrics) => void> = new Set();
+  
+  startMonitoring(): void {
+    // Frame timing
+    let lastFrameTime = performance.now();
+    const measureFrame = () => {
+      const now = performance.now();
+      const delta = now - lastFrameTime;
+      this.metrics.frameTime = delta;
+      this.metrics.fps = Math.round(1000 / delta);
+      lastFrameTime = now;
+      requestAnimationFrame(measureFrame);
+    };
+    requestAnimationFrame(measureFrame);
+    
+    // Memory monitoring
+    if ('memory' in performance) {
+      setInterval(() => {
+        const memory = (performance as any).memory;
+        this.metrics.memoryUsage = memory.usedJSHeapSize;
+        this.metrics.memoryLimit = memory.jsHeapSizeLimit;
+        this.notifyObservers();
+      }, 1000);
+    }
+  }
+  
+  // Display warning when approaching limits
+  checkThresholds(): PerformanceWarning[] {
+    const warnings: PerformanceWarning[] = [];
+    
+    if (this.metrics.fps < 30) {
+      warnings.push({
+        level: 'critical',
+        message: 'Frame rate below 30fps',
+        suggestion: 'Consider splitting file or reducing component complexity'
+      });
+    }
+    
+    if (this.metrics.memoryUsage > this.metrics.memoryLimit * 0.8) {
+      warnings.push({
+        level: 'warning', 
+        message: 'Memory usage at 80%',
+        suggestion: 'Close unused pages or reduce image resolution'
+      });
+    }
+    
+    return warnings;
+  }
+}
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#3: Pricing Model Frustrations}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Pricing concerns center on:
+\begin{itemize}[noitemsep]
+  \item Freelancers needing additional seats for each client engagement
+  \item Dev Mode becoming a paid feature, multiplying costs for dev-heavy teams
+  \item Confusing seat management leading to unexpected charges
+  \item Branching limited to expensive Organization/Enterprise tiers
+  \item View-only users still requiring licenses for certain features
+  \item Price increases affecting small teams disproportionately
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``For freelancers the use can quickly become very costly, as freelancers need to book additional seats for each client they work with.''
+
+``Dev Mode becoming a paid feature racks up the price for teams, since teams usually have more developers than designers.''
+
+``We get constantly overcharged. I switch seats, get charged. I remove my seat, then the teammate can't access anything.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Freelancer-Friendly Model}: Client collaboration without per-client seats
+  \item \textbf{Developer Access Tiers}: Read-only dev mode at lower cost
+  \item \textbf{Transparent Billing}: Clear invoices, no surprise charges
+  \item \textbf{Feature Unbundling}: Pay for features used, not bundled tiers
+  \item \textbf{Branching for All}: Core version control at all paid tiers
+  \item \textbf{Viewer Annotations}: View annotations without full license
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Proposed Pricing Structure}
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|l|X|c|}
+\hline
+\textbf{Tier} & \textbf{Features} & \textbf{Price} \\
+\hline
+\textbf{Free} & 3 files, unlimited viewers, basic prototyping, community access & \$0 \\
+\hline
+\textbf{Maker} & Unlimited files, branching, offline mode, 10 client guests & \$12/mo \\
+\hline
+\textbf{Team} & Everything in Maker + team libraries, advanced prototyping & \$18/seat/mo \\
+\hline
+\textbf{Dev Access} & Inspect mode, code export, specs (no edit) & \$8/seat/mo \\
+\hline
+\textbf{Business} & SSO, advanced permissions, analytics, priority support & \$30/seat/mo \\
+\hline
+\end{tabularx}
+\caption{Proposed User-Centric Pricing Tiers}
+\end{table}
+
+\subsubsection{Freelancer Guest System}
+
+\begin{lstlisting}
+// models/ClientGuest.ts
+
+export interface ClientGuest {
+  readonly id: string;
+  readonly email: string;
+  readonly name: string;
+  readonly projectAccess: readonly ProjectAccess[];
+  readonly expiresAt: Date | null;
+  readonly permissions: GuestPermissions;
+}
+
+export interface GuestPermissions {
+  readonly canView: boolean;
+  readonly canComment: boolean;
+  readonly canInspect: boolean;
+  readonly canExport: boolean;
+  readonly canPrototype: boolean;
+  // Explicitly NO edit permissions
+  readonly canEdit: false;
+}
+
+export interface ProjectAccess {
+  readonly projectId: string;
+  readonly grantedAt: Date;
+  readonly grantedBy: string;
+}
+
+// Freelancer can invite up to N clients without additional seats
+export const MAKER_TIER_GUEST_LIMIT = 10;
+export const TEAM_TIER_GUEST_LIMIT = 25;
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#4: AI Features Perceived as Gimmicky}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+AI features are seen as:
+\begin{itemize}[noitemsep]
+  \item Focused on trendy content generation rather than productivity
+  \item Unreliable in following instructions or respecting selections
+  \item Prioritized over fixing core UX issues
+  \item Aimed at non-designers rather than professionals
+  \item Lacking integration with actual design workflows
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``AI features are gimmicky and useless in their current state. It's clear that the application is trying to appeal to non-designers.''
+
+``As soon as I use the 'make a change' menu, it's really bad. Most of the time it doesn't stick to the selection I gave and changes something else.''
+
+``90\% of their efforts seem to be spent on something that's 'cool' but not necessarily useful. The auto layer renaming feature was a highlight, but it's not enough.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Workflow Automation}: AI that accelerates repetitive tasks
+  \item \textbf{Intelligent Layer Management}: Auto-naming, organization, cleanup
+  \item \textbf{Design System Assistance}: Component suggestions, consistency checks
+  \item \textbf{Context Awareness}: AI understands selection and respects boundaries
+  \item \textbf{Developer Handoff}: Auto-generate specs, documentation, code snippets
+  \item \textbf{Optional Integration}: AI features opt-in, not forced into UI
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan: Productivity-First AI}
+
+\begin{lstlisting}
+// ai/ProductivityAI.ts
+
+export interface AICapability {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly category: 'organization' | 'generation' | 'analysis' | 'handoff';
+  readonly requiresSelection: boolean;
+  readonly isDestructive: boolean;
+}
+
+export const PRODUCTIVITY_AI_CAPABILITIES: AICapability[] = [
+  {
+    id: 'auto-name-layers',
+    name: 'Smart Layer Naming',
+    description: 'Rename layers based on content and hierarchy',
+    category: 'organization',
+    requiresSelection: false,
+    isDestructive: false,
+  },
+  {
+    id: 'component-suggestions',
+    name: 'Component Suggestions', 
+    description: 'Identify repeated patterns that could be components',
+    category: 'analysis',
+    requiresSelection: false,
+    isDestructive: false,
+  },
+  {
+    id: 'accessibility-audit',
+    name: 'Accessibility Audit',
+    description: 'Check contrast, touch targets, and WCAG compliance',
+    category: 'analysis',
+    requiresSelection: true,
+    isDestructive: false,
+  },
+  {
+    id: 'generate-specs',
+    name: 'Generate Dev Specs',
+    description: 'Create technical specifications for selected elements',
+    category: 'handoff',
+    requiresSelection: true,
+    isDestructive: false,
+  },
+  {
+    id: 'cleanup-layers',
+    name: 'Layer Cleanup',
+    description: 'Remove hidden layers, flatten groups, optimize structure',
+    category: 'organization',
+    requiresSelection: true,
+    isDestructive: true,
+  },
+];
+
+export class ProductivityAIService {
+  // AI strictly respects selection boundaries
+  async executeOnSelection(
+    capability: AICapability,
+    selection: readonly SceneNode[]
+  ): Promise<AIResult> {
+    if (selection.length === 0 && capability.requiresSelection) {
+      return {
+        success: false,
+        error: 'This action requires a selection'
+      };
+    }
+    
+    // Preview changes before applying
+    const preview = await this.generatePreview(capability, selection);
+    
+    return {
+      success: true,
+      preview,
+      apply: () => this.applyChanges(preview),
+      dismiss: () => this.discardPreview(preview),
+    };
+  }
+  
+  // Non-destructive by default
+  private async generatePreview(
+    capability: AICapability,
+    selection: readonly SceneNode[]
+  ): Promise<ChangePreview> {
+    const changes = await this.computeChanges(capability, selection);
+    
+    return {
+      changes,
+      affectedNodes: changes.map(c => c.nodeId),
+      // Visual diff for user review
+      beforeAfterComparison: await this.renderComparison(changes),
+    };
+  }
+}
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#5: Lack of Proper Offline Mode}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Offline functionality is severely limited:
+\begin{itemize}[noitemsep]
+  \item Cannot open existing files when starting offline
+  \item Only current page available; other pages inaccessible
+  \item No access to linked libraries or external components
+  \item Desktop app is essentially a browser wrapper with no offline advantage
+  \item Autosave is not a substitute for proper offline mode
+  \item Users on airplanes, trains, or in areas with poor connectivity cannot work
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``I am frustrated that this application cannot be used offline! I made a request three years ago, and they mentioned plans to create an offline version.''
+
+``I wanted to work on my designs on an airplane without internet... impossible.''
+
+``I do a lot of my work while on my daily commute. Unfortunately, the signal is scarce along most of the route.''
+
+``As a UI/UX Director, this remains the reason why I haven't made the jump and don't use it in my team.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Full Offline Editing}: Work on complete files without connection
+  \item \textbf{Selective Sync}: Choose which files to make available offline
+  \item \textbf{Library Caching}: Offline access to linked design system components
+  \item \textbf{Conflict Resolution}: Intelligent merge when reconnecting
+  \item \textbf{Offline Prototyping}: Test prototypes without network
+  \item \textbf{Desktop Advantage}: Native app should offer genuine offline capability
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan: Hybrid Offline Architecture}
+
+\subsubsection{Local Storage Layer}
+
+\begin{lstlisting}
+// offline/LocalFileStore.ts
+
+export class LocalFileStore {
+  private db: IDBDatabase;
+  private readonly DB_NAME = 'DesignToolOffline';
+  private readonly STORES = {
+    files: 'files',
+    pages: 'pages', 
+    components: 'components',
+    assets: 'assets',
+    syncQueue: 'syncQueue'
+  };
+  
+  async initialize(): Promise<void> {
+    this.db = await this.openDatabase();
+    await this.setupServiceWorker();
+  }
+  
+  // Mark file for offline availability
+  async makeAvailableOffline(fileId: string): Promise<OfflineStatus> {
+    const file = await this.fetchFileWithDependencies(fileId);
+    
+    // Store file structure
+    await this.storeFile(file);
+    
+    // Cache all pages
+    for (const page of file.pages) {
+      await this.storePage(page);
+    }
+    
+    // Cache linked library components
+    for (const libraryRef of file.linkedLibraries) {
+      await this.cacheLibraryComponents(libraryRef);
+    }
+    
+    // Cache image assets
+    await this.cacheAssets(file.referencedAssets);
+    
+    return {
+      fileId,
+      cachedAt: new Date(),
+      size: await this.calculateCacheSize(fileId),
+      pagesCount: file.pages.length,
+      componentsCount: file.components.length,
+    };
+  }
+  
+  // Track changes made offline
+  async recordOfflineChange(change: DesignChange): Promise<void> {
+    const queueEntry: SyncQueueEntry = {
+      id: crypto.randomUUID(),
+      change,
+      timestamp: Date.now(),
+      fileId: change.fileId,
+      status: 'pending'
+    };
+    
+    await this.addToSyncQueue(queueEntry);
+  }
+  
+  // Get offline-available files
+  async getOfflineFiles(): Promise<OfflineFileInfo[]> {
+    const files = await this.getAllFromStore<CachedFile>(this.STORES.files);
+    return files.map(f => ({
+      id: f.id,
+      name: f.name,
+      cachedAt: f.cachedAt,
+      size: f.size,
+      pendingChanges: f.pendingChangesCount,
+      lastModified: f.lastModified,
+    }));
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Sync Engine with CRDT Conflict Resolution}
+
+\begin{lstlisting}
+// offline/SyncEngine.ts
+
+export class SyncEngine {
+  private localStore: LocalFileStore;
+  private conflictResolver: CRDTResolver;
+  private connectionMonitor: ConnectionMonitor;
+  
+  constructor() {
+    this.conflictResolver = new CRDTResolver();
+    this.connectionMonitor = new ConnectionMonitor();
+    
+    // Auto-sync when connection restored
+    this.connectionMonitor.onOnline(() => this.syncAll());
+  }
+  
+  async syncAll(): Promise<SyncResult> {
+    const pendingChanges = await this.localStore.getPendingChanges();
+    const results: SyncItemResult[] = [];
+    
+    for (const change of pendingChanges) {
+      try {
+        const serverState = await this.fetchServerState(change.fileId);
+        const localState = await this.localStore.getFile(change.fileId);
+        
+        if (this.hasConflict(localState, serverState, change)) {
+          // Use CRDT to resolve automatically where possible
+          const resolution = await this.conflictResolver.resolve(
+            localState,
+            serverState,
+            change
+          );
+          
+          if (resolution.requiresUserInput) {
+            results.push({
+              changeId: change.id,
+              status: 'conflict',
+              conflictDetails: resolution.conflicts,
+            });
+          } else {
+            await this.applyResolution(resolution);
+            results.push({ changeId: change.id, status: 'resolved' });
+          }
+        } else {
+          // No conflict, push directly
+          await this.pushChange(change);
+          results.push({ changeId: change.id, status: 'synced' });
+        }
+      } catch (error) {
+        results.push({
+          changeId: change.id,
+          status: 'error',
+          error: error.message,
+        });
+      }
+    }
+    
+    return { results, timestamp: new Date() };
+  }
+  
+  // Visual conflict resolution UI
+  async presentConflictResolution(
+    conflicts: Conflict[]
+  ): Promise<ConflictResolution[]> {
+    return new Promise((resolve) => {
+      // Show side-by-side comparison
+      // User chooses: keep local, keep remote, or merge
+      this.showConflictModal(conflicts, resolve);
+    });
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Service Worker for Offline-First}
+
+\begin{lstlisting}
+// sw/offline-service-worker.ts
+
+const CACHE_VERSION = 'v1';
+const STATIC_CACHE = `static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
+
+self.addEventListener('fetch', (event: FetchEvent) => {
+  const { request } = event;
+  
+  // API requests: try network, fall back to cached response
+  if (request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          // Cache successful responses
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then(cache => {
+            cache.put(request, clone);
+          });
+          return response;
+        })
+        .catch(() => {
+          // Offline: return cached version
+          return caches.match(request);
+        })
+    );
+    return;
+  }
+  
+  // Asset requests: cache-first strategy
+  if (request.url.includes('/assets/')) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        return cached || fetch(request).then(response => {
+          const clone = response.clone();
+          caches.open(STATIC_CACHE).then(cache => {
+            cache.put(request, clone);
+          });
+          return response;
+        });
+      })
+    );
+    return;
+  }
+});
+
+// Background sync for offline changes
+self.addEventListener('sync', (event: SyncEvent) => {
+  if (event.tag === 'sync-changes') {
+    event.waitUntil(syncPendingChanges());
+  }
+});
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#6: No Native Linux Desktop Application}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Linux users face:
+\begin{itemize}[noitemsep]
+  \item No official desktop application for Linux
+  \item Unofficial community builds are unstable and lack features
+  \item Browser-only access limits integration with Linux workflows
+  \item Missing system-level features (file associations, notifications)
+  \item No integration with Linux desktop environments (GNOME, KDE)
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``There are some unofficial desktop versions but they are 'BUGGY'. I request you guys to release an official desktop app for Linux.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Official Linux App}: First-class support, not community workaround
+  \item \textbf{Distribution Packages}: .deb, .rpm, Flatpak, Snap, AppImage
+  \item \textbf{Desktop Integration}: File associations, system notifications, tray icon
+  \item \textbf{Performance Parity}: Same performance as macOS/Windows builds
+  \item \textbf{GPU Acceleration}: Full hardware acceleration on Linux
+  \item \textbf{Wayland Support}: Native Wayland rendering, not XWayland
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan: Cross-Platform Native Application}
+
+\subsubsection{Technology Stack}
+
+\begin{implementation}[Recommended Approach: Tauri + WebView]
+\begin{itemize}[noitemsep]
+  \item \textbf{Framework}: Tauri 2.0 with system WebView (WebKitGTK on Linux)
+  \item \textbf{Backend}: Rust for native performance and system integration
+  \item \textbf{Frontend}: Existing web codebase with platform-specific enhancements
+  \item \textbf{Rendering}: WebGPU/WebGL with GPU acceleration
+  \item \textbf{Distribution}: Flatpak primary, with .deb/.rpm/AppImage alternatives
+\end{itemize}
+\end{implementation}
+
+\begin{lstlisting}
+// src-tauri/src/main.rs
+
+use tauri::{Manager, SystemTray, SystemTrayEvent};
+use tauri_plugin_store::StoreBuilder;
+
+fn main() {
+    tauri::Builder::default()
+        // Offline file storage
+        .plugin(tauri_plugin_store::Builder::default().build())
+        // System tray integration
+        .system_tray(create_system_tray())
+        .on_system_tray_event(handle_tray_event)
+        // File associations
+        .plugin(tauri_plugin_deep_link::init())
+        // GPU acceleration
+        .invoke_handler(tauri::generate_handler![
+            open_file,
+            save_file,
+            check_for_updates,
+            get_system_info,
+        ])
+        // Linux-specific: handle DBus for notifications
+        #[cfg(target_os = "linux")]
+        .plugin(tauri_plugin_notification::init())
+        .run(tauri::generate_context!())
+        .expect("error while running application");
+}
+
+#[tauri::command]
+async fn get_system_info() -> Result<SystemInfo, String> {
+    Ok(SystemInfo {
+        os: std::env::consts::OS.to_string(),
+        gpu: detect_gpu()?,
+        display_server: detect_display_server(), // X11 or Wayland
+        desktop_environment: detect_de(),
+    })
+}
+
+fn detect_display_server() -> String {
+    std::env::var("XDG_SESSION_TYPE")
+        .unwrap_or_else(|_| "x11".to_string())
+}
+\end{lstlisting}
+
+\subsubsection{Flatpak Manifest}
+
+\begin{lstlisting}[language=bash]
+# com.designtool.DesignApp.yaml
+app-id: com.designtool.DesignApp
+runtime: org.gnome.Platform
+runtime-version: '45'
+sdk: org.gnome.Sdk
+command: design-app
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri  # GPU access
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: design-app
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 design-app /app/bin/design-app
+      - install -Dm644 design-app.desktop /app/share/applications/
+      - install -Dm644 design-app.svg /app/share/icons/hicolor/scalable/apps/
+    sources:
+      - type: archive
+        url: https://releases.designtool.com/linux/latest.tar.gz
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#7: Inadequate Version Control / Branching}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Version control limitations include:
+\begin{itemize}[noitemsep]
+  \item Branching only available on expensive Organization/Enterprise plans
+  \item Cannot create branches of branches (no feature branch workflow)
+  \item No way to lock main file to enforce branch-only editing
+  \item Visual diff tool limited; hard to identify specific changes
+  \item No integration with Git or other VCS tools
+  \item Version history lacks semantic versioning support
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``The branching feature should be available on the Professional plan. The price difference between professional and org plans is just too big.''
+
+``Allow branching of branches to allow for feature branches from the development branch. This would be closer to what we currently have in Git.''
+
+``I wish I could lock the main 'prod' file so that all editors must use branches—keeping autosaves of other team members from affecting other branches.''
+
+``It's still difficult to VISUALLY identify changes for them to be highlighted.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Branching for All Paid Tiers}: Core feature, not enterprise upsell
+  \item \textbf{Nested Branches}: Branch from branches (feature/develop/main workflow)
+  \item \textbf{Protected Branches}: Lock main, require reviews for merge
+  \item \textbf{Visual Diff}: Side-by-side and overlay comparison with change highlighting
+  \item \textbf{Git Integration}: Export/sync with Git repositories
+  \item \textbf{Semantic Versioning}: Major.minor.patch with changelogs
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan: Git-Inspired Design Version Control}
+
+\begin{lstlisting}
+// vcs/DesignVersionControl.ts
+
+export interface Branch {
+  readonly id: string;
+  readonly name: string;
+  readonly parentBranchId: string | null; // null = main branch
+  readonly createdFrom: string; // commit hash
+  readonly createdAt: Date;
+  readonly createdBy: string;
+  readonly isProtected: boolean;
+  readonly requiresReview: boolean;
+  readonly status: 'active' | 'merged' | 'archived';
+}
+
+export interface Commit {
+  readonly hash: string;
+  readonly branchId: string;
+  readonly parentHash: string | null;
+  readonly message: string;
+  readonly author: string;
+  readonly timestamp: Date;
+  readonly changes: readonly DesignChange[];
+}
+
+export interface ProtectionRules {
+  readonly branchPattern: string; // e.g., "main", "release/*"
+  readonly requirePullRequest: boolean;
+  readonly requiredReviewers: number;
+  readonly allowedMergers: readonly string[]; // user IDs or "maintainers"
+  readonly preventDirectPush: boolean;
+  readonly requireLinearHistory: boolean;
+}
+
+export class DesignVersionControl {
+  // Create branch from any other branch
+  async createBranch(
+    name: string,
+    fromBranchId: string
+  ): Promise<Branch> {
+    const parentBranch = await this.getBranch(fromBranchId);
+    const latestCommit = await this.getLatestCommit(fromBranchId);
+    
+    const branch: Branch = {
+      id: crypto.randomUUID(),
+      name,
+      parentBranchId: fromBranchId,
+      createdFrom: latestCommit.hash,
+      createdAt: new Date(),
+      createdBy: this.currentUser.id,
+      isProtected: false,
+      requiresReview: false,
+      status: 'active',
+    };
+    
+    await this.saveBranch(branch);
+    return branch;
+  }
+  
+  // Git-style semantic versioning
+  async createRelease(
+    branchId: string,
+    version: SemanticVersion,
+    changelog: string
+  ): Promise<Release> {
+    const commit = await this.getLatestCommit(branchId);
+    
+    return {
+      version: `${version.major}.${version.minor}.${version.patch}`,
+      commitHash: commit.hash,
+      changelog,
+      createdAt: new Date(),
+      tag: `v${version.major}.${version.minor}.${version.patch}`,
+    };
+  }
+  
+  // Visual diff between any two commits/branches
+  async visualDiff(
+    fromRef: string,
+    toRef: string
+  ): Promise<VisualDiff> {
+    const fromSnapshot = await this.getSnapshot(fromRef);
+    const toSnapshot = await this.getSnapshot(toRef);
+    
+    const changes = this.computeVisualChanges(fromSnapshot, toSnapshot);
+    
+    return {
+      added: changes.filter(c => c.type === 'added'),
+      removed: changes.filter(c => c.type === 'removed'),
+      modified: changes.filter(c => c.type === 'modified'),
+      moved: changes.filter(c => c.type === 'moved'),
+      // Generate overlay/side-by-side images
+      overlayImage: await this.renderOverlay(fromSnapshot, toSnapshot, changes),
+      sideBySideImages: await this.renderSideBySide(fromSnapshot, toSnapshot),
+    };
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Protected Branch Configuration}
+
+\begin{lstlisting}
+// components/BranchProtectionSettings.tsx
+
+export const BranchProtectionSettings: React.FC<{
+  branch: Branch;
+  onUpdate: (rules: ProtectionRules) => void;
+}> = ({ branch, onUpdate }) => {
+  const [rules, setRules] = useState<ProtectionRules>({
+    branchPattern: branch.name,
+    requirePullRequest: true,
+    requiredReviewers: 1,
+    allowedMergers: ['maintainers'],
+    preventDirectPush: true,
+    requireLinearHistory: false,
+  });
+  
+  return (
+    <div className="protection-settings">
+      <h3>Branch Protection: {branch.name}</h3>
+      
+      <Toggle
+        label="Require pull request before merging"
+        checked={rules.requirePullRequest}
+        onChange={(checked) => setRules(r => ({
+          ...r, requirePullRequest: checked
+        }))}
+      />
+      
+      <NumberInput
+        label="Required reviewers"
+        value={rules.requiredReviewers}
+        min={0}
+        max={5}
+        onChange={(value) => setRules(r => ({
+          ...r, requiredReviewers: value
+        }))}
+      />
+      
+      <Toggle
+        label="Prevent direct pushes (all changes via branches)"
+        checked={rules.preventDirectPush}
+        onChange={(checked) => setRules(r => ({
+          ...r, preventDirectPush: checked
+        }))}
+      />
+      
+      <UserSelect
+        label="Users who can merge"
+        selected={rules.allowedMergers}
+        onChange={(users) => setRules(r => ({
+          ...r, allowedMergers: users
+        }))}
+      />
+      
+      <Button onClick={() => onUpdate(rules)}>
+        Save Protection Rules
+      </Button>
+    </div>
+  );
+};
+\end{lstlisting}
+
+%==============================================================================
+\section{Issue \#8: Annotation Visibility \& Collaboration Gaps}
+%==============================================================================
+
+\subsection{Problem Statement}
+
+\begin{problembox}[Current State]
+Annotation and collaboration issues:
+\begin{itemize}[noitemsep]
+  \item Viewing annotations requires a full license
+  \item Business analysts and POs cannot see design specs without paying
+  \item Comments are not persistently visible; easily missed
+  \item Flow descriptions cannot be edited in prototype/present mode
+  \item No structured way to communicate design decisions
+  \item Developer handoff requires expensive seats
+\end{itemize}
+\end{problembox}
+
+\begin{uservoice}
+``It's beyond frustrating that to view annotations you have to have a license. People like BAs and POs just need to see annotations but do not need to edit.''
+
+``I understand the licensing aspect for editing, but to view an annotation makes no sense that you would need to purchase another license.''
+
+``In Present mode, it is not possible to edit the flow description. I have to go back to design mode to do that.''
+\end{uservoice}
+
+\subsection{What Consumers Want}
+
+\begin{solutionbox}[User Requirements]
+\begin{enumerate}[noitemsep]
+  \item \textbf{Free Annotation Viewing}: Anyone with link can view annotations
+  \item \textbf{Persistent Comments}: Always-visible option for critical notes
+  \item \textbf{Flow Documentation}: Edit descriptions while presenting
+  \item \textbf{Structured Specs}: Formalized design decision documentation
+  \item \textbf{Export Options}: Generate PDF/HTML specs for offline viewing
+  \item \textbf{Role-Based Access}: Granular permissions (view specs, comment, edit)
+\end{enumerate}
+\end{solutionbox}
+
+\subsection{Implementation Plan: Universal Annotation Access}
+
+\begin{lstlisting}
+// annotations/AnnotationSystem.ts
+
+export type ViewerPermission = 
+  | 'view_design'      // See canvas only
+  | 'view_annotations' // See annotations (FREE)
+  | 'view_specs'       // See dev specs (FREE)
+  | 'comment'          // Add comments
+  | 'annotate'         // Create annotations
+  | 'edit';            // Full edit access
+
+export interface ShareSettings {
+  readonly linkAccess: 'restricted' | 'anyone_with_link';
+  readonly defaultPermissions: readonly ViewerPermission[];
+  readonly allowAnnotationViewing: boolean; // Always true for shared links
+  readonly allowSpecsViewing: boolean;
+  readonly allowCommenting: boolean;
+  readonly expiresAt?: Date;
+}
+
+export interface Annotation {
+  readonly id: string;
+  readonly type: 'note' | 'spec' | 'decision' | 'todo' | 'question';
+  readonly content: string;
+  readonly attachedTo: string; // Node ID
+  readonly position: { x: number; y: number };
+  readonly author: string;
+  readonly createdAt: Date;
+  readonly visibility: 'always' | 'hover' | 'hidden';
+  readonly category?: string;
+  readonly priority?: 'low' | 'medium' | 'high' | 'critical';
+}
+
+// Annotation viewing is FREE for all shared links
+export class AnnotationAccessControl {
+  canViewAnnotations(user: User | null, file: DesignFile): boolean {
+    // Always allow if file is shared
+    if (file.shareSettings.linkAccess === 'anyone_with_link') {
+      return true;
+    }
+    // Allow for any authenticated user with file access
+    if (user && this.hasFileAccess(user, file)) {
+      return true;
+    }
+    return false;
+  }
+  
+  // Specs viewing also FREE
+  canViewSpecs(user: User | null, file: DesignFile): boolean {
+    return file.shareSettings.allowSpecsViewing && 
+           this.canViewAnnotations(user, file);
+  }
+  
+  // Only commenting and editing require seats
+  canComment(user: User, file: DesignFile): boolean {
+    return user.hasValidSeat && 
+           file.shareSettings.allowCommenting &&
+           this.hasFileAccess(user, file);
+  }
+}
+\end{lstlisting}
+
+\subsubsection{Exportable Specification Generator}
+
+\begin{lstlisting}
+// specs/SpecificationExporter.ts
+
+export interface ExportOptions {
+  readonly format: 'pdf' | 'html' | 'markdown';
+  readonly includeAnnotations: boolean;
+  readonly includeSpecs: boolean;
+  readonly includeComments: boolean;
+  readonly includeVersionHistory: boolean;
+  readonly pageRange: 'all' | readonly string[];
+}
+
+export class SpecificationExporter {
+  async export(
+    file: DesignFile,
+    options: ExportOptions
+  ): Promise<ExportedDocument> {
+    const pages = options.pageRange === 'all'
+      ? file.pages
+      : file.pages.filter(p => options.pageRange.includes(p.id));
+    
+    const sections: DocumentSection[] = [];
+    
+    for (const page of pages) {
+      sections.push({
+        title: page.name,
+        thumbnail: await this.renderPageThumbnail(page),
+        content: await this.generatePageContent(page, options),
+      });
+    }
+    
+    switch (options.format) {
+      case 'pdf':
+        return this.generatePDF(sections);
+      case 'html':
+        return this.generateHTML(sections);
+      case 'markdown':
+        return this.generateMarkdown(sections);
+    }
+  }
+  
+  private async generatePageContent(
+    page: Page,
+    options: ExportOptions
+  ): Promise<PageContent> {
+    const content: PageContent = {
+      frames: [],
+      annotations: [],
+      specs: [],
+    };
+    
+    for (const frame of page.frames) {
+      content.frames.push({
+        name: frame.name,
+        image: await this.renderFrame(frame),
+        dimensions: { width: frame.width, height: frame.height },
+      });
+      
+      if (options.includeAnnotations) {
+        const annotations = await this.getAnnotationsForFrame(frame);
+        content.annotations.push(...annotations);
+      }
+      
+      if (options.includeSpecs) {
+        content.specs.push({
+          frameId: frame.id,
+          colors: this.extractColors(frame),
+          typography: this.extractTypography(frame),
+          spacing: this.extractSpacing(frame),
+          components: this.listComponents(frame),
+        });
+      }
+    }
+    
+    return content;
+  }
+}
+\end{lstlisting}
+
+%==============================================================================
+\section{Implementation Timeline}
+%==============================================================================
+
+\subsection{Phased Rollout Plan}
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{|c|X|c|c|}
+\hline
+\textbf{Phase} & \textbf{Deliverables} & \textbf{Duration} & \textbf{Target} \\
+\hline
+1 & UI Preference System, Classic Mode Toggle & 6 weeks & Q1 \\
+\hline
+2 & Performance Optimizations, GPU Rendering & 8 weeks & Q1-Q2 \\
+\hline
+3 & Offline Mode (Core), Local Storage & 8 weeks & Q2 \\
+\hline
+4 & Version Control Improvements, Visual Diff & 6 weeks & Q2-Q3 \\
+\hline
+5 & Linux Native App (Tauri) & 6 weeks & Q3 \\
+\hline
+6 & Annotation Access, Free Specs Viewing & 4 weeks & Q3 \\
+\hline
+7 & Pricing Restructure, Freelancer Features & 4 weeks & Q3-Q4 \\
+\hline
+8 & Productivity AI, Workflow Automation & 8 weeks & Q4 \\
+\hline
+\end{tabularx}
+\caption{Implementation Phase Timeline}
+\end{table}
+
+\subsection{Success Metrics}
+
+\begin{priority}[Key Performance Indicators]
+\begin{enumerate}[noitemsep]
+  \item \textbf{UI Satisfaction}: >80\% positive feedback on UI flexibility
+  \item \textbf{Performance}: 60fps maintained for files up to 500 pages
+  \item \textbf{Offline Adoption}: >40\% of desktop users enable offline mode
+  \item \textbf{Linux Users}: 10,000+ monthly active Linux desktop users in Y1
+  \item \textbf{Branching Usage}: 3x increase in branch creation after tier change
+  \item \textbf{Annotation Views}: 5x increase in non-editor spec viewing
+  \item \textbf{NPS Score}: Improvement from current baseline by +15 points
+\end{enumerate}
+\end{priority}
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+This specification addresses the eight most critical pain points identified through extensive user research. By prioritizing user agency, performance, and professional workflows, we can recapture the trust of the design community while expanding accessibility.
+
+The key principles guiding all implementations:
+
+\begin{enumerate}
+  \item \textbf{Options Over Mandates}: Every major change offers user choice
+  \item \textbf{Performance is Features}: Speed and reliability are core features, not afterthoughts
+  \item \textbf{Professional First}: Power users drive organizational adoption
+  \item \textbf{Transparent Pricing}: Users understand exactly what they pay for
+  \item \textbf{Platform Parity}: All platforms receive first-class support
+\end{enumerate}
+
+Implementation of these solutions positions the product as a true professional-grade design tool that respects its users while continuing to innovate responsibly.
+
+\vspace{1cm}
+
+\begin{center}
+\textit{Document prepared for engineering review and stakeholder approval.}
+\end{center}
+
+\end{document}

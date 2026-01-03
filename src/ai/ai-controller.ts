@@ -100,6 +100,11 @@ export interface ChatOptions {
   includeSceneGraph?: boolean;
   /** Stream the response */
   stream?: boolean;
+  /** User-attached images (base64) */
+  attachments?: Array<{
+    data: string;
+    mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+  }>;
 }
 
 /**
@@ -201,22 +206,44 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       }
 
       // Add user message to conversation
-      this.conversationManager.addUserMessage(message, !!screenshot);
+      this.conversationManager.addUserMessage(message, !!screenshot || (options.attachments?.length ?? 0) > 0);
 
-      // Build message content
-      const userMessage: AIMessage = screenshot
+      // Build message content with images (screenshot + user attachments)
+      type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+      const imageContent: Array<{ type: 'image'; source: { type: 'base64'; mediaType: ImageMediaType; data: string } }> = [];
+
+      // Add screenshot if present
+      if (screenshot) {
+        imageContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            mediaType: screenshot.mediaType as ImageMediaType,
+            data: screenshot.base64,
+          },
+        });
+      }
+
+      // Add user attachments
+      if (options.attachments) {
+        for (const att of options.attachments) {
+          imageContent.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              mediaType: att.mimeType,
+              data: att.data,
+            },
+          });
+        }
+      }
+
+      const userMessage: AIMessage = imageContent.length > 0
         ? {
             role: 'user',
             content: [
-              { type: 'text', text: message },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  mediaType: screenshot.mediaType,
-                  data: screenshot.base64,
-                },
-              },
+              { type: 'text' as const, text: message },
+              ...imageContent,
             ],
           }
         : { role: 'user', content: message };
@@ -277,21 +304,44 @@ export class AIController extends EventEmitter<AIControllerEvents> {
         screenshot = await this.canvasCapture.capture();
       }
 
-      this.conversationManager.addUserMessage(message, !!screenshot);
+      this.conversationManager.addUserMessage(message, !!screenshot || (options.attachments?.length ?? 0) > 0);
 
-      const userMessage: AIMessage = screenshot
+      // Build message content with images (screenshot + user attachments)
+      type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+      const imageContent: Array<{ type: 'image'; source: { type: 'base64'; mediaType: ImageMediaType; data: string } }> = [];
+
+      // Add screenshot if present
+      if (screenshot) {
+        imageContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            mediaType: screenshot.mediaType as ImageMediaType,
+            data: screenshot.base64,
+          },
+        });
+      }
+
+      // Add user attachments
+      if (options.attachments) {
+        for (const att of options.attachments) {
+          imageContent.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              mediaType: att.mimeType,
+              data: att.data,
+            },
+          });
+        }
+      }
+
+      const userMessage: AIMessage = imageContent.length > 0
         ? {
             role: 'user',
             content: [
-              { type: 'text', text: message },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  mediaType: screenshot.mediaType,
-                  data: screenshot.base64,
-                },
-              },
+              { type: 'text' as const, text: message },
+              ...imageContent,
             ],
           }
         : { role: 'user', content: message };

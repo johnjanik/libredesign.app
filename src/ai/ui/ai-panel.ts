@@ -511,11 +511,24 @@ export class AIPanel {
     this.renderMessages();
 
     try {
-      // Use streaming
-      for await (const _chunk of this.aiController.streamChat(message, {
+      // Build attachments for AI controller
+      const attachments = this.currentAttachments
+        .filter(a => a.type === 'image' && a.data && a.mimeType)
+        .map(a => ({
+          data: a.data!,
+          mimeType: a.mimeType as 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif',
+        }));
+
+      // Use streaming - only include attachments if there are any
+      const chatOptions: Parameters<typeof this.aiController.streamChat>[1] = {
         screenshot: this.currentHasScreenshot,
         stream: true,
-      })) {
+      };
+      if (attachments.length > 0) {
+        chatOptions.attachments = attachments;
+      }
+
+      for await (const _chunk of this.aiController.streamChat(message, chatOptions)) {
         // Chunks are handled by event listener
       }
     } catch (error) {

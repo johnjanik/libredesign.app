@@ -1,0 +1,25 @@
+{
+  "$schema": "https://designlibre.app/schemas/preserve/1.0/document.json",
+  "id": "doc-presets-001",
+  "name": "Presets Screen - Sound App",
+  "formatVersion": "1.0.0",
+  "created": "2026-01-03T12:00:00.000Z",
+  "modified": "2026-01-03T12:00:00.000Z",
+  "authors": [
+    {
+      "name": "Claude AI",
+      "email": "claude@anthropic.com"
+    }
+  ],
+  "pages": [
+    {
+      "id": "page-presets-main",
+      "name": "Presets Screen",
+      "path": "pages/page-presets-main.json"
+    }
+  ],
+  "settings": {
+    "colorSpace": "sRGB",
+    "defaultUnit": "px"
+  }
+}

@@ -351,37 +351,84 @@ export class OllamaProvider implements AIProvider {
       toolNameMap.set(tool.name.toLowerCase().replace(/_/g, ''), tool.name);
     }
 
-    // Try to find JSON objects that look like tool calls
-    // Pattern: {"name": "...", "arguments": {...}}
-    const jsonPattern = /\{[\s\S]*?"name"[\s\S]*?"arguments"[\s\S]*?\}/g;
-    const matches = content.match(jsonPattern);
+    // Find JSON objects by tracking brace depth
+    const jsonObjects = this.extractJsonObjects(content);
 
-    if (matches) {
-      for (const match of matches) {
-        try {
-          const parsed = JSON.parse(match);
-          if (parsed.name && typeof parsed.arguments === 'object') {
-            // Normalize the tool name (handle missing underscores)
-            const normalizedName = parsed.name.toLowerCase().replace(/_/g, '');
-            const actualToolName = toolNameMap.get(normalizedName) || toolNameMap.get(parsed.name.toLowerCase());
+    for (const jsonStr of jsonObjects) {
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.name && typeof parsed.arguments === 'object') {
+          // Normalize the tool name (handle missing underscores)
+          const normalizedName = parsed.name.toLowerCase().replace(/_/g, '');
+          const actualToolName = toolNameMap.get(normalizedName) || toolNameMap.get(parsed.name.toLowerCase());
 
-            if (actualToolName) {
-              toolCalls.push({
-                id: `ollama-text-tool-${toolCalls.length}`,
-                name: actualToolName,
-                arguments: parsed.arguments,
-              });
-              // Remove the JSON from content
-              remainingContent = remainingContent.replace(match, '').trim();
-            }
+          if (actualToolName) {
+            toolCalls.push({
+              id: `ollama-text-tool-${toolCalls.length}`,
+              name: actualToolName,
+              arguments: parsed.arguments,
+            });
+            // Remove the JSON from content
+            remainingContent = remainingContent.replace(jsonStr, '').trim();
           }
-        } catch {
-          // Invalid JSON, skip
         }
+      } catch {
+        // Invalid JSON, skip
       }
     }
 
     return { toolCalls, remainingContent };
+  }
+
+  /**
+   * Extract complete JSON objects from text by tracking brace depth.
+   */
+  private extractJsonObjects(text: string): string[] {
+    const objects: string[] = [];
+    let depth = 0;
+    let start = -1;
+    let inString = false;
+    let escape = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (escape) {
+        escape = false;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) continue;
+
+      if (char === '{') {
+        if (depth === 0) {
+          start = i;
+        }
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0 && start !== -1) {
+          const jsonStr = text.slice(start, i + 1);
+          // Only include if it looks like a tool call (has "name" and "arguments")
+          if (jsonStr.includes('"name"') && jsonStr.includes('"arguments"')) {
+            objects.push(jsonStr);
+          }
+          start = -1;
+        }
+      }
+    }
+
+    return objects;
   }
 
   async *streamMessage(

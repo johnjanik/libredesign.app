@@ -1,0 +1,13 @@
+{
+  "$schema": "https://designlibre.app/schemas/preserve/1.0/history.json",
+  "currentVersion": "1.0.0",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-01-03T12:00:00.000Z",
+      "author": "Claude AI",
+      "message": "Initial creation of Presets screen design from PNG reference"
+    }
+  ],
+  "comments": []
+}
