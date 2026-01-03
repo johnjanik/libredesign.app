@@ -13,8 +13,6 @@ import { createViewSwitcher } from '@ui/components/view-switcher';
 // New UI components
 import { createNavRail } from '@ui/components/nav-rail';
 import { createSidePanel } from '@ui/components/side-panel';
-import { createWorkspaceSelector } from '@ui/components/workspace-selector';
-import { createProjectSelector } from '@ui/components/project-selector';
 import { createWorkspaceManager } from '@runtime/workspace-manager';
 // Available for UI toggle - currently hidden by default
 import { createCodePanel as _createCodePanel } from '@ui/components/code-panel';
@@ -164,16 +162,8 @@ async function initializeApp(config: AppConfig): Promise<void> {
     // Get side panel content container
     const sidePanelContent = sidePanel.getContentElement();
     if (sidePanelContent) {
-      // Add workspace selector
-      createWorkspaceSelector(workspaceManager, sidePanelContent);
-
-      // Add project selector (Tree/Branch)
-      createProjectSelector(workspaceManager, sidePanelContent);
-
-      // Add divider
-      sidePanel.addDivider();
-
       // Create the existing left sidebar layers inside side panel
+      // Workspace/project selection is now in the nav rail dropdowns
       const leftSidebar = createLeftSidebar(runtime, sidePanelContent, {
         width: 0, // Full width of parent
         collapsed: false,

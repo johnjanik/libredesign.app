@@ -253,16 +253,27 @@ export class LeftSidebar {
   private updateStyles(): void {
     if (!this.element) return;
 
+    // width: 0 means "fill parent container" (for embedding in side panel)
+    const widthStyle = this.collapsed
+      ? '48px'
+      : this.options.width === 0
+        ? '100%'
+        : `${this.options.width}px`;
+
+    // When embedded (width: 0), fill parent and allow flex grow
+    const isEmbedded = this.options.width === 0;
+
     this.element.style.cssText = `
-      width: ${this.collapsed ? '48px' : `${this.options.width}px`};
+      width: ${widthStyle};
       height: 100%;
       background: var(--designlibre-bg-primary, #1e1e1e);
-      border-right: 1px solid var(--designlibre-border, #3d3d3d);
+      border-right: ${isEmbedded ? 'none' : '1px solid var(--designlibre-border, #3d3d3d)'};
       display: flex;
       flex-direction: column;
       overflow: hidden;
       transition: width 0.2s ease;
-      flex-shrink: 0;
+      flex: ${isEmbedded ? '1' : '0 0 auto'};
+      min-height: 0;
     `;
   }
 

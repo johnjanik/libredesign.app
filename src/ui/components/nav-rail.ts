@@ -96,6 +96,17 @@ const ICONS = {
   chevronDown: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <polyline points="6 9 12 15 18 9"/>
   </svg>`,
+  project: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 3h18v18H3z"/>
+    <path d="M3 9h18"/>
+    <path d="M9 21V9"/>
+  </svg>`,
+  branch: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="6" y1="3" x2="6" y2="15"/>
+    <circle cx="18" cy="6" r="3"/>
+    <circle cx="6" cy="18" r="3"/>
+    <path d="M18 9a9 9 0 0 1-9 9"/>
+  </svg>`,
 };
 
 /**
@@ -113,6 +124,8 @@ export class NavRail {
   private customActions: NavRailAction[] = [];
   private trunkDropdown: HTMLElement | null = null;
   private trunkDropdownOpen: boolean = false;
+  private projectDropdown: HTMLElement | null = null;
+  private projectDropdownOpen: boolean = false;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -220,6 +233,10 @@ export class NavRail {
     if (this.options.workspaceManager) {
       const trunkButton = this.createTrunkButton();
       bottomSection.appendChild(trunkButton);
+
+      // Project selector
+      const projectButton = this.createProjectButton();
+      bottomSection.appendChild(projectButton);
     }
 
     const systemActions: NavRailAction[] = [
@@ -281,11 +298,21 @@ export class NavRail {
 
   private setupGlobalClickHandler(): void {
     const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      // Close trunk dropdown if clicking outside
       if (this.trunkDropdownOpen && this.trunkDropdown) {
-        const target = e.target as Node;
         const trunkButton = this.buttons.get('trunk');
         if (!this.trunkDropdown.contains(target) && !trunkButton?.contains(target)) {
           this.closeTrunkDropdown();
+        }
+      }
+
+      // Close project dropdown if clicking outside
+      if (this.projectDropdownOpen && this.projectDropdown) {
+        const projectButton = this.buttons.get('project');
+        if (!this.projectDropdown.contains(target) && !projectButton?.contains(target)) {
+          this.closeProjectDropdown();
         }
       }
     };
@@ -589,6 +616,406 @@ export class NavRail {
         handlePrompt();
       }
     }, 100);
+  }
+
+  // ============================================================
+  // Project Dropdown
+  // ============================================================
+
+  private createProjectButton(): HTMLElement {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'nav-rail-project-wrapper';
+    wrapper.style.cssText = 'position: relative;';
+
+    const button = document.createElement('button');
+    button.className = 'nav-rail-button nav-rail-project-button';
+    button.dataset['actionId'] = 'project';
+    button.innerHTML = ICONS.project;
+    button.title = 'Select project and branch';
+    button.setAttribute('aria-label', 'Select project and branch');
+    button.setAttribute('aria-haspopup', 'true');
+    button.setAttribute('aria-expanded', 'false');
+
+    button.style.cssText = `
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #888);
+      transition: all 0.15s ease;
+      position: relative;
+    `;
+
+    button.addEventListener('mouseenter', () => {
+      if (!this.projectDropdownOpen) {
+        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+        button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+      }
+    });
+
+    button.addEventListener('mouseleave', () => {
+      if (!this.projectDropdownOpen) {
+        button.style.backgroundColor = 'transparent';
+        button.style.color = 'var(--designlibre-text-secondary, #888)';
+      }
+    });
+
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleProjectDropdown();
+    });
+
+    this.buttons.set('project', button);
+    wrapper.appendChild(button);
+
+    return wrapper;
+  }
+
+  private toggleProjectDropdown(): void {
+    if (this.projectDropdownOpen) {
+      this.closeProjectDropdown();
+    } else {
+      this.openProjectDropdown();
+    }
+  }
+
+  private openProjectDropdown(): void {
+    if (!this.options.workspaceManager) return;
+
+    // Close trunk dropdown if open
+    if (this.trunkDropdownOpen) {
+      this.closeTrunkDropdown();
+    }
+
+    this.projectDropdownOpen = true;
+    const button = this.buttons.get('project');
+    if (button) {
+      button.setAttribute('aria-expanded', 'true');
+      button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
+      button.style.color = 'var(--designlibre-accent, #0d99ff)';
+    }
+
+    // Create dropdown
+    this.projectDropdown = document.createElement('div');
+    this.projectDropdown.className = 'nav-rail-project-dropdown';
+    this.projectDropdown.style.cssText = `
+      position: fixed;
+      left: ${this.options.size + 8}px;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      min-width: 260px;
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1000;
+      padding: 4px 0;
+    `;
+
+    // Position near the project button
+    const buttonRect = button?.getBoundingClientRect();
+    if (buttonRect) {
+      const dropdownHeight = 400;
+      const spaceBelow = window.innerHeight - buttonRect.bottom;
+      const spaceAbove = buttonRect.top;
+
+      if (spaceBelow >= dropdownHeight || spaceBelow >= spaceAbove) {
+        this.projectDropdown.style.top = `${buttonRect.top}px`;
+      } else {
+        this.projectDropdown.style.bottom = `${window.innerHeight - buttonRect.bottom}px`;
+      }
+    }
+
+    const currentTrunk = this.options.workspaceManager.getCurrentTrunk();
+    const currentTree = this.options.workspaceManager.getCurrentTree();
+    const currentBranch = this.options.workspaceManager.getCurrentBranch();
+
+    // Projects section
+    const projectHeader = document.createElement('div');
+    projectHeader.style.cssText = `
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--designlibre-text-secondary, #888);
+      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
+      margin-bottom: 4px;
+    `;
+    projectHeader.textContent = 'Projects';
+    this.projectDropdown.appendChild(projectHeader);
+
+    // List projects in current workspace
+    if (currentTrunk && currentTrunk.trees.length > 0) {
+      for (const treeRef of currentTrunk.trees) {
+        const tree = this.options.workspaceManager.getTree(treeRef.id);
+        if (tree) {
+          const item = this.createProjectMenuItem(tree.name, tree.id, tree.id === currentTree?.id);
+          this.projectDropdown.appendChild(item);
+        }
+      }
+    } else {
+      const empty = document.createElement('div');
+      empty.style.cssText = `
+        padding: 12px;
+        text-align: center;
+        color: var(--designlibre-text-secondary, #888);
+        font-size: 13px;
+      `;
+      empty.textContent = 'No projects yet';
+      this.projectDropdown.appendChild(empty);
+    }
+
+    // Create project button
+    const createProjectBtn = document.createElement('button');
+    createProjectBtn.className = 'project-menu-item project-menu-create';
+    createProjectBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      color: var(--designlibre-accent, #0d99ff);
+      font-size: 13px;
+      text-align: left;
+      transition: background-color 0.15s;
+    `;
+    createProjectBtn.innerHTML = `${ICONS.plus}<span>Create new project</span>`;
+    createProjectBtn.addEventListener('mouseenter', () => {
+      createProjectBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    createProjectBtn.addEventListener('mouseleave', () => {
+      createProjectBtn.style.backgroundColor = 'transparent';
+    });
+    createProjectBtn.addEventListener('click', () => {
+      this.closeProjectDropdown();
+      this.promptCreateProject();
+    });
+    this.projectDropdown.appendChild(createProjectBtn);
+
+    // Branches section (if project selected)
+    if (currentTree) {
+      const branchDivider = document.createElement('div');
+      branchDivider.style.cssText = `
+        height: 1px;
+        background: var(--designlibre-border, #2d2d2d);
+        margin: 8px 0;
+      `;
+      this.projectDropdown.appendChild(branchDivider);
+
+      const branchHeader = document.createElement('div');
+      branchHeader.style.cssText = `
+        padding: 8px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--designlibre-text-secondary, #888);
+        border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
+        margin-bottom: 4px;
+      `;
+      branchHeader.textContent = 'Branches';
+      this.projectDropdown.appendChild(branchHeader);
+
+      // List branches
+      if (currentTree.branches.length > 0) {
+        for (const branch of currentTree.branches) {
+          const item = this.createBranchMenuItem(branch.name, branch.id, branch.id === currentBranch?.id);
+          this.projectDropdown.appendChild(item);
+        }
+      }
+
+      // Create branch button
+      const createBranchBtn = document.createElement('button');
+      createBranchBtn.className = 'branch-menu-item branch-menu-create';
+      createBranchBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: var(--designlibre-accent, #0d99ff);
+        font-size: 13px;
+        text-align: left;
+        transition: background-color 0.15s;
+      `;
+      createBranchBtn.innerHTML = `${ICONS.plus}<span>Create new branch</span>`;
+      createBranchBtn.addEventListener('mouseenter', () => {
+        createBranchBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      });
+      createBranchBtn.addEventListener('mouseleave', () => {
+        createBranchBtn.style.backgroundColor = 'transparent';
+      });
+      createBranchBtn.addEventListener('click', () => {
+        this.closeProjectDropdown();
+        this.promptCreateBranch();
+      });
+      this.projectDropdown.appendChild(createBranchBtn);
+    }
+
+    document.body.appendChild(this.projectDropdown);
+  }
+
+  private createProjectMenuItem(name: string, id: string, isActive: boolean): HTMLElement {
+    const item = document.createElement('button');
+    item.className = 'project-menu-item';
+    item.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+      cursor: pointer;
+      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      font-size: 13px;
+      text-align: left;
+      transition: background-color 0.15s;
+    `;
+
+    const icon = document.createElement('span');
+    icon.innerHTML = ICONS.project;
+    icon.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      opacity: 0.7;
+    `;
+
+    const label = document.createElement('span');
+    label.textContent = name;
+    label.style.cssText = `
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    `;
+
+    item.appendChild(icon);
+    item.appendChild(label);
+
+    item.addEventListener('mouseenter', () => {
+      if (!isActive) {
+        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      }
+    });
+    item.addEventListener('mouseleave', () => {
+      if (!isActive) {
+        item.style.backgroundColor = 'transparent';
+      }
+    });
+    item.addEventListener('click', () => {
+      this.closeProjectDropdown();
+      this.options.workspaceManager?.openProject(id);
+    });
+
+    return item;
+  }
+
+  private createBranchMenuItem(name: string, id: string, isActive: boolean): HTMLElement {
+    const item = document.createElement('button');
+    item.className = 'branch-menu-item';
+    item.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+      cursor: pointer;
+      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      font-size: 13px;
+      text-align: left;
+      transition: background-color 0.15s;
+    `;
+
+    const icon = document.createElement('span');
+    icon.innerHTML = ICONS.branch;
+    icon.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      opacity: 0.7;
+    `;
+
+    const label = document.createElement('span');
+    label.textContent = name;
+    label.style.cssText = `
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    `;
+
+    item.appendChild(icon);
+    item.appendChild(label);
+
+    item.addEventListener('mouseenter', () => {
+      if (!isActive) {
+        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      }
+    });
+    item.addEventListener('mouseleave', () => {
+      if (!isActive) {
+        item.style.backgroundColor = 'transparent';
+      }
+    });
+    item.addEventListener('click', () => {
+      this.closeProjectDropdown();
+      this.options.workspaceManager?.switchBranch(id);
+    });
+
+    return item;
+  }
+
+  private closeProjectDropdown(): void {
+    this.projectDropdownOpen = false;
+    const button = this.buttons.get('project');
+    if (button) {
+      button.setAttribute('aria-expanded', 'false');
+      button.style.backgroundColor = 'transparent';
+      button.style.color = 'var(--designlibre-text-secondary, #888)';
+    }
+
+    if (this.projectDropdown) {
+      this.projectDropdown.remove();
+      this.projectDropdown = null;
+    }
+  }
+
+  private promptCreateProject(): void {
+    const name = prompt('Enter project name:');
+    if (name && name.trim() && this.options.workspaceManager) {
+      // Use current directory as default path
+      const path = `./${name.trim().toLowerCase().replace(/\s+/g, '-')}`;
+      const tree = this.options.workspaceManager.createProject(name.trim(), path);
+      this.options.workspaceManager.openProject(tree.id);
+    }
+  }
+
+  private promptCreateBranch(): void {
+    const name = prompt('Enter branch name:');
+    if (name && name.trim() && this.options.workspaceManager) {
+      const branch = this.options.workspaceManager.createBranch(name.trim());
+      this.options.workspaceManager.switchBranch(branch.id);
+    }
   }
 
   private createButton(action: NavRailAction): HTMLButtonElement {
