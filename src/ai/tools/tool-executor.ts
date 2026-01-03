@@ -16,6 +16,22 @@ import type {
 import { getGlobalBridge, parseHexColor } from './runtime-bridge';
 import { getToolDefinition } from './tool-registry';
 import type { ToolDefinition } from './tool-registry';
+import { getConfigManager } from '@ai/config/config-manager';
+
+/**
+ * Attached image from user message
+ */
+export interface AttachedImage {
+  data: string; // base64
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+}
+
+/**
+ * Message context for tool execution (includes attached images)
+ */
+export interface MessageContext {
+  attachedImages: AttachedImage[];
+}
 
 /**
  * Tool execution result
@@ -93,9 +109,25 @@ function getStringArrayArg(args: Record<string, unknown>, key: string): string[]
  */
 export class ToolExecutor {
   private bridge: RuntimeBridge;
+  private messageContext: MessageContext | null = null;
 
   constructor(bridge?: RuntimeBridge) {
     this.bridge = bridge ?? getGlobalBridge();
+  }
+
+  /**
+   * Set the message context (attached images, etc.) for tool execution.
+   * Called before executing tools that need access to message attachments.
+   */
+  setMessageContext(context: MessageContext | null): void {
+    this.messageContext = context;
+  }
+
+  /**
+   * Get the current message context
+   */
+  getMessageContext(): MessageContext | null {
+    return this.messageContext;
   }
 
   /**
@@ -528,6 +560,118 @@ export class ToolExecutor {
         return { success: true, x, y };
       }
 
+      // =====================================================================
+      // AI Image Import Tools
+      // =====================================================================
+
+      case 'import_image_as_leaf': {
+        // Get attached images from message context
+        const context = this.messageContext;
+        if (!context || context.attachedImages.length === 0) {
+          throw new Error('No images attached to the message. Please attach an image to import.');
+        }
+
+        const startX = getNumberArg(args, 'x') ?? 0;
+        const startY = getNumberArg(args, 'y') ?? 0;
+        // includeOriginalImage is accepted but not yet implemented (requires image fill support)
+        const _includeOriginalImage = args['includeOriginalImage'] !== false;
+        void _includeOriginalImage; // Reserved for future use
+        const analyzeWithVision = args['analyzeWithVision'] !== false;
+
+        // Get Ollama config for vision model
+        const config = getConfigManager().getProviderConfig('ollama');
+        const endpoint = config.endpoint ?? 'http://localhost:11434';
+        const visionModel = config.visionModel ?? 'llava:latest';
+
+        const leaves: Array<{
+          leafId: string;
+          elementCount: number;
+          description: string;
+          originalWidth: number;
+          originalHeight: number;
+        }> = [];
+
+        let offsetY = startY;
+
+        for (const image of context.attachedImages) {
+          // Analyze image with vision if enabled
+          let width = 400;
+          let height = 300;
+          let description = 'Imported image';
+          let elements: Array<{
+            type: string;
+            name: string;
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          }> = [];
+
+          if (analyzeWithVision) {
+            try {
+              const analysisResult = await this.analyzeImageWithVision(
+                endpoint,
+                visionModel,
+                image.data
+              );
+              width = analysisResult.width;
+              height = analysisResult.height;
+              description = analysisResult.description;
+              elements = analysisResult.elements;
+            } catch (error) {
+              console.warn('Vision analysis failed:', error);
+            }
+          }
+
+          // Create leaf frame
+          const leafId = await this.bridge.createFrame({
+            x: startX,
+            y: offsetY,
+            width,
+            height,
+            name: `Imported ${leaves.length + 1}`,
+          });
+
+          // Create child elements from vision analysis
+          let elementCount = 0;
+          for (const el of elements) {
+            if (el.type === 'TEXT') {
+              await this.bridge.createText({
+                x: startX + el.x,
+                y: offsetY + el.y,
+                content: el.name,
+                fontSize: 14,
+              });
+            } else {
+              await this.bridge.createFrame({
+                x: startX + el.x,
+                y: offsetY + el.y,
+                width: el.width,
+                height: el.height,
+                name: el.name,
+              });
+            }
+            elementCount++;
+          }
+
+          leaves.push({
+            leafId,
+            elementCount,
+            description,
+            originalWidth: width,
+            originalHeight: height,
+          });
+
+          // Stack vertically with spacing
+          offsetY += height + 40;
+        }
+
+        return {
+          leaves,
+          totalImported: leaves.length,
+        };
+      }
+
       default:
         throw new Error(`Tool implementation not found: ${tool}`);
     }
@@ -615,6 +759,91 @@ export class ToolExecutor {
     }
 
     return ErrorSeverity.MEDIUM;
+  }
+
+  /**
+   * Analyze image using Ollama vision model
+   */
+  private async analyzeImageWithVision(
+    endpoint: string,
+    model: string,
+    imageBase64: string
+  ): Promise<{
+    width: number;
+    height: number;
+    description: string;
+    elements: Array<{
+      type: string;
+      name: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+  }> {
+    const VISION_PROMPT = `Analyze this UI screenshot and extract all visual elements. Return a JSON object with:
+{
+  "width": <estimated image width>,
+  "height": <estimated image height>,
+  "description": "<brief description>",
+  "elements": [
+    {"type": "FRAME"|"TEXT", "name": "<name>", "x": <x>, "y": <y>, "width": <w>, "height": <h>}
+  ]
+}
+Identify buttons, cards, text, images, navigation. Return ONLY JSON.`;
+
+    try {
+      const response = await fetch(`${endpoint}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: VISION_PROMPT,
+              images: [imageBase64],
+            },
+          ],
+          stream: false,
+          options: {
+            temperature: 0.1,
+            num_predict: 4096,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Vision analysis failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const content = data.message?.content ?? '';
+
+      // Parse JSON from response
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return { width: 400, height: 300, description: 'Imported image', elements: [] };
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        width: parsed.width ?? 400,
+        height: parsed.height ?? 300,
+        description: parsed.description ?? 'Imported image',
+        elements: (parsed.elements ?? []).map((el: Record<string, unknown>) => ({
+          type: el['type'] ?? 'FRAME',
+          name: String(el['name'] ?? 'Element'),
+          x: Number(el['x'] ?? 0),
+          y: Number(el['y'] ?? 0),
+          width: Number(el['width'] ?? 100),
+          height: Number(el['height'] ?? 50),
+        })),
+      };
+    } catch (error) {
+      console.error('Vision analysis error:', error);
+      return { width: 400, height: 300, description: 'Imported image', elements: [] };
+    }
   }
 }
 

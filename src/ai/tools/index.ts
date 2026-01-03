@@ -64,6 +64,8 @@ export type {
   ToolCall,
   ExecutionContext,
   ToolError,
+  MessageContext,
+  AttachedImage,
 } from './tool-executor';
 
 // DesignLibre Bridge

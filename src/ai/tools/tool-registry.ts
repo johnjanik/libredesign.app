@@ -2924,31 +2924,26 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
     },
   },
 
-  import_png_as_leaf: {
-    name: 'import_png_as_leaf',
-    description: 'Import PNG images as separate leaves using AI vision analysis. Each PNG becomes a frame with all detected UI elements as child nodes.',
+  import_image_as_leaf: {
+    name: 'import_image_as_leaf',
+    description: 'Import attached images (PNG, JPEG, SVG, etc.) as separate leaves using AI vision analysis. Uses images attached to the current message. Each image becomes a frame with all detected UI elements as child nodes.',
     category: 'ai',
     parameters: {
       type: 'object',
       properties: {
-        imagePaths: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Paths to PNG files to import',
-        },
         x: { type: 'number', description: 'X position for first leaf', default: 0 },
         y: { type: 'number', description: 'Y position for first leaf', default: 0 },
         includeOriginalImage: {
           type: 'boolean',
-          description: 'Include original image as faded background',
-          default: false,
+          description: 'Include original image as faded background for reference',
+          default: true,
         },
-        visionModel: {
-          type: 'string',
-          description: 'Ollama vision model to use (e.g., llava:latest)',
+        analyzeWithVision: {
+          type: 'boolean',
+          description: 'Use AI vision to detect and extract UI elements',
+          default: true,
         },
       },
-      required: ['imagePaths'],
     },
     returns: {
       type: 'object',
@@ -2961,17 +2956,20 @@ export const TOOL_DEFINITIONS: Record<string, ToolDefinition> = {
               leafId: { type: 'string' },
               elementCount: { type: 'number' },
               description: { type: 'string' },
+              originalWidth: { type: 'number' },
+              originalHeight: { type: 'number' },
             },
           },
         },
         totalElements: { type: 'number' },
+        message: { type: 'string' },
       },
     },
     examples: [
       {
-        description: 'Import multiple screenshots as editable design leaves',
-        args: { imagePaths: ['/path/to/screen1.png', '/path/to/screen2.png'] },
-        result: { leaves: [{ leafId: 'leaf-1', elementCount: 15 }, { leafId: 'leaf-2', elementCount: 12 }], totalElements: 27 },
+        description: 'Import attached screenshots as editable design leaves',
+        args: { includeOriginalImage: true, analyzeWithVision: true },
+        result: { leaves: [{ leafId: 'leaf-1', elementCount: 15, description: 'Mobile app screen with header and cards' }], totalElements: 15, message: 'Imported 1 image as leaf' },
       },
     ],
   },

@@ -306,7 +306,7 @@ export const PROFESSIONAL_TOOLS = [
   'suggest_layout',
   'generate_avatar',
   'auto_rename_layers',
-  'import_png_as_leaf',
+  'import_image_as_leaf',
   'infer_auto_layout',
   // Analysis & Audit
   'visual_search',

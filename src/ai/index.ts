@@ -236,4 +236,6 @@ export type {
   ToolCall,
   ExecutionContext,
   ToolError,
+  MessageContext,
+  AttachedImage,
 } from './tools';

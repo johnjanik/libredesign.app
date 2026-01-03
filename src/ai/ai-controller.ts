@@ -31,7 +31,7 @@ import { ActionExecutor, createActionExecutor } from './actions/action-executor'
 import type { AIAction, ActionResult } from './actions/action-types';
 
 import { ToolExecutor, createToolExecutor } from './tools/tool-executor';
-import type { ToolResult, ToolCall } from './tools/tool-executor';
+import type { ToolResult, ToolCall, MessageContext, AttachedImage } from './tools/tool-executor';
 import { DesignLibreBridge, createDesignLibreBridge } from './tools/designlibre-bridge';
 import { setGlobalBridge } from './tools/runtime-bridge';
 
@@ -237,7 +237,9 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       // Execute tool calls
       if (response.toolCalls.length > 0) {
         this.setStatus('executing');
-        await this.executeToolCalls(response.toolCalls);
+        // Extract attached images from user message for tool context
+        const messageContext = this.extractMessageContext(userMessage);
+        await this.executeToolCalls(response.toolCalls, messageContext);
       }
 
       this.setStatus('idle');
@@ -323,7 +325,9 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       // Execute tool calls
       if (toolCalls.length > 0) {
         this.setStatus('executing');
-        await this.executeToolCalls(toolCalls);
+        // Extract attached images from user message for tool context
+        const messageContext = this.extractMessageContext(userMessage);
+        await this.executeToolCalls(toolCalls, messageContext);
       }
 
       this.setStatus('idle');
@@ -342,7 +346,13 @@ export class AIController extends EventEmitter<AIControllerEvents> {
   /**
    * Execute tool calls from the AI response using the ToolExecutor.
    */
-  private async executeToolCalls(toolCalls: AIToolCall[]): Promise<void> {
+  private async executeToolCalls(
+    toolCalls: AIToolCall[],
+    messageContext?: MessageContext
+  ): Promise<void> {
+    // Set message context (attached images, etc.) before executing tools
+    this.toolExecutor.setMessageContext(messageContext ?? null);
+
     for (const toolCall of toolCalls) {
       this.emit('ai:tool:start', { toolCall });
 
@@ -370,6 +380,32 @@ export class AIController extends EventEmitter<AIControllerEvents> {
         console.warn(`Tool "${toolCall.name}" failed:`, result.error);
       }
     }
+
+    // Clear message context after execution
+    this.toolExecutor.setMessageContext(null);
+  }
+
+  /**
+   * Extract message context (attached images) from a user message
+   */
+  private extractMessageContext(message: AIMessage): MessageContext {
+    const attachedImages: AttachedImage[] = [];
+
+    if (Array.isArray(message.content)) {
+      for (const part of message.content) {
+        if (part.type === 'image' && 'source' in part) {
+          const source = part.source as { type: string; mediaType: string; data: string };
+          if (source.type === 'base64') {
+            attachedImages.push({
+              data: source.data,
+              mediaType: source.mediaType as AttachedImage['mediaType'],
+            });
+          }
+        }
+      }
+    }
+
+    return { attachedImages };
   }
 
   // =========================================================================

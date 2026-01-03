@@ -637,8 +637,58 @@ export class LeftSidebar {
       text-overflow: ellipsis;
     `;
 
+    // Get visibility from the PAGE node if available
+    let isVisible = true;
+    if (leaf.nodeId) {
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (sceneGraph) {
+        const pageNode = sceneGraph.getNode(leaf.nodeId);
+        if (pageNode) {
+          isVisible = pageNode.visible !== false;
+        }
+      }
+    }
+
+    // Visibility toggle button
+    const visibilityBtn = document.createElement('button');
+    visibilityBtn.innerHTML = isVisible ? ICONS.eye : ICONS.eyeOff;
+    visibilityBtn.title = isVisible ? 'Hide leaf' : 'Show leaf';
+    visibilityBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    `;
+
+    // Toggle visibility on click
+    visibilityBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent leaf selection
+      if (leaf.nodeId) {
+        const sceneGraph = this.runtime.getSceneGraph();
+        if (sceneGraph) {
+          const pageNode = sceneGraph.getNode(leaf.nodeId);
+          if (pageNode) {
+            const newVisible = pageNode.visible === false;
+            sceneGraph.updateNode(leaf.nodeId, { visible: newVisible });
+            visibilityBtn.innerHTML = newVisible ? ICONS.eye : ICONS.eyeOff;
+            visibilityBtn.title = newVisible ? 'Hide leaf' : 'Show leaf';
+          }
+        }
+      }
+    });
+
     item.appendChild(icon);
     item.appendChild(name);
+    item.appendChild(visibilityBtn);
 
     // Double-click to rename (must be registered before click to work properly)
     item.addEventListener('dblclick', (e) => {
@@ -671,12 +721,14 @@ export class LeftSidebar {
     });
 
     item.addEventListener('mouseenter', () => {
+      visibilityBtn.style.opacity = '1';
       if (leaf.id !== this.activeLeafId) {
         item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
       }
     });
 
     item.addEventListener('mouseleave', () => {
+      visibilityBtn.style.opacity = '0';
       if (leaf.id !== this.activeLeafId) {
         item.style.backgroundColor = 'transparent';
       }
@@ -1083,6 +1135,18 @@ export class LeftSidebar {
       transition: opacity 0.15s;
       flex-shrink: 0;
     `;
+
+    // Toggle visibility on click
+    visibilityBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent layer selection
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (sceneGraph) {
+        const newVisible = node.visible === false;
+        sceneGraph.updateNode(node.id, { visible: newVisible });
+        visibilityBtn.innerHTML = newVisible ? ICONS.eye : ICONS.eyeOff;
+        visibilityBtn.title = newVisible ? 'Hide layer' : 'Show layer';
+      }
+    });
 
     item.appendChild(expandBtn);
     item.appendChild(icon);
@@ -1732,9 +1796,9 @@ export class LeftSidebar {
       'Text Scale',
       'Adjust text size in sidebars',
       this.getTextScaleSetting(),
-      0.8,  // min
-      1.4,  // max
-      0.05, // step
+      0.5,  // min (50%)
+      2.5,  // max (250%)
+      0.1,  // step
       (value) => `${Math.round(value * 100)}%`,
       (scale) => this.setTextScaleSetting(scale)
     );
