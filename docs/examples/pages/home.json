@@ -1,0 +1,841 @@
+{
+  "$schema": "https://designlibre.app/schemas/page-v1.json",
+  "version": "1.0.0",
+
+  "page": {
+    "id": "page-001",
+    "name": "Home Screen",
+    "description": "Main landing screen for the mobile app",
+    "type": "canvas",
+    "status": "approved",
+    "createdAt": "2025-11-15T09:00:00Z",
+    "updatedAt": "2026-01-03T14:30:00Z",
+    "updatedBy": "jane@acme.com",
+    "tags": ["mobile", "ios", "home"],
+    "coverImage": "thumbnails/home.png"
+  },
+
+  "canvas": {
+    "backgroundColor": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1 },
+    "showGrid": true,
+    "gridSize": 8,
+    "gridColor": { "r": 1, "g": 1, "b": 1, "a": 0.05 },
+    "showLayoutGrid": false,
+    "viewportCenter": { "x": 187, "y": 406 },
+    "viewportZoom": 1
+  },
+
+  "nodes": {
+    "frame-home": {
+      "id": "frame-home",
+      "type": "FRAME",
+      "name": "Home - iPhone 15 Pro",
+      "visible": true,
+      "locked": false,
+      "parentId": null,
+      "childIds": ["header", "hero-section", "nav-tabs"],
+      "x": 0,
+      "y": 0,
+      "width": 393,
+      "height": 852,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": true,
+      "constraints": { "horizontal": "MIN", "vertical": "MIN" },
+      "cornerRadius": 0,
+      "autoLayout": {
+        "mode": "VERTICAL",
+        "itemSpacing": 0,
+        "padding": { "top": 0, "right": 0, "bottom": 0, "left": 0 },
+        "primaryAxisAlign": "MIN",
+        "counterAxisAlign": "MIN",
+        "primaryAxisSizing": "FIXED",
+        "counterAxisSizing": "FIXED",
+        "wrap": false
+      }
+    },
+
+    "header": {
+      "id": "header",
+      "type": "FRAME",
+      "name": "Header",
+      "visible": true,
+      "locked": false,
+      "parentId": "frame-home",
+      "childIds": ["logo", "search-button", "profile-avatar"],
+      "x": 0,
+      "y": 0,
+      "width": 393,
+      "height": 64,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.98, "g": 0.98, "b": 0.98, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "cornerRadius": 0,
+      "autoLayout": {
+        "mode": "HORIZONTAL",
+        "itemSpacing": 16,
+        "padding": { "top": 12, "right": 20, "bottom": 12, "left": 20 },
+        "primaryAxisAlign": "SPACE_BETWEEN",
+        "counterAxisAlign": "CENTER",
+        "primaryAxisSizing": "FIXED",
+        "counterAxisSizing": "AUTO",
+        "wrap": false
+      }
+    },
+
+    "logo": {
+      "id": "logo",
+      "type": "TEXT",
+      "name": "Logo",
+      "visible": true,
+      "locked": false,
+      "parentId": "header",
+      "childIds": [],
+      "x": 20,
+      "y": 20,
+      "width": 80,
+      "height": 24,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.1, "g": 0.1, "b": 0.1, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "OUTSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+      "characters": "Acme",
+      "styleRanges": [
+        {
+          "start": 0,
+          "end": 4,
+          "fontFamily": "Inter",
+          "fontWeight": 700,
+          "fontSize": 20,
+          "lineHeight": "AUTO",
+          "letterSpacing": -0.5
+        }
+      ],
+      "textAutoResize": "WIDTH_AND_HEIGHT",
+      "textAlignHorizontal": "LEFT",
+      "textAlignVertical": "CENTER"
+    },
+
+    "search-button": {
+      "id": "search-button",
+      "type": "FRAME",
+      "name": "Search Button",
+      "visible": true,
+      "locked": false,
+      "parentId": "header",
+      "childIds": ["search-icon"],
+      "x": 300,
+      "y": 16,
+      "width": 32,
+      "height": 32,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.95, "g": 0.95, "b": 0.95, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "MIN", "vertical": "CENTER" },
+      "cornerRadius": 8
+    },
+
+    "search-icon": {
+      "id": "search-icon",
+      "type": "VECTOR",
+      "name": "Icon / Search",
+      "visible": true,
+      "locked": false,
+      "parentId": "search-button",
+      "childIds": [],
+      "x": 6,
+      "y": 6,
+      "width": 20,
+      "height": 20,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.4, "g": 0.4, "b": 0.4, "a": 1 }
+        }
+      ],
+      "strokeWeight": 2,
+      "strokeAlign": "CENTER",
+      "strokeCap": "ROUND",
+      "strokeJoin": "ROUND",
+      "effects": [],
+      "constraints": { "horizontal": "CENTER", "vertical": "CENTER" },
+      "vectorPaths": [
+        {
+          "data": "M9 9a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zM9 9l6 6",
+          "windingRule": "NONZERO"
+        }
+      ]
+    },
+
+    "profile-avatar": {
+      "id": "profile-avatar",
+      "type": "ELLIPSE",
+      "name": "Profile Avatar",
+      "visible": true,
+      "locked": false,
+      "parentId": "header",
+      "childIds": [],
+      "x": 345,
+      "y": 16,
+      "width": 32,
+      "height": 32,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "IMAGE",
+          "visible": true,
+          "opacity": 1,
+          "imageRef": "assets/images/avatar-jane.jpg",
+          "scaleMode": "FILL"
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.9, "g": 0.9, "b": 0.9, "a": 1 }
+        }
+      ],
+      "strokeWeight": 2,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "constraints": { "horizontal": "MIN", "vertical": "CENTER" }
+    },
+
+    "hero-section": {
+      "id": "hero-section",
+      "type": "FRAME",
+      "name": "Hero Section",
+      "visible": true,
+      "locked": false,
+      "parentId": "frame-home",
+      "childIds": ["hero-image", "hero-title", "hero-cta"],
+      "x": 0,
+      "y": 64,
+      "width": 393,
+      "height": 320,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "GRADIENT_LINEAR",
+          "visible": true,
+          "opacity": 1,
+          "stops": [
+            { "position": 0, "color": { "r": 0.4, "g": 0.2, "b": 0.9, "a": 1 } },
+            { "position": 1, "color": { "r": 0.6, "g": 0.3, "b": 1, "a": 1 } }
+          ],
+          "transform": [0, 1, -1, 0, 1, 0]
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": true,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "cornerRadius": 0,
+      "autoLayout": {
+        "mode": "VERTICAL",
+        "itemSpacing": 24,
+        "padding": { "top": 48, "right": 24, "bottom": 48, "left": 24 },
+        "primaryAxisAlign": "CENTER",
+        "counterAxisAlign": "CENTER",
+        "primaryAxisSizing": "FIXED",
+        "counterAxisSizing": "FIXED",
+        "wrap": false
+      }
+    },
+
+    "hero-image": {
+      "id": "hero-image",
+      "type": "IMAGE",
+      "name": "Hero Illustration",
+      "visible": true,
+      "locked": false,
+      "parentId": "hero-section",
+      "childIds": [],
+      "x": 96,
+      "y": 48,
+      "width": 200,
+      "height": 120,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [
+        {
+          "type": "DROP_SHADOW",
+          "visible": true,
+          "color": { "r": 0, "g": 0, "b": 0, "a": 0.15 },
+          "offset": { "x": 0, "y": 8 },
+          "radius": 24,
+          "spread": 0
+        }
+      ],
+      "constraints": { "horizontal": "CENTER", "vertical": "MIN" },
+      "imageRef": "assets/images/hero-illustration.png",
+      "naturalWidth": 800,
+      "naturalHeight": 480,
+      "scaleMode": "FIT",
+      "cornerRadius": 12
+    },
+
+    "hero-title": {
+      "id": "hero-title",
+      "type": "TEXT",
+      "name": "Hero Title",
+      "visible": true,
+      "locked": false,
+      "parentId": "hero-section",
+      "childIds": [],
+      "x": 24,
+      "y": 192,
+      "width": 345,
+      "height": 72,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "OUTSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "characters": "Design faster with AI-powered tools",
+      "styleRanges": [
+        {
+          "start": 0,
+          "end": 35,
+          "fontFamily": "Inter",
+          "fontWeight": 700,
+          "fontSize": 28,
+          "lineHeight": { "unit": "PERCENT", "value": 120 },
+          "letterSpacing": -0.5
+        }
+      ],
+      "textAutoResize": "HEIGHT",
+      "textAlignHorizontal": "CENTER",
+      "textAlignVertical": "TOP"
+    },
+
+    "hero-cta": {
+      "id": "hero-cta",
+      "type": "INSTANCE",
+      "name": "Button / Primary",
+      "visible": true,
+      "locked": false,
+      "parentId": "hero-section",
+      "childIds": ["hero-cta-text"],
+      "x": 120,
+      "y": 276,
+      "width": 153,
+      "height": 48,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "CENTER", "vertical": "MIN" },
+      "cornerRadius": 24,
+      "componentId": "comp-button-primary",
+      "overrides": [
+        {
+          "path": ["children", "button-label", "characters"],
+          "value": "Get Started"
+        }
+      ]
+    },
+
+    "hero-cta-text": {
+      "id": "hero-cta-text",
+      "type": "TEXT",
+      "name": "Button Label",
+      "visible": true,
+      "locked": false,
+      "parentId": "hero-cta",
+      "childIds": [],
+      "x": 24,
+      "y": 12,
+      "width": 105,
+      "height": 24,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 0.4, "g": 0.2, "b": 0.9, "a": 1 }
+        }
+      ],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "OUTSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "constraints": { "horizontal": "CENTER", "vertical": "CENTER" },
+      "characters": "Get Started",
+      "styleRanges": [
+        {
+          "start": 0,
+          "end": 11,
+          "fontFamily": "Inter",
+          "fontWeight": 600,
+          "fontSize": 16,
+          "lineHeight": "AUTO",
+          "letterSpacing": 0
+        }
+      ],
+      "textAutoResize": "WIDTH_AND_HEIGHT",
+      "textAlignHorizontal": "CENTER",
+      "textAlignVertical": "CENTER"
+    },
+
+    "nav-tabs": {
+      "id": "nav-tabs",
+      "type": "FRAME",
+      "name": "Navigation Tabs",
+      "visible": true,
+      "locked": false,
+      "parentId": "frame-home",
+      "childIds": ["tab-home", "tab-explore", "tab-create", "tab-profile"],
+      "x": 0,
+      "y": 768,
+      "width": 393,
+      "height": 84,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 1,
+          "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+        }
+      ],
+      "strokes": [
+        {
+          "type": "SOLID",
+          "visible": true,
+          "opacity": 0.1,
+          "color": { "r": 0, "g": 0, "b": 0, "a": 1 }
+        }
+      ],
+      "strokeWeight": 1,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MAX" },
+      "cornerRadius": 0,
+      "autoLayout": {
+        "mode": "HORIZONTAL",
+        "itemSpacing": 0,
+        "padding": { "top": 8, "right": 0, "bottom": 34, "left": 0 },
+        "primaryAxisAlign": "SPACE_BETWEEN",
+        "counterAxisAlign": "MIN",
+        "primaryAxisSizing": "FIXED",
+        "counterAxisSizing": "AUTO",
+        "wrap": false
+      }
+    },
+
+    "tab-home": {
+      "id": "tab-home",
+      "type": "INSTANCE",
+      "name": "Tab / Home",
+      "visible": true,
+      "locked": false,
+      "parentId": "nav-tabs",
+      "childIds": [],
+      "x": 0,
+      "y": 8,
+      "width": 98,
+      "height": 42,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "componentId": "comp-tab-item",
+      "overrides": [
+        { "path": ["isActive"], "value": true },
+        { "path": ["children", "tab-label", "characters"], "value": "Home" },
+        { "path": ["children", "tab-icon", "imageRef"], "value": "assets/icons/home.svg" }
+      ]
+    },
+
+    "tab-explore": {
+      "id": "tab-explore",
+      "type": "INSTANCE",
+      "name": "Tab / Explore",
+      "visible": true,
+      "locked": false,
+      "parentId": "nav-tabs",
+      "childIds": [],
+      "x": 98,
+      "y": 8,
+      "width": 98,
+      "height": 42,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "componentId": "comp-tab-item",
+      "overrides": [
+        { "path": ["isActive"], "value": false },
+        { "path": ["children", "tab-label", "characters"], "value": "Explore" },
+        { "path": ["children", "tab-icon", "imageRef"], "value": "assets/icons/compass.svg" }
+      ]
+    },
+
+    "tab-create": {
+      "id": "tab-create",
+      "type": "INSTANCE",
+      "name": "Tab / Create",
+      "visible": true,
+      "locked": false,
+      "parentId": "nav-tabs",
+      "childIds": [],
+      "x": 196,
+      "y": 8,
+      "width": 98,
+      "height": 42,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "componentId": "comp-tab-item",
+      "overrides": [
+        { "path": ["isActive"], "value": false },
+        { "path": ["children", "tab-label", "characters"], "value": "Create" },
+        { "path": ["children", "tab-icon", "imageRef"], "value": "assets/icons/plus-circle.svg" }
+      ]
+    },
+
+    "tab-profile": {
+      "id": "tab-profile",
+      "type": "INSTANCE",
+      "name": "Tab / Profile",
+      "visible": true,
+      "locked": false,
+      "parentId": "nav-tabs",
+      "childIds": [],
+      "x": 294,
+      "y": 8,
+      "width": 99,
+      "height": 42,
+      "rotation": 0,
+      "opacity": 1,
+      "blendMode": "NORMAL",
+      "fills": [],
+      "strokes": [],
+      "strokeWeight": 0,
+      "strokeAlign": "INSIDE",
+      "strokeCap": "NONE",
+      "strokeJoin": "MITER",
+      "effects": [],
+      "clipsContent": false,
+      "constraints": { "horizontal": "STRETCH", "vertical": "MIN" },
+      "componentId": "comp-tab-item",
+      "overrides": [
+        { "path": ["isActive"], "value": false },
+        { "path": ["children", "tab-label", "characters"], "value": "Profile" },
+        { "path": ["children", "tab-icon", "imageRef"], "value": "assets/icons/user.svg" }
+      ]
+    }
+  },
+
+  "rootNodeIds": ["frame-home"],
+
+  "prototype": {
+    "startingFrameId": "frame-home",
+    "device": {
+      "type": "PHONE",
+      "name": "iPhone 15 Pro",
+      "width": 393,
+      "height": 852,
+      "presetId": "iphone-15-pro"
+    },
+    "flows": [
+      {
+        "id": "flow-main",
+        "name": "Main Navigation",
+        "description": "Primary app navigation flow",
+        "startingFrameId": "frame-home",
+        "interactions": [
+          {
+            "id": "int-search",
+            "triggerNodeId": "search-button",
+            "trigger": { "type": "ON_CLICK" },
+            "actions": [
+              {
+                "type": "NAVIGATE",
+                "destinationId": "frame-search",
+                "transition": {
+                  "type": "SLIDE_IN",
+                  "duration": 300,
+                  "easing": "EASE_OUT",
+                  "direction": "BOTTOM"
+                }
+              }
+            ]
+          },
+          {
+            "id": "int-cta",
+            "triggerNodeId": "hero-cta",
+            "trigger": { "type": "ON_CLICK" },
+            "actions": [
+              {
+                "type": "NAVIGATE",
+                "destinationId": "frame-onboarding",
+                "transition": {
+                  "type": "SMART_ANIMATE",
+                  "duration": 400,
+                  "easing": "EASE_IN_OUT"
+                }
+              }
+            ]
+          },
+          {
+            "id": "int-tab-explore",
+            "triggerNodeId": "tab-explore",
+            "trigger": { "type": "ON_CLICK" },
+            "actions": [
+              {
+                "type": "NAVIGATE",
+                "destinationId": "frame-explore",
+                "transition": {
+                  "type": "INSTANT",
+                  "duration": 0,
+                  "easing": "LINEAR"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "settings": {
+      "backgroundColor": { "r": 0, "g": 0, "b": 0, "a": 1 },
+      "showDeviceFrame": true,
+      "showHotspots": true,
+      "showCursor": true
+    }
+  },
+
+  "annotations": [
+    {
+      "id": "ann-001",
+      "type": "spec",
+      "content": "## Header Specifications\n\n- Height: 64px (includes safe area on iOS)\n- Background: #FAFAFA\n- Logo font: Inter Bold 20px\n- Icon size: 32x32px\n- Touch targets: 44x44px minimum",
+      "attachedToNodeId": "header",
+      "visibility": "hover",
+      "author": "jane@acme.com",
+      "createdAt": "2025-11-20T10:00:00Z",
+      "updatedAt": "2025-11-20T10:00:00Z",
+      "category": "specs",
+      "priority": "medium"
+    },
+    {
+      "id": "ann-002",
+      "type": "decision",
+      "content": "**Decision**: Use gradient background for hero\n\n**Rationale**: Creates visual hierarchy and brand recognition. Tested with users - 73% preferred gradient over solid color.\n\n**Alternatives considered**:\n- Solid brand color (too flat)\n- Image background (loading performance concerns)",
+      "attachedToNodeId": "hero-section",
+      "visibility": "hover",
+      "author": "jane@acme.com",
+      "createdAt": "2025-11-18T14:30:00Z",
+      "updatedAt": "2025-11-18T14:30:00Z",
+      "category": "design-decision"
+    },
+    {
+      "id": "ann-003",
+      "type": "todo",
+      "content": "Add loading state for CTA button when clicked",
+      "attachedToNodeId": "hero-cta",
+      "visibility": "always",
+      "author": "bob@acme.com",
+      "createdAt": "2025-12-01T09:00:00Z",
+      "updatedAt": "2025-12-01T09:00:00Z",
+      "resolved": false,
+      "priority": "high",
+      "pinColor": { "r": 1, "g": 0.8, "b": 0, "a": 1 }
+    }
+  ],
+
+  "guides": [
+    { "id": "guide-1", "type": "horizontal", "position": 64, "color": { "r": 1, "g": 0, "b": 0, "a": 0.5 } },
+    { "id": "guide-2", "type": "horizontal", "position": 768, "color": { "r": 1, "g": 0, "b": 0, "a": 0.5 } },
+    { "id": "guide-3", "type": "vertical", "position": 20, "color": { "r": 0, "g": 0.5, "b": 1, "a": 0.5 } },
+    { "id": "guide-4", "type": "vertical", "position": 373, "color": { "r": 0, "g": 0.5, "b": 1, "a": 0.5 } }
+  ],
+
+  "exportPresets": [
+    {
+      "id": "export-ios",
+      "name": "iOS Assets",
+      "settings": [
+        { "format": "PNG", "suffix": "", "constraint": { "type": "SCALE", "value": 1 } },
+        { "format": "PNG", "suffix": "@2x", "constraint": { "type": "SCALE", "value": 2 } },
+        { "format": "PNG", "suffix": "@3x", "constraint": { "type": "SCALE", "value": 3 } }
+      ]
+    },
+    {
+      "id": "export-android",
+      "name": "Android Assets",
+      "settings": [
+        { "format": "PNG", "suffix": "-mdpi", "constraint": { "type": "SCALE", "value": 1 } },
+        { "format": "PNG", "suffix": "-xhdpi", "constraint": { "type": "SCALE", "value": 2 } },
+        { "format": "PNG", "suffix": "-xxhdpi", "constraint": { "type": "SCALE", "value": 3 } }
+      ]
+    }
+  ],
+
+  "externalReferences": [
+    {
+      "instanceNodeId": "hero-cta",
+      "libraryId": "acme-components",
+      "componentKey": "button-primary",
+      "version": "2.1.0"
+    },
+    {
+      "instanceNodeId": "tab-home",
+      "libraryId": "acme-components",
+      "componentKey": "tab-item"
+    }
+  ],
+
+  "meta": {
+    "figmaImportedFrom": "https://figma.com/file/abc123",
+    "lastExportedAt": "2025-12-15T10:00:00Z"
+  }
+}
