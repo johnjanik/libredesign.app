@@ -55,7 +55,7 @@ export class CanvasContainer {
     this.runtime = runtime;
     this.container = container;
     this.options = {
-      backgroundColor: options.backgroundColor ?? '#0a0a0a',
+      backgroundColor: options.backgroundColor ?? this.loadCanvasBackgroundSetting(),
       showPixelGrid: options.showPixelGrid ?? true,
       gridColor: options.gridColor ?? 'rgba(255, 255, 255, 0.1)',
       showOrigin: options.showOrigin ?? this.loadShowOriginSetting(),
@@ -78,6 +78,26 @@ export class CanvasContainer {
       // localStorage not available
     }
     return false; // Default OFF (still available via API for AI orientation)
+  }
+
+  /**
+   * Load canvas background setting from localStorage.
+   */
+  private loadCanvasBackgroundSetting(): string {
+    try {
+      const stored = localStorage.getItem('designlibre-canvas-background');
+      if (stored) {
+        const colorMap: Record<string, string> = {
+          'dark': '#0a0a0a',
+          'light': '#f5f5f5',
+          'transparent': 'transparent',
+        };
+        return colorMap[stored] ?? '#0a0a0a';
+      }
+    } catch {
+      // localStorage not available
+    }
+    return '#0a0a0a'; // Default dark
   }
 
   private setup(): void {
@@ -111,9 +131,12 @@ export class CanvasContainer {
 
     // Listen for settings changes
     this.settingsHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { showOrigin?: boolean };
+      const detail = (e as CustomEvent).detail as { showOrigin?: boolean; canvasBackground?: string };
       if (detail.showOrigin !== undefined) {
         this.setShowOrigin(detail.showOrigin);
+      }
+      if (detail.canvasBackground !== undefined) {
+        this.setBackgroundColor(detail.canvasBackground);
       }
     };
     window.addEventListener('designlibre-settings-changed', this.settingsHandler);

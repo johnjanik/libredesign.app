@@ -75,6 +75,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
   private pixelRatio: number;
   private animationFrameId: number | null = null;
   private isRendering = false;
+  private showOriginCrosshair = false;
 
   // Stats
   private lastFrameTime = 0;
@@ -266,6 +267,11 @@ export class Renderer extends EventEmitter<RendererEvents> {
       this.renderScene();
     }
 
+    // Render origin crosshair if enabled
+    if (this.showOriginCrosshair) {
+      this.renderOriginCrosshair();
+    }
+
     this.lastFrameTime = performance.now() - startTime;
     this.frameCount++;
 
@@ -418,6 +424,74 @@ export class Renderer extends EventEmitter<RendererEvents> {
     gl.uniform4f(shader.uniforms.get('uColor2')!, 0.2, 0.2, 0.2, 1.0);
 
     // Draw
+    this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    this.drawCallCount++;
+    this.triangleCount += 2;
+
+    this.ctx.bindVertexArray(null);
+  }
+
+  /**
+   * Render origin crosshair at (0, 0).
+   */
+  private renderOriginCrosshair(): void {
+    const gl = this.ctx.gl;
+    const viewProjection = this.viewport.getViewProjectionMatrix();
+    const zoom = this.viewport.getZoom();
+
+    // Use fill shader
+    const shader = this.shaders.use('fill');
+
+    // Calculate line length based on viewport (extend well beyond visible area)
+    const bounds = this.viewport.getVisibleBounds();
+    const extent = Math.max(
+      Math.abs(bounds.maxX - bounds.minX),
+      Math.abs(bounds.maxY - bounds.minY)
+    ) * 2;
+
+    // Line thickness in world space (2 pixels on screen)
+    const thickness = 2 / zoom;
+
+    // Red crosshair color
+    const color = { r: 1.0, g: 0.2, b: 0.2, a: 0.8 };
+
+    // Enable blending
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // Horizontal line through origin
+    const hVertices = new Float32Array([
+      -extent, -thickness / 2,
+      extent, -thickness / 2,
+      extent, thickness / 2,
+      -extent, thickness / 2,
+    ]);
+    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+
+    this.ctx.bindVertexArray(this.fillVAO);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, hVertices, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.DYNAMIC_DRAW);
+
+    this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+    this.setMatrixUniform(shader, 'uTransform', identity());
+    gl.uniform4f(shader.uniforms.get('uColor')!, color.r, color.g, color.b, color.a);
+    gl.uniform1f(shader.uniforms.get('uOpacity')!, 1.0);
+
+    this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+    this.drawCallCount++;
+    this.triangleCount += 2;
+
+    // Vertical line through origin
+    const vVertices = new Float32Array([
+      -thickness / 2, -extent,
+      thickness / 2, -extent,
+      thickness / 2, extent,
+      -thickness / 2, extent,
+    ]);
+
+    gl.bufferData(gl.ARRAY_BUFFER, vVertices, gl.DYNAMIC_DRAW);
     this.ctx.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
     this.drawCallCount++;
     this.triangleCount += 2;
@@ -763,6 +837,40 @@ export class Renderer extends EventEmitter<RendererEvents> {
       this.emit('resize', { width, height });
       this.requestRender();
     }
+  }
+
+  // =========================================================================
+  // Canvas Settings
+  // =========================================================================
+
+  /**
+   * Set the canvas clear/background color.
+   */
+  setClearColor(color: RGBA): void {
+    this.clearColor = color;
+    this.requestRender();
+  }
+
+  /**
+   * Get the current clear color.
+   */
+  getClearColor(): RGBA {
+    return this.clearColor;
+  }
+
+  /**
+   * Set whether to show the origin crosshair.
+   */
+  setShowOriginCrosshair(show: boolean): void {
+    this.showOriginCrosshair = show;
+    this.requestRender();
+  }
+
+  /**
+   * Get whether origin crosshair is shown.
+   */
+  getShowOriginCrosshair(): boolean {
+    return this.showOriginCrosshair;
   }
 
   // =========================================================================
