@@ -102,7 +102,7 @@ export class LeftSidebar {
   // State
   private collapsed = false;
   private documentName = 'Untitled';
-  private activeTab: 'assets' | 'library' = 'assets';
+  private activeTab: 'layers' | 'assets' | 'library' | 'components' | 'history' = 'layers';
   private leaves: Leaf[] = [{ id: 'leaf-1', name: 'Leaf 1' }];
   private activeLeafId = 'leaf-1';
   private leafCounter = 1;
@@ -160,6 +160,15 @@ export class LeftSidebar {
 
     // Listen for rename command from keyboard manager
     this.runtime.on('command:rename', () => this.handleRenameCommand());
+
+    // Listen for panel changes from nav rail
+    window.addEventListener('designlibre-panel-changed', ((e: CustomEvent) => {
+      const panel = e.detail.panel as typeof this.activeTab;
+      if (['layers', 'assets', 'library', 'components', 'history'].includes(panel)) {
+        this.activeTab = panel;
+        this.render();
+      }
+    }) as EventListener);
   }
 
   private handleRenameCommand(): void {
@@ -328,12 +337,18 @@ export class LeftSidebar {
     // File name section
     this.element.appendChild(this.createFileNameSection());
 
-    // Tabs (Assets, Library) + Search
-    this.element.appendChild(this.createTabsSection());
-
-    // Tab content depends on active tab
-    if (this.activeTab === 'assets') {
-      // Assets tab: show leaves and layers
+    // Content depends on active panel (controlled by nav rail)
+    if (this.activeTab === 'library') {
+      // Library panel: show templates
+      this.element.appendChild(this.createLibrarySection());
+    } else if (this.activeTab === 'components') {
+      // Components panel: placeholder
+      this.element.appendChild(this.createPlaceholderSection('Components', 'Component library coming soon'));
+    } else if (this.activeTab === 'history') {
+      // History panel: placeholder
+      this.element.appendChild(this.createPlaceholderSection('Version History', 'Version history coming soon'));
+    } else {
+      // Layers/Assets panels: show leaves and layers
       this.element.appendChild(this.createLeavesSection());
 
       // Separator
@@ -348,10 +363,38 @@ export class LeftSidebar {
       // Layers section
       const layersSection = this.createLayersSection();
       this.element.appendChild(layersSection);
-    } else {
-      // Library tab: show templates
-      this.element.appendChild(this.createLibrarySection());
     }
+  }
+
+  private createPlaceholderSection(title: string, message: string): HTMLElement {
+    const section = document.createElement('div');
+    section.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--designlibre-text-secondary, #888);
+      text-align: center;
+    `;
+
+    const titleEl = document.createElement('div');
+    titleEl.textContent = title;
+    titleEl.style.cssText = `
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+    section.appendChild(titleEl);
+
+    const messageEl = document.createElement('div');
+    messageEl.textContent = message;
+    messageEl.style.cssText = 'font-size: 12px;';
+    section.appendChild(messageEl);
+
+    return section;
   }
 
   private createHeader(): HTMLElement {
@@ -462,102 +505,6 @@ export class LeftSidebar {
 
     section.appendChild(input);
     section.appendChild(dropdownBtn);
-
-    return section;
-  }
-
-  private createTabsSection(): HTMLElement {
-    const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-tabs-section';
-    section.style.cssText = `
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
-
-    // Tabs row
-    const tabsRow = document.createElement('div');
-    tabsRow.style.cssText = `
-      display: flex;
-      gap: 4px;
-      margin-bottom: 8px;
-    `;
-
-    const tabs = [
-      { id: 'assets', label: 'Assets' },
-      { id: 'library', label: 'Library' },
-    ] as const;
-
-    for (const tab of tabs) {
-      const tabBtn = document.createElement('button');
-      tabBtn.className = 'designlibre-sidebar-tab';
-      tabBtn.textContent = tab.label;
-      tabBtn.style.cssText = `
-        flex: 1;
-        padding: 6px 12px;
-        border: none;
-        border-radius: 4px;
-        background: ${this.activeTab === tab.id ? 'var(--designlibre-bg-secondary, #2d2d2d)' : 'transparent'};
-        color: ${this.activeTab === tab.id ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
-        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.15s;
-      `;
-      tabBtn.addEventListener('click', () => {
-        this.activeTab = tab.id;
-        this.render();
-      });
-      tabBtn.addEventListener('mouseenter', () => {
-        if (this.activeTab !== tab.id) {
-          tabBtn.style.backgroundColor = 'var(--designlibre-bg-tertiary, #252525)';
-        }
-      });
-      tabBtn.addEventListener('mouseleave', () => {
-        if (this.activeTab !== tab.id) {
-          tabBtn.style.backgroundColor = 'transparent';
-        }
-      });
-
-      tabsRow.appendChild(tabBtn);
-    }
-
-    section.appendChild(tabsRow);
-
-    // Search input
-    const searchWrapper = document.createElement('div');
-    searchWrapper.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      padding: 0 8px;
-    `;
-
-    const searchIcon = document.createElement('span');
-    searchIcon.innerHTML = ICONS.search;
-    searchIcon.style.cssText = `
-      display: flex;
-      color: var(--designlibre-text-muted, #6a6a6a);
-    `;
-
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search project...';
-    searchInput.style.cssText = `
-      flex: 1;
-      background: transparent;
-      border: none;
-      padding: 8px 0;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      outline: none;
-    `;
-
-    searchWrapper.appendChild(searchIcon);
-    searchWrapper.appendChild(searchInput);
-    section.appendChild(searchWrapper);
 
     return section;
   }

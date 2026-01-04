@@ -107,6 +107,12 @@ const ICONS = {
     <circle cx="6" cy="18" r="3"/>
     <path d="M18 9a9 9 0 0 1-9 9"/>
   </svg>`,
+  library: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    <line x1="8" y1="6" x2="16" y2="6"/>
+    <line x1="8" y1="10" x2="14" y2="10"/>
+  </svg>`,
 };
 
 /**
@@ -188,6 +194,13 @@ export class NavRail {
         tooltip: 'Assets',
         onClick: () => this.setActivePanel('assets'),
         isActive: () => this.activePanel === 'assets',
+      },
+      {
+        id: 'library',
+        icon: ICONS.library,
+        tooltip: 'Library',
+        onClick: () => this.setActivePanel('library'),
+        isActive: () => this.activePanel === 'library',
       },
       {
         id: 'components',
