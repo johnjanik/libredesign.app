@@ -50,24 +50,48 @@
   font-size: var(--designlibre-sidebar-font-size);
 }
 
-/* Light mode override */
-@media (prefers-color-scheme: light) {
-  :root.light-theme {
-    --designlibre-bg-primary: #ffffff;
-    --designlibre-bg-secondary: #f5f5f5;
-    --designlibre-bg-tertiary: #fafafa;
-    --designlibre-bg-canvas: #e8e8e8;
-    --designlibre-border: #e0e0e0;
-    --designlibre-border-light: #d0d0d0;
-    --designlibre-text-primary: #1a1a1a;
-    --designlibre-text-secondary: #666666;
-    --designlibre-text-muted: #999999;
-    --designlibre-accent: #0066ff;
-    --designlibre-accent-hover: #0052cc;
-    --designlibre-accent-light: #e6f0ff;
-    --designlibre-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    --designlibre-shadow-light: 0 1px 4px rgba(0, 0, 0, 0.08);
-  }
+/* Light theme - activated via class on <html> */
+:root.light-theme,
+html.light-theme {
+  --designlibre-bg-primary: #ffffff;
+  --designlibre-bg-secondary: #f5f5f5;
+  --designlibre-bg-tertiary: #fafafa;
+  --designlibre-bg-canvas: #e8e8e8;
+  --designlibre-border: #e0e0e0;
+  --designlibre-border-light: #d0d0d0;
+  --designlibre-text-primary: #1a1a1a;
+  --designlibre-text-secondary: #666666;
+  --designlibre-text-muted: #999999;
+  --designlibre-accent: #0066ff;
+  --designlibre-accent-hover: #0052cc;
+  --designlibre-accent-light: #e6f0ff;
+  --designlibre-success: #2e7d32;
+  --designlibre-warning: #ed6c02;
+  --designlibre-error: #d32f2f;
+  --designlibre-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --designlibre-shadow-light: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark theme - explicit class (default is dark) */
+:root.dark-theme,
+html.dark-theme {
+  --designlibre-bg-primary: #1e1e1e;
+  --designlibre-bg-secondary: #2d2d2d;
+  --designlibre-bg-tertiary: #252525;
+  --designlibre-bg-canvas: #0a0a0a;
+  --designlibre-border: #3d3d3d;
+  --designlibre-border-light: #4a4a4a;
+  --designlibre-text-primary: #e4e4e4;
+  --designlibre-text-secondary: #a0a0a0;
+  --designlibre-text-muted: #6a6a6a;
+  --designlibre-accent: #4dabff;
+  --designlibre-accent-hover: #6bbaff;
+  --designlibre-accent-light: #1a3a5c;
+  --designlibre-success: #4caf50;
+  --designlibre-warning: #ff9800;
+  --designlibre-error: #f44336;
+  --designlibre-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --designlibre-shadow-light: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Body */

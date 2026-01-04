@@ -21,6 +21,8 @@ import { createTokenRegistry, createTokenExporter } from '@devtools/tokens';
 // AI Integration
 import { createAIController, getConfigManager } from '@ai/index';
 import type { AIController } from '@ai/index';
+// Theme system
+import { initializeTheme } from './ui/utils/theme-manager';
 import './ui/styles/main.css';
 
 // Re-export for external use
@@ -314,6 +316,9 @@ async function initializeApp(config: AppConfig): Promise<void> {
 
 // Auto-initialize if #app exists
 document.addEventListener('DOMContentLoaded', () => {
+  // Initialize theme system first to prevent flash of wrong theme
+  initializeTheme();
+
   const appElement = document.getElementById('app');
   if (appElement) {
     // Check URL param for UI mode: ?ui=new or ?ui=classic
@@ -346,3 +351,4 @@ export { createLayerTree } from '@ui/components/layer-tree';
 export { createWorkspaceManager } from '@runtime/workspace-manager';
 export { Modal, openModal, confirm, alert } from '@ui/components/modal';
 export { openSettingsModal, closeSettingsModal, getSettingsModal } from '@ui/components/settings-modal';
+export { initializeTheme, setThemeMode, getThemeManager, type ThemeMode, type ResolvedTheme } from './ui/utils/theme-manager';

@@ -6,6 +6,8 @@
  * General, Editor, Files, Appearance, Hotkeys, Plugins
  */
 
+import { setThemeMode, getSavedThemeMode, type ThemeMode } from '../utils/theme-manager';
+
 /**
  * Settings category definition
  */
@@ -529,13 +531,15 @@ export class SettingsModal {
       title: 'Theme',
       description: 'Choose the color theme',
       type: 'select',
-      value: this.getSetting('theme', 'dark'),
+      value: getSavedThemeMode(),
       options: [
         { value: 'dark', label: 'Dark' },
         { value: 'light', label: 'Light' },
         { value: 'system', label: 'System' },
       ],
-      onChange: (v) => this.setSetting('theme', v),
+      onChange: (v) => {
+        setThemeMode(v as ThemeMode);
+      },
     });
 
     this.addSectionHeader(container, 'Canvas');
