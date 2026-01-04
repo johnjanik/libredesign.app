@@ -173,14 +173,7 @@ async function initializeApp(config: AppConfig): Promise<void> {
       leftSidebar.setDocumentName(config.documentName ?? 'Untitled');
     }
 
-    // Connect nav rail sidebar toggle to side panel
-    window.addEventListener('designlibre-sidebar-toggle', ((e: CustomEvent) => {
-      if (e.detail.open) {
-        sidePanel.expand();
-      } else {
-        sidePanel.collapse();
-      }
-    }) as EventListener);
+    // Note: Side panel already listens to designlibre-sidebar-toggle internally
 
     // Sync nav rail state if side panel is toggled externally
     window.addEventListener('designlibre-side-panel-toggle', ((e: CustomEvent) => {
@@ -307,6 +300,37 @@ async function initializeApp(config: AppConfig): Promise<void> {
         : `${nodeIds.length} item${nodeIds.length > 1 ? 's' : ''} selected`;
     }
   });
+
+  // Listen for settings changes
+  window.addEventListener('designlibre-settings-changed', ((e: CustomEvent) => {
+    const detail = e.detail as {
+      autosaveEnabled?: boolean;
+      autosaveInterval?: number;
+      snapToGrid?: boolean;
+      gridSize?: number;
+    };
+
+    // Handle autosave settings
+    if (detail.autosaveEnabled !== undefined) {
+      runtime.setAutosaveEnabled(detail.autosaveEnabled);
+    }
+    if (detail.autosaveInterval !== undefined) {
+      runtime.setAutosaveInterval(detail.autosaveInterval);
+    }
+
+    // Handle grid snapping settings
+    if (detail.snapToGrid !== undefined || detail.gridSize !== undefined) {
+      const toolManager = runtime.getToolManager();
+      if (toolManager) {
+        if (detail.snapToGrid !== undefined) {
+          toolManager.setSnapToGrid(detail.snapToGrid);
+        }
+        if (detail.gridSize !== undefined) {
+          toolManager.setGridSize(detail.gridSize);
+        }
+      }
+    }
+  }) as EventListener);
 
   // Log initialization
   if (config.debug) {

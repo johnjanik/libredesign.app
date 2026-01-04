@@ -188,6 +188,30 @@ export class AutosaveManager extends EventEmitter<AutosaveEvents> {
   }
 
   /**
+   * Set the autosave interval.
+   */
+  setInterval(interval: number): void {
+    this.interval = interval;
+
+    if (this.state.documentId) {
+      // Restart with new interval
+      const docId = this.state.documentId;
+      this.stop();
+      this.start(docId);
+    }
+  }
+
+  /**
+   * Get current autosave settings.
+   */
+  getSettings(): { enabled: boolean; interval: number } {
+    return {
+      enabled: this.enabled,
+      interval: this.interval,
+    };
+  }
+
+  /**
    * Dispose of the autosave manager.
    */
   dispose(): void {

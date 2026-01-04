@@ -273,7 +273,17 @@ export class SidePanel {
   setCollapsed(collapsed: boolean): void {
     this.collapsed = collapsed;
     if (this.element) {
-      this.element.style.display = collapsed ? 'none' : 'flex';
+      if (collapsed) {
+        // Hide completely - set display none and width to 0
+        this.element.style.width = '0';
+        this.element.style.display = 'none';
+        this.element.style.visibility = 'hidden';
+      } else {
+        // Show - restore width and display
+        this.element.style.display = 'flex';
+        this.element.style.visibility = 'visible';
+        this.element.style.width = `${this.width}px`;
+      }
     }
 
     window.dispatchEvent(

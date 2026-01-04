@@ -32,10 +32,32 @@ export class ToolManager extends EventEmitter<ToolManagerEvents> {
   private hoveredNodeId: NodeId | null = null;
   private currentCursor: ToolCursor = 'default';
 
+  // Grid snapping settings
+  private snapToGrid: boolean = true;
+  private gridSize: number = 8;
+
   constructor(sceneGraph: SceneGraph, viewport: Viewport) {
     super();
     this.sceneGraph = sceneGraph;
     this.viewport = viewport;
+
+    // Load grid settings from localStorage
+    this.loadGridSettings();
+  }
+
+  private loadGridSettings(): void {
+    try {
+      const snapSetting = localStorage.getItem('designlibre-snap-to-grid');
+      if (snapSetting !== null) {
+        this.snapToGrid = snapSetting === 'true';
+      }
+      const sizeSetting = localStorage.getItem('designlibre-grid-size');
+      if (sizeSetting !== null) {
+        this.gridSize = parseInt(sizeSetting, 10) || 8;
+      }
+    } catch {
+      // localStorage not available
+    }
   }
 
   // =========================================================================
@@ -293,6 +315,56 @@ export class ToolManager extends EventEmitter<ToolManagerEvents> {
    */
   handleWheel(event: WheelEvent): void {
     this.activeTool?.onWheel?.(event, this.getContext());
+  }
+
+  // =========================================================================
+  // Grid Snapping
+  // =========================================================================
+
+  /**
+   * Get whether snap to grid is enabled.
+   */
+  getSnapToGrid(): boolean {
+    return this.snapToGrid;
+  }
+
+  /**
+   * Set whether snap to grid is enabled.
+   */
+  setSnapToGrid(enabled: boolean): void {
+    this.snapToGrid = enabled;
+    try {
+      localStorage.setItem('designlibre-snap-to-grid', String(enabled));
+    } catch {
+      // localStorage not available
+    }
+  }
+
+  /**
+   * Get the grid size.
+   */
+  getGridSize(): number {
+    return this.gridSize;
+  }
+
+  /**
+   * Set the grid size.
+   */
+  setGridSize(size: number): void {
+    this.gridSize = Math.max(1, size);
+    try {
+      localStorage.setItem('designlibre-grid-size', String(this.gridSize));
+    } catch {
+      // localStorage not available
+    }
+  }
+
+  /**
+   * Snap a value to the grid.
+   */
+  snapToGridValue(value: number): number {
+    if (!this.snapToGrid) return value;
+    return Math.round(value / this.gridSize) * this.gridSize;
   }
 
   // =========================================================================

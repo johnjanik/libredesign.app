@@ -480,7 +480,12 @@ export class SettingsModal {
       description: 'Snap objects to grid when moving',
       type: 'toggle',
       value: this.getSetting('snap-to-grid', true),
-      onChange: (v) => this.setSetting('snap-to-grid', v),
+      onChange: (v) => {
+        this.setSetting('snap-to-grid', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { snapToGrid: v }
+        }));
+      },
     });
 
     this.addSettingRow(container, {
@@ -492,7 +497,12 @@ export class SettingsModal {
       max: 100,
       step: 1,
       format: (v: number) => `${v}px`,
-      onChange: (v) => this.setSetting('grid-size', v),
+      onChange: (v) => {
+        this.setSetting('grid-size', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { gridSize: v }
+        }));
+      },
     });
   }
 
@@ -504,7 +514,12 @@ export class SettingsModal {
       description: 'Automatically save changes periodically',
       type: 'toggle',
       value: this.getSetting('auto-save', true),
-      onChange: (v) => this.setSetting('auto-save', v),
+      onChange: (v) => {
+        this.setSetting('auto-save', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { autosaveEnabled: v }
+        }));
+      },
     });
 
     this.addSettingRow(container, {
@@ -516,7 +531,13 @@ export class SettingsModal {
       max: 300,
       step: 10,
       format: (v: number) => `${v}s`,
-      onChange: (v) => this.setSetting('auto-save-interval', v),
+      onChange: (v) => {
+        this.setSetting('auto-save-interval', v);
+        // Convert seconds to milliseconds for runtime
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { autosaveInterval: (v as number) * 1000 }
+        }));
+      },
     });
 
     this.addSectionHeader(container, 'Export');
@@ -684,7 +705,7 @@ export class SettingsModal {
     container: HTMLElement,
     provider: ProviderType,
     displayName: string,
-    providerConfig: { enabled: boolean; defaultModel: string; apiKey?: string; temperature: number; maxTokens: number; endpoint?: string },
+    providerConfig: { enabled: boolean; defaultModel: string; apiKey?: string; temperature: number; maxTokens: number; endpoint?: string; visionModel?: string },
     configManager: ReturnType<typeof getConfigManager>
   ): void {
     const row = document.createElement('div');
@@ -753,42 +774,140 @@ export class SettingsModal {
       }
 
       // Model selection
-      const models = AVAILABLE_MODELS[provider] ?? [];
-      if (models.length > 0) {
-        const modelRow = document.createElement('div');
-        modelRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      if (provider === 'ollama') {
+        // Ollama: Dynamic model loading with chat and vision model selectors
+        const chatModelContainer = document.createElement('div');
+        chatModelContainer.className = 'ollama-chat-model';
+        details.appendChild(chatModelContainer);
+        this.loadOllamaModels(chatModelContainer, provider, 'chat', providerConfig.defaultModel, configManager);
 
-        const label = document.createElement('label');
-        label.textContent = 'Model';
-        label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
-        modelRow.appendChild(label);
+        const visionModelContainer = document.createElement('div');
+        visionModelContainer.className = 'ollama-vision-model';
+        details.appendChild(visionModelContainer);
+        this.loadOllamaModels(visionModelContainer, provider, 'vision', providerConfig.visionModel ?? 'llava:latest', configManager);
+      } else {
+        // Other providers: Static model list
+        const models = AVAILABLE_MODELS[provider] ?? [];
+        if (models.length > 0) {
+          const modelRow = document.createElement('div');
+          modelRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
-        const select = document.createElement('select');
-        select.style.cssText = `
-          padding: 8px 12px;
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 6px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          color: var(--designlibre-text-primary, #e4e4e4);
-          font-size: 13px;
-          outline: none;
-        `;
+          const label = document.createElement('label');
+          label.textContent = 'Model';
+          label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+          modelRow.appendChild(label);
 
-        for (const model of models) {
-          const option = document.createElement('option');
-          option.value = model.id;
-          option.textContent = `${model.name} (${model.contextWindow.toLocaleString()} tokens)`;
-          option.selected = model.id === providerConfig.defaultModel;
-          select.appendChild(option);
+          const select = document.createElement('select');
+          select.style.cssText = `
+            padding: 8px 12px;
+            border: 1px solid var(--designlibre-border, #3d3d3d);
+            border-radius: 6px;
+            background: var(--designlibre-bg-secondary, #2d2d2d);
+            color: var(--designlibre-text-primary, #e4e4e4);
+            font-size: 13px;
+            outline: none;
+          `;
+
+          for (const model of models) {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} (${model.contextWindow.toLocaleString()} tokens)`;
+            option.selected = model.id === providerConfig.defaultModel;
+            select.appendChild(option);
+          }
+
+          select.addEventListener('change', () => {
+            configManager.updateProviderConfig(provider, { defaultModel: select.value });
+          });
+
+          modelRow.appendChild(select);
+          details.appendChild(modelRow);
         }
-
-        select.addEventListener('change', () => {
-          configManager.updateProviderConfig(provider, { defaultModel: select.value });
-        });
-
-        modelRow.appendChild(select);
-        details.appendChild(modelRow);
       }
+
+      // Temperature slider
+      const tempRow = document.createElement('div');
+      tempRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+      const tempLabel = document.createElement('label');
+      tempLabel.textContent = 'Temperature';
+      tempLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tempRow.appendChild(tempLabel);
+
+      const tempSliderWrapper = document.createElement('div');
+      tempSliderWrapper.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+
+      const tempSlider = document.createElement('input');
+      tempSlider.type = 'range';
+      tempSlider.min = '0';
+      tempSlider.max = '1';
+      tempSlider.step = '0.05';
+      tempSlider.value = String(providerConfig.temperature);
+      tempSlider.style.cssText = `
+        flex: 1;
+        height: 4px;
+        -webkit-appearance: none;
+        background: #444;
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+      `;
+
+      const tempValue = document.createElement('span');
+      tempValue.textContent = providerConfig.temperature.toFixed(2);
+      tempValue.style.cssText = `
+        font-size: 13px;
+        color: var(--designlibre-accent, #0d99ff);
+        font-weight: 500;
+        min-width: 40px;
+        text-align: right;
+      `;
+
+      tempSlider.addEventListener('input', () => {
+        const val = parseFloat(tempSlider.value);
+        tempValue.textContent = val.toFixed(2);
+        configManager.updateProviderConfig(provider, { temperature: val });
+      });
+
+      tempSliderWrapper.appendChild(tempSlider);
+      tempSliderWrapper.appendChild(tempValue);
+      tempRow.appendChild(tempSliderWrapper);
+      details.appendChild(tempRow);
+
+      // Max Tokens input
+      const tokensRow = document.createElement('div');
+      tokensRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+      const tokensLabel = document.createElement('label');
+      tokensLabel.textContent = 'Max Tokens';
+      tokensLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tokensRow.appendChild(tokensLabel);
+
+      const tokensInput = document.createElement('input');
+      tokensInput.type = 'number';
+      tokensInput.value = String(providerConfig.maxTokens);
+      tokensInput.min = '1';
+      tokensInput.max = '128000';
+      tokensInput.style.cssText = `
+        padding: 8px 12px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 6px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: 13px;
+        outline: none;
+        width: 120px;
+      `;
+
+      tokensInput.addEventListener('blur', () => {
+        const val = parseInt(tokensInput.value, 10);
+        if (!isNaN(val) && val > 0) {
+          configManager.updateProviderConfig(provider, { maxTokens: val });
+        }
+      });
+
+      tokensRow.appendChild(tokensInput);
+      details.appendChild(tokensRow);
 
       // Test connection button
       const testRow = document.createElement('div');
@@ -984,6 +1103,143 @@ export class SettingsModal {
     row.appendChild(input);
 
     return row;
+  }
+
+  /**
+   * Load Ollama models dynamically from the server
+   */
+  private async loadOllamaModels(
+    container: HTMLElement,
+    provider: ProviderType,
+    modelType: 'chat' | 'vision',
+    currentModel: string,
+    configManager: ReturnType<typeof getConfigManager>
+  ): Promise<void> {
+    const config = configManager.getConfig();
+    const endpoint = config.providers.ollama.endpoint ?? 'http://localhost:11434';
+    const isVision = modelType === 'vision';
+    const labelText = isVision ? 'Vision Model' : 'Chat Model';
+    const configKey = isVision ? 'visionModel' : 'defaultModel';
+
+    container.innerHTML = '';
+    container.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+    // Label row with refresh button
+    const labelRow = document.createElement('div');
+    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+
+    const label = document.createElement('label');
+    label.innerHTML = isVision ? `<span style="display: flex; align-items: center; gap: 6px;">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    labelRow.appendChild(label);
+
+    const refreshBtn = document.createElement('button');
+    refreshBtn.innerHTML = ICONS['refresh'] ?? '';
+    refreshBtn.title = 'Refresh models';
+    refreshBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+    refreshBtn.addEventListener('click', () => {
+      this.loadOllamaModels(container, provider, modelType, currentModel, configManager);
+    });
+    labelRow.appendChild(refreshBtn);
+    container.appendChild(labelRow);
+
+    // Select element
+    const select = document.createElement('select');
+    select.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+    `;
+
+    // Show loading state
+    const loadingOption = document.createElement('option');
+    loadingOption.textContent = 'Loading models...';
+    loadingOption.disabled = true;
+    select.appendChild(loadingOption);
+    select.disabled = true;
+    container.appendChild(select);
+
+    try {
+      // Fetch models from Ollama server
+      const response = await fetch(`${endpoint}/api/tags`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models: ${response.status}`);
+      }
+
+      const data = await response.json() as { models?: Array<{ name: string; size: number }> };
+      const models = data.models ?? [];
+
+      // Clear and populate select
+      select.innerHTML = '';
+      select.disabled = false;
+
+      if (models.length === 0) {
+        const noModelsOption = document.createElement('option');
+        noModelsOption.textContent = 'No models found';
+        noModelsOption.disabled = true;
+        select.appendChild(noModelsOption);
+        return;
+      }
+
+      // Add a "None" option for vision model (optional)
+      if (isVision) {
+        const noneOption = document.createElement('option');
+        noneOption.value = '';
+        noneOption.textContent = '(None)';
+        noneOption.selected = !currentModel;
+        select.appendChild(noneOption);
+      }
+
+      // Add models as options
+      for (const model of models) {
+        const option = document.createElement('option');
+        option.value = model.name;
+        const sizeGB = (model.size / (1024 * 1024 * 1024)).toFixed(1);
+        option.textContent = `${model.name} (${sizeGB} GB)`;
+        option.selected = model.name === currentModel;
+        select.appendChild(option);
+      }
+
+      select.addEventListener('change', () => {
+        configManager.updateProviderConfig(provider, { [configKey]: select.value });
+      });
+
+    } catch (error) {
+      // Show error state
+      select.innerHTML = '';
+      select.disabled = false;
+
+      const errorOption = document.createElement('option');
+      errorOption.textContent = error instanceof Error ? error.message : 'Failed to load models';
+      errorOption.disabled = true;
+      select.appendChild(errorOption);
+
+      // Add manual input fallback
+      const manualOption = document.createElement('option');
+      manualOption.value = currentModel;
+      manualOption.textContent = `Use: ${currentModel}`;
+      manualOption.selected = true;
+      select.appendChild(manualOption);
+
+      select.addEventListener('change', () => {
+        configManager.updateProviderConfig(provider, { [configKey]: select.value });
+      });
+    }
   }
 
   private renderPluginsSettings(container: HTMLElement): void {

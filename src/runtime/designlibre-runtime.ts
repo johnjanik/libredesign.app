@@ -669,6 +669,53 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
+   * Get autosave settings.
+   */
+  getAutosaveSettings(): { enabled: boolean; interval: number } | null {
+    return this.autosaveManager?.getSettings() ?? null;
+  }
+
+  /**
+   * Set autosave enabled state.
+   */
+  setAutosaveEnabled(enabled: boolean): void {
+    if (this.autosaveManager) {
+      this.autosaveManager.setEnabled(enabled);
+    } else if (enabled && this.options.autosaveInterval) {
+      // Create autosave manager if enabling and we have an interval
+      this.autosaveManager = createAutosaveManager(
+        this.sceneGraph,
+        this.serializer,
+        this.storage,
+        { interval: this.options.autosaveInterval, enabled: true }
+      );
+      if (this.state.currentDocumentId) {
+        this.autosaveManager.start(this.state.currentDocumentId as string);
+      }
+    }
+  }
+
+  /**
+   * Set autosave interval.
+   */
+  setAutosaveInterval(interval: number): void {
+    if (this.autosaveManager) {
+      this.autosaveManager.setInterval(interval);
+    } else if (interval > 0) {
+      // Create autosave manager with the new interval
+      this.autosaveManager = createAutosaveManager(
+        this.sceneGraph,
+        this.serializer,
+        this.storage,
+        { interval, enabled: true }
+      );
+      if (this.state.currentDocumentId) {
+        this.autosaveManager.start(this.state.currentDocumentId as string);
+      }
+    }
+  }
+
+  /**
    * Get the star tool.
    */
   getStarTool(): StarTool | null {

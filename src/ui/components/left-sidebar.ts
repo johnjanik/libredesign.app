@@ -169,6 +169,19 @@ export class LeftSidebar {
         this.render();
       }
     }) as EventListener);
+
+    // When embedded, sync collapsed state with side panel toggle
+    if (this.options.width === 0) {
+      window.addEventListener('designlibre-side-panel-toggle', ((e: CustomEvent) => {
+        const sidePanelCollapsed = e.detail.collapsed as boolean;
+        // When side panel expands and we were collapsed, expand too
+        if (!sidePanelCollapsed && this.collapsed) {
+          this.collapsed = false;
+          this.updateStyles();
+          this.render();
+        }
+      }) as EventListener);
+    }
   }
 
   private handleRenameCommand(): void {
@@ -1232,6 +1245,15 @@ export class LeftSidebar {
     this.updateStyles();
     this.render();
     this.onCollapseChange?.(this.collapsed);
+
+    // When embedded in side panel, dispatch event so side panel can hide/show
+    if (this.options.width === 0) {
+      window.dispatchEvent(
+        new CustomEvent('designlibre-sidebar-toggle', {
+          detail: { open: !this.collapsed },
+        })
+      );
+    }
   }
 
   private addLeaf(): void {
