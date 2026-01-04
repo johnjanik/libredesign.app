@@ -333,7 +333,7 @@ export class ComposeImporter {
         name: 'Button Text',
         characters: composable.textContent,
         fontSize: 14,
-        fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
+        fills: [{ type: 'SOLID', visible: true, color: { r: 1, g: 1, b: 1, a: 1 } }],
       } as CreateNodeOptions);
       this.nodeCount++;
       void textId;
@@ -364,10 +364,10 @@ export class ComposeImporter {
     if (mapping.defaultHeight) options['height'] = mapping.defaultHeight * scale;
     if (mapping.defaultCornerRadius) options['cornerRadius'] = mapping.defaultCornerRadius * scale;
     if (mapping.defaultFillColor) {
-      options['fills'] = [{ type: 'SOLID', color: mapping.defaultFillColor }];
+      options['fills'] = [{ type: 'SOLID', visible: true, color: mapping.defaultFillColor }];
     }
     if (mapping.defaultStrokeColor) {
-      options['strokes'] = [{ type: 'SOLID', color: mapping.defaultStrokeColor }];
+      options['strokes'] = [{ type: 'SOLID', visible: true, color: mapping.defaultStrokeColor }];
       options['strokeWeight'] = mapping.defaultStrokeWeight ?? 1;
     }
 
@@ -469,7 +469,7 @@ export class ComposeImporter {
         const colorArg = modifier.arguments.get('_arg0') ?? modifier.arguments.get('color');
         const color = this.parseColor(colorArg);
         if (color) {
-          options['fills'] = [{ type: 'SOLID', color }];
+          options['fills'] = [{ type: 'SOLID', visible: true, color }];
         }
         break;
       }
@@ -494,7 +494,7 @@ export class ComposeImporter {
           options['strokeWeight'] = width * scale;
           const color = this.parseColor(colorArg);
           if (color) {
-            options['strokes'] = [{ type: 'SOLID', color }];
+            options['strokes'] = [{ type: 'SOLID', visible: true, color }];
           }
         }
         break;

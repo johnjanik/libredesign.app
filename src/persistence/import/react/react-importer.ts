@@ -57,15 +57,15 @@ const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
   button: {
     nodeType: 'FRAME',
     defaultProps: {
-      fills: [{ type: 'SOLID', color: { r: 0, g: 0.478, b: 1, a: 1 } }],
+      fills: [{ type: 'SOLID', visible: true, color: { r: 0, g: 0.478, b: 1, a: 1 } }],
       cornerRadius: 8,
     },
   },
   input: {
     nodeType: 'FRAME',
     defaultProps: {
-      fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
-      strokes: [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8, a: 1 } }],
+      fills: [{ type: 'SOLID', visible: true, color: { r: 1, g: 1, b: 1, a: 1 } }],
+      strokes: [{ type: 'SOLID', visible: true, color: { r: 0.8, g: 0.8, b: 0.8, a: 1 } }],
       strokeWeight: 1,
       cornerRadius: 4,
       width: 200,
@@ -75,8 +75,8 @@ const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
   textarea: {
     nodeType: 'FRAME',
     defaultProps: {
-      fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
-      strokes: [{ type: 'SOLID', color: { r: 0.8, g: 0.8, b: 0.8, a: 1 } }],
+      fills: [{ type: 'SOLID', visible: true, color: { r: 1, g: 1, b: 1, a: 1 } }],
+      strokes: [{ type: 'SOLID', visible: true, color: { r: 0.8, g: 0.8, b: 0.8, a: 1 } }],
       strokeWeight: 1,
       cornerRadius: 4,
       width: 200,
@@ -210,7 +210,7 @@ export class ReactImporter {
         name: 'Text',
         characters: element.textContent,
         fontSize: 14,
-        fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
+        fills: [{ type: 'SOLID', visible: true, color: { r: 1, g: 1, b: 1, a: 1 } }],
       } as CreateNodeOptions);
       this.nodeCount++;
       void textId;
@@ -250,7 +250,7 @@ export class ReactImporter {
     if (style.backgroundColor) {
       const color = this.parseColor(style.backgroundColor);
       if (color) {
-        options['fills'] = [{ type: 'SOLID', color }];
+        options['fills'] = [{ type: 'SOLID', visible: true, color }];
       }
     }
 
@@ -258,7 +258,7 @@ export class ReactImporter {
     if (style.color && mapping.nodeType === 'TEXT') {
       const color = this.parseColor(style.color);
       if (color) {
-        options['fills'] = [{ type: 'SOLID', color }];
+        options['fills'] = [{ type: 'SOLID', visible: true, color }];
       }
     }
 
@@ -283,7 +283,7 @@ export class ReactImporter {
     if (style.border || style.borderWidth || style.borderColor) {
       const borderColor = style.borderColor ? this.parseColor(style.borderColor) : { r: 0, g: 0, b: 0, a: 1 };
       if (borderColor) {
-        options['strokes'] = [{ type: 'SOLID', color: borderColor }];
+        options['strokes'] = [{ type: 'SOLID', visible: true, color: borderColor }];
         options['strokeWeight'] = style.borderWidth ? this.parseSize(style.borderWidth) : 1;
       }
     }
