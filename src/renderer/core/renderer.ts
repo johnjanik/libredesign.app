@@ -5,7 +5,7 @@
  */
 
 import type { NodeId } from '@core/types/common';
-import type { Matrix2x3 } from '@core/types/geometry';
+import type { Matrix2x3, VectorPath } from '@core/types/geometry';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, ImageNodeData, TextNodeData } from '@scene/nodes/base-node';
@@ -626,13 +626,30 @@ export class Renderer extends EventEmitter<RendererEvents> {
   ): void {
     const gl = this.ctx.gl;
 
+    // Calculate scale factor based on node size vs path bounds
+    const path = node.vectorPaths?.[0];
+    if (!path) return;
+
+    const pathBounds = this.getPathBounds(path);
+    const nodeWidth = node.width ?? pathBounds.width;
+    const nodeHeight = node.height ?? pathBounds.height;
+
+    // Calculate scale to fit path to node dimensions
+    const scaleX = pathBounds.width > 0 ? nodeWidth / pathBounds.width : 1;
+    const scaleY = pathBounds.height > 0 ? nodeHeight / pathBounds.height : 1;
+
+    // Apply scale to transform if needed
+    let renderTransform = worldTransform;
+    if (Math.abs(scaleX - 1) > 0.001 || Math.abs(scaleY - 1) > 0.001) {
+      // Create scaled transform: worldTransform * scale
+      renderTransform = multiply(worldTransform, compose(0, 0, 0, scaleX, scaleY));
+    }
+
     // Render fills
     for (const fill of node.fills ?? []) {
       if (!fill.visible || fill.type !== 'SOLID') continue;
 
       const opacity = (node.opacity ?? 1) * (fill.opacity ?? 1);
-      const path = node.vectorPaths?.[0];
-      if (!path) continue;
 
       const tess = tessellateFill(path);
       if (tess.indices.length === 0) continue;
@@ -647,7 +664,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tess.indices, gl.DYNAMIC_DRAW);
 
       this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
-      this.setMatrixUniform(shader, 'uTransform', worldTransform);
+      this.setMatrixUniform(shader, 'uTransform', renderTransform);
       this.setColorUniform(shader, 'uColor', fill.color);
       gl.uniform1f(shader.uniforms.get('uOpacity')!, opacity);
 
@@ -659,6 +676,52 @@ export class Renderer extends EventEmitter<RendererEvents> {
     }
 
     // Note: Stroke rendering skipped for now - would require stroke VAO with normals
+  }
+
+  /**
+   * Calculate bounds of a vector path.
+   */
+  private getPathBounds(path: VectorPath): { x: number; y: number; width: number; height: number } {
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+    let currentX = 0, currentY = 0;
+
+    for (const cmd of path.commands) {
+      switch (cmd.type) {
+        case 'M':
+        case 'L':
+          currentX = cmd.x;
+          currentY = cmd.y;
+          minX = Math.min(minX, currentX);
+          minY = Math.min(minY, currentY);
+          maxX = Math.max(maxX, currentX);
+          maxY = Math.max(maxY, currentY);
+          break;
+        case 'C':
+          // Include control points and end point
+          minX = Math.min(minX, cmd.x1, cmd.x2, cmd.x);
+          minY = Math.min(minY, cmd.y1, cmd.y2, cmd.y);
+          maxX = Math.max(maxX, cmd.x1, cmd.x2, cmd.x);
+          maxY = Math.max(maxY, cmd.y1, cmd.y2, cmd.y);
+          currentX = cmd.x;
+          currentY = cmd.y;
+          break;
+        case 'Z':
+          // ClosePath - no coordinates to update
+          break;
+      }
+    }
+
+    if (!isFinite(minX)) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
   }
 
   /**

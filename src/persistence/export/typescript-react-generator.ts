@@ -9,6 +9,7 @@ import type { RGBA } from '@core/types/color';
 import type { VectorPath } from '@core/types/geometry';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
+import { formatNum } from './format-utils';
 
 /**
  * TypeScript React code generation options
@@ -244,16 +245,16 @@ export class TypeScriptReactGenerator {
     const strokeColor = stroke ? this.rgbaToCSS(stroke) : 'none';
 
     parts.push(`${spaces}<svg`);
-    parts.push(`${spaces}  width={${node.width}}`);
-    parts.push(`${spaces}  height={${node.height}}`);
-    parts.push(`${spaces}  viewBox="0 0 ${node.width} ${node.height}"`);
+    parts.push(`${spaces}  width={${formatNum(node.width)}}`);
+    parts.push(`${spaces}  height={${formatNum(node.height)}}`);
+    parts.push(`${spaces}  viewBox="0 0 ${formatNum(node.width)} ${formatNum(node.height)}"`);
     parts.push(`${spaces}>`);
     parts.push(`${spaces}  <path`);
     parts.push(`${spaces}    d="${pathData}"`);
     parts.push(`${spaces}    fill="${fillColor}"`);
     if (stroke) {
       parts.push(`${spaces}    stroke="${strokeColor}"`);
-      parts.push(`${spaces}    strokeWidth={${node.strokeWeight ?? 1}}`);
+      parts.push(`${spaces}    strokeWidth={${formatNum(node.strokeWeight ?? 1)}}`);
     }
     parts.push(`${spaces}  />`);
     parts.push(`${spaces}</svg>`);
@@ -325,7 +326,7 @@ export class TypeScriptReactGenerator {
     const spaces = ' '.repeat(indent);
     const n = node as { width: number; height: number; imageRef?: string };
 
-    return `${spaces}<img src="${n.imageRef ?? ''}" alt="" style={{ width: ${n.width}, height: ${n.height}, objectFit: 'cover' }} />`;
+    return `${spaces}<img src="${n.imageRef ?? ''}" alt="" style={{ width: ${formatNum(n.width)}, height: ${formatNum(n.height)}, objectFit: 'cover' }} />`;
   }
 
   private generateInlineStyle(node: NodeData): string {
@@ -735,7 +736,7 @@ export class TypeScriptReactGenerator {
       if (typeof value === 'string') {
         return `${key}: '${value}'`;
       }
-      return `${key}: ${value}`;
+      return `${key}: ${formatNum(value)}`;
     });
 
     return `{ ${parts.join(', ')} }`;

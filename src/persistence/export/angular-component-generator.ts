@@ -18,6 +18,7 @@ import type {
   InstanceNodeData,
 } from '@scene/nodes/base-node';
 import { nodeToUtilityClasses } from './utility-class-generator';
+import { formatNum } from './format-utils';
 
 /**
  * Detected input (prop) from node name or text content
@@ -459,10 +460,10 @@ export class AngularComponentGenerator {
     const sceneNode = node as SceneNodeData;
 
     if ('width' in sceneNode && sceneNode.width !== undefined) {
-      styles.push(`'width.px': ${sceneNode.width}`);
+      styles.push(`'width.px': ${formatNum(sceneNode.width)}`);
     }
     if ('height' in sceneNode && sceneNode.height !== undefined) {
-      styles.push(`'height.px': ${sceneNode.height}`);
+      styles.push(`'height.px': ${formatNum(sceneNode.height)}`);
     }
 
     if ('fills' in sceneNode && sceneNode.fills?.length > 0) {
@@ -520,10 +521,10 @@ export class AngularComponentGenerator {
     const sceneNode = node as SceneNodeData;
 
     if ('width' in sceneNode && sceneNode.width !== undefined) {
-      rules.push(`  width: ${sceneNode.width}px;`);
+      rules.push(`  width: ${formatNum(sceneNode.width)}px;`);
     }
     if ('height' in sceneNode && sceneNode.height !== undefined) {
-      rules.push(`  height: ${sceneNode.height}px;`);
+      rules.push(`  height: ${formatNum(sceneNode.height)}px;`);
     }
 
     if ('fills' in sceneNode && sceneNode.fills?.length > 0) {

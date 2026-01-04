@@ -8,6 +8,7 @@ import type { NodeId } from '@core/types/common';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
+import { formatNum } from './format-utils';
 
 /**
  * Android code generation options
@@ -298,20 +299,20 @@ export class AndroidCodeGenerator {
     }
 
     parts.push(`${spaces}Canvas(`);
-    parts.push(`${spaces}    modifier = Modifier.size(${node.width}.dp, ${node.height}.dp)`);
+    parts.push(`${spaces}    modifier = Modifier.size(${formatNum(node.width)}.dp, ${formatNum(node.height)}.dp)`);
     parts.push(`${spaces}) {`);
     parts.push(`${spaces}    val path = Path().apply {`);
 
     for (const cmd of path.commands) {
       switch (cmd.type) {
         case 'M':
-          parts.push(`${spaces}        moveTo(${cmd.x}f, ${cmd.y}f)`);
+          parts.push(`${spaces}        moveTo(${formatNum(cmd.x)}f, ${formatNum(cmd.y)}f)`);
           break;
         case 'L':
-          parts.push(`${spaces}        lineTo(${cmd.x}f, ${cmd.y}f)`);
+          parts.push(`${spaces}        lineTo(${formatNum(cmd.x)}f, ${formatNum(cmd.y)}f)`);
           break;
         case 'C':
-          parts.push(`${spaces}        cubicTo(${cmd.x1}f, ${cmd.y1}f, ${cmd.x2}f, ${cmd.y2}f, ${cmd.x}f, ${cmd.y}f)`);
+          parts.push(`${spaces}        cubicTo(${formatNum(cmd.x1)}f, ${formatNum(cmd.y1)}f, ${formatNum(cmd.x2)}f, ${formatNum(cmd.y2)}f, ${formatNum(cmd.x)}f, ${formatNum(cmd.y)}f)`);
           break;
         case 'Z':
           parts.push(`${spaces}        close()`);
@@ -373,7 +374,7 @@ export class AndroidCodeGenerator {
     // Size
     if ('width' in node && 'height' in node) {
       const n = node as { width: number; height: number };
-      parts.push(`.size(${n.width}.dp, ${n.height}.dp)`);
+      parts.push(`.size(${formatNum(n.width)}.dp, ${formatNum(n.height)}.dp)`);
     }
 
     // Background

@@ -9,6 +9,7 @@ import type { RGBA } from '@core/types/color';
 import type { VectorPath } from '@core/types/geometry';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
+import { formatNum } from './format-utils';
 
 /**
  * iOS code generation options
@@ -341,7 +342,7 @@ export class IOSCodeGenerator {
     // Frame size
     if ('width' in node && 'height' in node) {
       const n = node as { width: number; height: number };
-      parts.push(`${spaces}.frame(width: ${n.width}, height: ${n.height})`);
+      parts.push(`${spaces}.frame(width: ${formatNum(n.width)}, height: ${formatNum(n.height)})`);
     }
 
     // Background
@@ -384,7 +385,7 @@ export class IOSCodeGenerator {
         const e = effect as { type: string; visible?: boolean; color?: RGBA; offset?: { x: number; y: number }; radius?: number };
         if (e.type === 'DROP_SHADOW' && e.visible !== false && e.color) {
           const colorName = this.getColorName(e.color);
-          parts.push(`${spaces}.shadow(color: Color.${colorName}, radius: ${e.radius ?? 0}, x: ${e.offset?.x ?? 0}, y: ${e.offset?.y ?? 0})`);
+          parts.push(`${spaces}.shadow(color: Color.${colorName}, radius: ${formatNum(e.radius ?? 0)}, x: ${formatNum(e.offset?.x ?? 0)}, y: ${formatNum(e.offset?.y ?? 0)})`);
         }
       }
     }
@@ -478,8 +479,8 @@ export class IOSCodeGenerator {
         if (e.type === 'DROP_SHADOW' && e.visible !== false && e.color) {
           const colorName = this.getColorName(e.color);
           parts.push(`${spaces}layer.shadowColor = UIColor.${colorName}.cgColor`);
-          parts.push(`${spaces}layer.shadowOffset = CGSize(width: ${e.offset?.x ?? 0}, height: ${e.offset?.y ?? 0})`);
-          parts.push(`${spaces}layer.shadowRadius = ${e.radius ?? 0}`);
+          parts.push(`${spaces}layer.shadowOffset = CGSize(width: ${formatNum(e.offset?.x ?? 0)}, height: ${formatNum(e.offset?.y ?? 0)})`);
+          parts.push(`${spaces}layer.shadowRadius = ${formatNum(e.radius ?? 0)}`);
           parts.push(`${spaces}layer.shadowOpacity = 1.0`);
         }
       }
@@ -512,7 +513,7 @@ export class IOSCodeGenerator {
     // Position and size
     if ('x' in node && 'y' in node && 'width' in node && 'height' in node) {
       const n = node as { x: number; y: number; width: number; height: number };
-      parts.push(`${spaces}${varName}.frame = CGRect(x: ${n.x}, y: ${n.y}, width: ${n.width}, height: ${n.height})`);
+      parts.push(`${spaces}${varName}.frame = CGRect(x: ${formatNum(n.x)}, y: ${formatNum(n.y)}, width: ${formatNum(n.width)}, height: ${formatNum(n.height)})`);
     }
 
     // Background color

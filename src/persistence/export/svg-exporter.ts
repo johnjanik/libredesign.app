@@ -9,6 +9,7 @@ import type { Rect, VectorPath, PathCommand } from '@core/types/geometry';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
+import { formatNum } from './format-utils';
 
 /**
  * SVG export options
@@ -79,10 +80,10 @@ export class SVGExporter {
     }
 
     const viewBox = includeViewBox
-      ? ` viewBox="${bounds.x - padding} ${bounds.y - padding} ${width} ${height}"`
+      ? ` viewBox="${formatNum(bounds.x - padding)} ${formatNum(bounds.y - padding)} ${formatNum(width)} ${formatNum(height)}"`
       : '';
 
-    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"${viewBox}>${nl}`);
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${formatNum(width)}" height="${formatNum(height)}"${viewBox}>${nl}`);
 
     // Add definitions (gradients, patterns, etc.)
     const defs = this.collectDefinitions(nodeId);
@@ -161,10 +162,10 @@ export class SVGExporter {
     }
 
     const viewBox = includeViewBox
-      ? ` viewBox="${minX - padding} ${minY - padding} ${width} ${height}"`
+      ? ` viewBox="${formatNum(minX - padding)} ${formatNum(minY - padding)} ${formatNum(width)} ${formatNum(height)}"`
       : '';
 
-    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"${viewBox}>${nl}`);
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${formatNum(width)}" height="${formatNum(height)}"${viewBox}>${nl}`);
 
     // Render nodes
     for (const nodeId of nodeIds) {
