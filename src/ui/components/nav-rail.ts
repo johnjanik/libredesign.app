@@ -10,6 +10,7 @@ import type { Unsubscribe } from '@core/events/event-emitter';
 import type { WorkspaceManager } from '@runtime/workspace-manager';
 import type { Trunk } from '@core/types/workspace';
 import { openSettingsModal } from './settings-modal';
+import { showHelpPopup } from './help-popup';
 
 /**
  * Nav rail action definition
@@ -1185,11 +1186,13 @@ export class NavRail {
     window.dispatchEvent(new CustomEvent('designlibre-open-search'));
   }
 
-  /** Open help (placeholder) */
+  /** Open help popup */
   private openHelp(): void {
-    window.dispatchEvent(new CustomEvent('designlibre-open-modal', {
-      detail: { modal: 'help' },
-    }));
+    // Close any open dropdowns first
+    if (this.trunkDropdownOpen) this.closeTrunkDropdown();
+    if (this.projectDropdownOpen) this.closeProjectDropdown();
+
+    showHelpPopup();
   }
 
   /** Open settings modal */
