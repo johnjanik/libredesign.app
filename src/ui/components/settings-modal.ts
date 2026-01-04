@@ -7,6 +7,8 @@
  */
 
 import { setThemeMode, getSavedThemeMode, type ThemeMode } from '../utils/theme-manager';
+import { getConfigManager, testProviderConnection } from '@ai/config';
+import { AVAILABLE_MODELS, type ProviderType } from '@ai/config/provider-config';
 
 /**
  * Settings category definition
@@ -26,6 +28,7 @@ const CATEGORIES: SettingsCategory[] = [
   { id: 'files', label: 'Files', icon: 'folder' },
   { id: 'appearance', label: 'Appearance', icon: 'palette' },
   { id: 'hotkeys', label: 'Hotkeys', icon: 'keyboard' },
+  { id: 'ai', label: 'AI Integration', icon: 'ai' },
   { id: 'plugins', label: 'Plugins', icon: 'puzzle' },
 ];
 
@@ -64,6 +67,29 @@ const ICONS: Record<string, string> = {
   </svg>`,
   puzzle: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.315 8.69a.979.979 0 0 1 .837-.276c.47.07.802.48.968.925a2.501 2.501 0 1 0 3.214-3.214c-.446-.166-.855-.497-.925-.968a.979.979 0 0 1 .276-.837l1.61-1.61a2.404 2.404 0 0 1 1.705-.707c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/>
+  </svg>`,
+  ai: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+    <circle cx="8" cy="14" r="1" fill="currentColor"/><circle cx="16" cy="14" r="1" fill="currentColor"/>
+  </svg>`,
+  check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>`,
+  eye: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+  </svg>`,
+  eyeOff: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>`,
+  refresh: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+  </svg>`,
+  spinner: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="settings-spinner">
+    <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+    <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
   </svg>`,
 };
 
@@ -377,6 +403,9 @@ export class SettingsModal {
       case 'hotkeys':
         this.renderHotkeysSettings(container);
         break;
+      case 'ai':
+        this.renderAISettings(container);
+        break;
       case 'plugins':
         this.renderPluginsSettings(container);
         break;
@@ -603,6 +632,358 @@ export class SettingsModal {
     for (const hk of toolHotkeys) {
       this.addHotkeyRow(container, hk.action, hk.shortcut);
     }
+  }
+
+  private renderAISettings(container: HTMLElement): void {
+    const configManager = getConfigManager();
+    const config = configManager.getConfig();
+
+    this.addSectionHeader(container, 'AI Providers');
+
+    // Provider display names
+    const PROVIDER_NAMES: Record<ProviderType, string> = {
+      anthropic: 'Anthropic (Claude)',
+      openai: 'OpenAI (GPT-4)',
+      ollama: 'Ollama (Local)',
+      llamacpp: 'llama.cpp (Local)',
+    };
+
+    // Provider toggles
+    const providers: ProviderType[] = ['anthropic', 'openai', 'ollama', 'llamacpp'];
+
+    for (const provider of providers) {
+      const providerConfig = config.providers[provider];
+      this.addProviderRow(container, provider, PROVIDER_NAMES[provider], providerConfig, configManager);
+    }
+
+    this.addSectionHeader(container, 'Default Settings');
+
+    // Active provider
+    const enabledProviders = providers.filter((p) => config.providers[p].enabled);
+    if (enabledProviders.length > 0) {
+      this.addSettingRow(container, {
+        title: 'Default Provider',
+        description: 'AI provider to use by default',
+        type: 'select',
+        value: config.activeProvider,
+        options: enabledProviders.map((p) => ({ value: p, label: PROVIDER_NAMES[p] })),
+        onChange: (v) => {
+          configManager.setActiveProvider(v as ProviderType);
+        },
+      });
+    }
+
+    this.addSectionHeader(container, 'Keyboard Shortcuts');
+
+    this.addHotkeyRow(container, 'Toggle AI Panel', 'Ctrl+Shift+L');
+    this.addHotkeyRow(container, 'New AI Chat', 'Ctrl+Shift+N');
+    this.addHotkeyRow(container, 'AI Command Palette', 'Ctrl+K');
+  }
+
+  private addProviderRow(
+    container: HTMLElement,
+    provider: ProviderType,
+    displayName: string,
+    providerConfig: { enabled: boolean; defaultModel: string; apiKey?: string; temperature: number; maxTokens: number; endpoint?: string },
+    configManager: ReturnType<typeof getConfigManager>
+  ): void {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      padding: 16px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+
+    // Header row with toggle
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;';
+
+    const nameEl = document.createElement('div');
+    nameEl.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+
+    const title = document.createElement('span');
+    title.textContent = displayName;
+    title.style.cssText = 'font-weight: 600; font-size: 14px; color: var(--designlibre-text-primary, #e4e4e4);';
+    nameEl.appendChild(title);
+
+    if (configManager.getConfig().activeProvider === provider) {
+      const badge = document.createElement('span');
+      badge.textContent = 'Active';
+      badge.style.cssText = `
+        padding: 2px 8px;
+        background: var(--designlibre-accent, #4dabff);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 10px;
+        text-transform: uppercase;
+      `;
+      nameEl.appendChild(badge);
+    }
+
+    headerRow.appendChild(nameEl);
+
+    // Enable toggle
+    const toggle = this.createAIToggle(providerConfig.enabled, (enabled) => {
+      configManager.updateProviderConfig(provider, { enabled });
+      // Re-render section
+      container.innerHTML = '';
+      this.renderAISettings(container);
+    });
+    headerRow.appendChild(toggle);
+    row.appendChild(headerRow);
+
+    // Provider details (only if enabled)
+    if (providerConfig.enabled) {
+      const details = document.createElement('div');
+      details.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+
+      // API Key for cloud providers
+      if (provider === 'anthropic' || provider === 'openai') {
+        const apiKey = configManager.getApiKey(provider);
+        details.appendChild(this.createAPIKeyInput(provider, apiKey, configManager));
+      }
+
+      // Endpoint for local providers
+      if (provider === 'ollama' || provider === 'llamacpp') {
+        const endpoint = providerConfig.endpoint ?? (provider === 'ollama' ? 'http://localhost:11434' : 'http://localhost:8080');
+        details.appendChild(this.createEndpointInput(provider, endpoint, configManager));
+      }
+
+      // Model selection
+      const models = AVAILABLE_MODELS[provider] ?? [];
+      if (models.length > 0) {
+        const modelRow = document.createElement('div');
+        modelRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+        const label = document.createElement('label');
+        label.textContent = 'Model';
+        label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+        modelRow.appendChild(label);
+
+        const select = document.createElement('select');
+        select.style.cssText = `
+          padding: 8px 12px;
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          background: var(--designlibre-bg-secondary, #2d2d2d);
+          color: var(--designlibre-text-primary, #e4e4e4);
+          font-size: 13px;
+          outline: none;
+        `;
+
+        for (const model of models) {
+          const option = document.createElement('option');
+          option.value = model.id;
+          option.textContent = `${model.name} (${model.contextWindow.toLocaleString()} tokens)`;
+          option.selected = model.id === providerConfig.defaultModel;
+          select.appendChild(option);
+        }
+
+        select.addEventListener('change', () => {
+          configManager.updateProviderConfig(provider, { defaultModel: select.value });
+        });
+
+        modelRow.appendChild(select);
+        details.appendChild(modelRow);
+      }
+
+      // Test connection button
+      const testRow = document.createElement('div');
+      testRow.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+
+      const testBtn = document.createElement('button');
+      testBtn.innerHTML = `${ICONS['refresh'] ?? ''} Test Connection`;
+      testBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      `;
+
+      const statusSpan = document.createElement('span');
+      statusSpan.style.cssText = 'font-size: 12px;';
+
+      testBtn.addEventListener('click', async () => {
+        testBtn.disabled = true;
+        testBtn.innerHTML = `${ICONS['spinner'] ?? ''} Testing...`;
+        statusSpan.textContent = '';
+
+        try {
+          // Get full config for testProviderConnection
+          const fullConfig = configManager.getConfig().providers[provider];
+          const result = await testProviderConnection(provider, fullConfig);
+          if (result.success) {
+            statusSpan.textContent = 'Connected successfully';
+            statusSpan.style.color = 'var(--designlibre-success, #4caf50)';
+          } else {
+            statusSpan.textContent = result.error ?? 'Connection failed';
+            statusSpan.style.color = 'var(--designlibre-error, #f44336)';
+          }
+        } catch (error) {
+          statusSpan.textContent = error instanceof Error ? error.message : 'Connection failed';
+          statusSpan.style.color = 'var(--designlibre-error, #f44336)';
+        } finally {
+          testBtn.disabled = false;
+          testBtn.innerHTML = `${ICONS['refresh'] ?? ''} Test Connection`;
+        }
+      });
+
+      testRow.appendChild(testBtn);
+      testRow.appendChild(statusSpan);
+      details.appendChild(testRow);
+
+      row.appendChild(details);
+    }
+
+    container.appendChild(row);
+  }
+
+  private createAIToggle(checked: boolean, onChange: (checked: boolean) => void): HTMLElement {
+    const toggle = document.createElement('label');
+    toggle.style.cssText = 'position: relative; width: 44px; height: 24px; cursor: pointer;';
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = checked;
+    input.style.cssText = 'opacity: 0; width: 0; height: 0;';
+    input.addEventListener('change', () => onChange(input.checked));
+    toggle.appendChild(input);
+
+    const slider = document.createElement('span');
+    slider.style.cssText = `
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: ${checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)'};
+      border-radius: 12px;
+      transition: all 0.2s;
+    `;
+
+    const knob = document.createElement('span');
+    knob.style.cssText = `
+      position: absolute;
+      width: 18px; height: 18px;
+      left: ${checked ? '23px' : '3px'};
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+    `;
+    slider.appendChild(knob);
+    toggle.appendChild(slider);
+
+    input.addEventListener('change', () => {
+      slider.style.background = input.checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)';
+      knob.style.left = input.checked ? '23px' : '3px';
+    });
+
+    return toggle;
+  }
+
+  private createAPIKeyInput(
+    provider: ProviderType,
+    apiKey: string,
+    configManager: ReturnType<typeof getConfigManager>
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+    const label = document.createElement('label');
+    label.textContent = 'API Key';
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    row.appendChild(label);
+
+    const inputWrapper = document.createElement('div');
+    inputWrapper.style.cssText = 'display: flex; gap: 8px;';
+
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.value = apiKey;
+    input.placeholder = provider === 'anthropic' ? 'sk-ant-...' : 'sk-...';
+    input.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      outline: none;
+    `;
+    input.addEventListener('blur', () => {
+      configManager.setApiKey(provider, input.value);
+    });
+    inputWrapper.appendChild(input);
+
+    // Toggle visibility button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.innerHTML = ICONS['eye'] ?? '';
+    toggleBtn.title = 'Show API key';
+    toggleBtn.style.cssText = `
+      width: 36px; height: 36px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    let showKey = false;
+    toggleBtn.addEventListener('click', () => {
+      showKey = !showKey;
+      input.type = showKey ? 'text' : 'password';
+      toggleBtn.innerHTML = showKey ? (ICONS['eyeOff'] ?? '') : (ICONS['eye'] ?? '');
+      toggleBtn.title = showKey ? 'Hide API key' : 'Show API key';
+    });
+    inputWrapper.appendChild(toggleBtn);
+
+    row.appendChild(inputWrapper);
+    return row;
+  }
+
+  private createEndpointInput(
+    provider: ProviderType,
+    endpoint: string,
+    configManager: ReturnType<typeof getConfigManager>
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+
+    const label = document.createElement('label');
+    label.textContent = 'Endpoint';
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    row.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = endpoint;
+    input.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+    `;
+    input.addEventListener('blur', () => {
+      configManager.updateProviderConfig(provider, { endpoint: input.value });
+    });
+    row.appendChild(input);
+
+    return row;
   }
 
   private renderPluginsSettings(container: HTMLElement): void {
