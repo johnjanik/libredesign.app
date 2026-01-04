@@ -66,6 +66,16 @@
     <div id="app">
       <div class="loading">Loading DesignLibre...</div>
     </div>
+    <!-- Polyfill for crypto.randomUUID (required for non-HTTPS contexts) -->
+    <script>
+      if (typeof crypto !== 'undefined' && !crypto.randomUUID) {
+        crypto.randomUUID = function() {
+          return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
+            (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)
+          );
+        };
+      }
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
