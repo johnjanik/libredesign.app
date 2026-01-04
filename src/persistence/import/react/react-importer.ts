@@ -177,8 +177,14 @@ export class ReactImporter {
    * Map a JSX element to scene graph nodes
    */
   private mapElement(element: ParsedJSXElement, parentId: NodeId, scale: number): NodeId | null {
-    const mapping = COMPONENT_MAPPINGS[element.tagName] ?? COMPONENT_MAPPINGS['_default']!;
+    let mapping = COMPONENT_MAPPINGS[element.tagName] ?? COMPONENT_MAPPINGS['_default']!;
     this.componentsFound.push(element.tagName);
+
+    // If this would be a TEXT node but has element children, use FRAME instead
+    // TEXT nodes cannot have children in the scene graph
+    if (mapping.nodeType === 'TEXT' && element.children.length > 0) {
+      mapping = { nodeType: 'FRAME' };
+    }
 
     // Get style from props
     const styleProp = element.props.get('style');
@@ -197,10 +203,11 @@ export class ReactImporter {
     const nodeId = this.sceneGraph.createNode(mapping.nodeType, parentId, -1, nodeOptions);
     this.nodeCount++;
 
-    // Handle button text
-    if (element.tagName === 'button' && element.textContent) {
+    // Handle text content for elements converted from TEXT to FRAME
+    // or for elements like button that have text content
+    if (mapping.nodeType === 'FRAME' && element.textContent) {
       const textId = this.sceneGraph.createNode('TEXT', nodeId, -1, {
-        name: 'Button Text',
+        name: 'Text',
         characters: element.textContent,
         fontSize: 14,
         fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
