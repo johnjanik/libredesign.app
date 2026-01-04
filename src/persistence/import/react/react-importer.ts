@@ -4,7 +4,7 @@
  * Import React/JSX code into DesignLibre scene graph.
  */
 
-import type { NodeId } from '@core/types/common';
+import type { NodeId, AutoLayoutProps, AxisAlign, CounterAxisAlign } from '@core/types/common';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph, CreateNodeOptions } from '@scene/graph/scene-graph';
 import { ReactParser } from './react-parser';
@@ -303,21 +303,33 @@ export class ReactImporter {
 
     // Flexbox -> Auto Layout
     if (style.display === 'flex') {
-      options['layoutMode'] = style.flexDirection === 'column' ? 'VERTICAL' : 'HORIZONTAL';
+      const mode = style.flexDirection === 'column' ? 'VERTICAL' : 'HORIZONTAL';
 
-      if (style.gap !== undefined) {
-        options['itemSpacing'] = this.parseSize(style.gap);
-      }
+      const autoLayout: AutoLayoutProps = {
+        mode: mode as 'HORIZONTAL' | 'VERTICAL',
+        itemSpacing: style.gap !== undefined ? this.parseSize(style.gap) : 0,
+        paddingTop: (options['paddingTop'] as number) ?? 0,
+        paddingRight: (options['paddingRight'] as number) ?? 0,
+        paddingBottom: (options['paddingBottom'] as number) ?? 0,
+        paddingLeft: (options['paddingLeft'] as number) ?? 0,
+        primaryAxisAlignItems: (style.justifyContent
+          ? this.mapJustifyContent(style.justifyContent)
+          : 'MIN') as AxisAlign,
+        counterAxisAlignItems: (style.alignItems
+          ? this.mapAlignItems(style.alignItems)
+          : 'MIN') as CounterAxisAlign,
+        primaryAxisSizingMode: 'FIXED',
+        counterAxisSizingMode: 'FIXED',
+        wrap: style['flexWrap'] === 'wrap',
+      };
 
-      // Justify content
-      if (style.justifyContent) {
-        options['primaryAxisAlignItems'] = this.mapJustifyContent(style.justifyContent);
-      }
+      options['autoLayout'] = autoLayout;
 
-      // Align items
-      if (style.alignItems) {
-        options['counterAxisAlignItems'] = this.mapAlignItems(style.alignItems);
-      }
+      // Remove loose padding props (now in autoLayout)
+      delete options['paddingTop'];
+      delete options['paddingRight'];
+      delete options['paddingBottom'];
+      delete options['paddingLeft'];
     }
 
     // Opacity

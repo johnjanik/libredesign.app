@@ -619,6 +619,12 @@ export class CodeView {
           throw new Error(`Unsupported language: ${this.currentLanguage}`);
       }
 
+      // Trigger layout calculation synchronously to position children
+      const layoutEngine = this.runtime.getLayoutEngine();
+      if (layoutEngine) {
+        layoutEngine.layoutNow();
+      }
+
       // Select the newly created root node
       this.runtime.emit('selection:set', { nodeIds: [result.rootId] });
 

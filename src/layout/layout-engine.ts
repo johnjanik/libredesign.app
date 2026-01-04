@@ -239,6 +239,7 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     const y = 'y' in node ? (node as { y: number }).y : 0;
     const width = 'width' in node ? (node as { width: number }).width : 0;
     const height = 'height' in node ? (node as { height: number }).height : 0;
+    console.log('[DEBUG layoutEngine onNodeCreated]', node.id, node.name, 'width:', width, 'height:', height);
 
     // Check for auto layout
     let autoLayout: AutoLayoutProps | undefined;
@@ -328,6 +329,16 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
       // Update layout data with solved values
       const updatedNodes: NodeId[] = [];
       for (const nodeId of sortedNodes) {
+        const node = this.sceneGraph.getNode(nodeId);
+        const parentLayoutData = node?.parentId ? this.layoutData.get(node.parentId) : null;
+        const parentHasAutoLayout = parentLayoutData?.autoLayout && parentLayoutData.autoLayout.mode !== 'NONE';
+
+        // Skip solver update for children of auto-layout parents - their positions are set directly by auto-layout
+        if (parentHasAutoLayout) {
+          updatedNodes.push(nodeId);
+          continue;
+        }
+
         const result = this.solver.getNodeLayout(nodeId);
         const current = this.layoutData.get(nodeId);
         if (current) {
@@ -409,7 +420,7 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
    * Process a single node's layout.
    */
   private processNode(nodeId: NodeId): void {
-    const layoutData = this.layoutData.get(nodeId);
+    let layoutData = this.layoutData.get(nodeId);
     if (!layoutData) return;
 
     const node = this.sceneGraph.getNode(nodeId);
@@ -419,16 +430,15 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     createPositionConstraints(this.solver, nodeId, { x: layoutData.x, y: layoutData.y }, 'weak');
     createSizeConstraints(this.solver, nodeId, { width: layoutData.width, height: layoutData.height }, 'weak');
 
-    // Apply parent constraints
+    // Apply parent constraints (only if parent doesn't have auto layout)
     if (node.parentId) {
       const parentLayoutData = this.layoutData.get(node.parentId);
       if (parentLayoutData) {
-        // Check if parent has auto layout
-        if (parentLayoutData.autoLayout) {
-          // Auto layout handles child positioning
-          this.applyAutoLayoutForChild(node.parentId, nodeId);
-        } else if (layoutData.constraints) {
-          // Apply constraint-based layout
+        // Skip constraint-based layout for children of auto-layout parents
+        // Auto layout handles child positioning directly in parent's processNode
+        const parentHasAutoLayout = parentLayoutData.autoLayout && parentLayoutData.autoLayout.mode !== 'NONE';
+        if (!parentHasAutoLayout && layoutData.constraints) {
+          // Apply constraint-based layout for non-auto-layout parents
           applyConstraints(
             this.solver,
             node.parentId,
@@ -451,16 +461,61 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
       }
     }
 
-    // If this node has auto layout, calculate and apply child positions
-    if (layoutData.autoLayout) {
+    // If this node has auto layout enabled, calculate and apply child positions
+    if (layoutData.autoLayout && layoutData.autoLayout.mode !== 'NONE') {
+      // First, if sizing mode is AUTO, resize container to fit children
+      const autoLayout = layoutData.autoLayout;
+      if (autoLayout.primaryAxisSizingMode === 'AUTO' || autoLayout.counterAxisSizingMode === 'AUTO') {
+        const minSize = this.getAutoLayoutMinSize(nodeId);
+        if (minSize) {
+          const isHorizontal = autoLayout.mode === 'HORIZONTAL';
+          let newWidth = layoutData.width;
+          let newHeight = layoutData.height;
+
+          if (autoLayout.primaryAxisSizingMode === 'AUTO') {
+            if (isHorizontal) {
+              newWidth = minSize.width;
+            } else {
+              newHeight = minSize.height;
+            }
+          }
+          if (autoLayout.counterAxisSizingMode === 'AUTO') {
+            if (isHorizontal) {
+              newHeight = minSize.height;
+            } else {
+              newWidth = minSize.width;
+            }
+          }
+
+          // Update container size
+          this.layoutData.set(nodeId, { ...layoutData, width: newWidth, height: newHeight });
+          this.sceneGraph.updateNode(nodeId, { width: newWidth, height: newHeight });
+          // Re-read layoutData after update
+          layoutData = this.layoutData.get(nodeId)!;
+        }
+      }
+
       const results = this.calculateContainerAutoLayout(nodeId);
+      console.log('[DEBUG processNode] Auto layout results for', nodeId, ':', results.map(r => ({ id: r.nodeId, x: r.x, y: r.y, w: r.width, h: r.height })));
       for (const result of results) {
         const childLayoutData = this.layoutData.get(result.nodeId);
         if (childLayoutData) {
+          const newX = result.x;
+          const newY = result.y;
+
+          // Update internal layout data
           this.layoutData.set(result.nodeId, {
             ...childLayoutData,
-            x: layoutData.x + result.x,
-            y: layoutData.y + result.y,
+            x: newX,
+            y: newY,
+            width: result.width,
+            height: result.height,
+          });
+
+          // Sync to scene graph so renderer uses correct positions
+          this.sceneGraph.updateNode(result.nodeId, {
+            x: newX,
+            y: newY,
             width: result.width,
             height: result.height,
           });
@@ -469,37 +524,8 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     }
   }
 
-  /**
-   * Apply auto layout constraints for a child.
-   */
-  private applyAutoLayoutForChild(parentId: NodeId, childId: NodeId): void {
-    const parentLayoutData = this.layoutData.get(parentId);
-    if (!parentLayoutData?.autoLayout) return;
-
-    const results = this.calculateContainerAutoLayout(parentId);
-    const childResult = results.find((r) => r.nodeId === childId);
-
-    if (childResult) {
-      createPositionConstraints(
-        this.solver,
-        childId,
-        {
-          x: parentLayoutData.x + childResult.x,
-          y: parentLayoutData.y + childResult.y,
-        },
-        'strong'
-      );
-      createSizeConstraints(
-        this.solver,
-        childId,
-        {
-          width: childResult.width,
-          height: childResult.height,
-        },
-        'strong'
-      );
-    }
-  }
+  // Note: applyAutoLayoutForChild removed - auto layout positions are now
+  // set directly in the parent's processNode method
 
   /**
    * Build auto layout config for a container.
@@ -512,13 +538,18 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     for (const childId of childIds) {
       const childLayoutData = this.layoutData.get(childId);
       if (childLayoutData) {
+        console.log('[DEBUG buildAutoLayoutConfig] child', childId, 'width:', childLayoutData.width, 'height:', childLayoutData.height);
         children.push({
           nodeId: childId,
           width: childLayoutData.width,
           height: childLayoutData.height,
+          // Don't shrink children - they have fixed sizes from frame modifiers
+          flexShrink: 0,
         });
       }
     }
+
+    console.log('[DEBUG buildAutoLayoutConfig] container', nodeId, 'width:', layoutData.width, 'height:', layoutData.height, 'mode:', autoLayout.mode);
 
     return {
       ...autoLayout,

@@ -68,6 +68,9 @@ export function calculateAutoLayout(config: AutoLayoutConfig): AutoLayoutResult[
     containerHeight,
   } = config;
 
+  console.log('[DEBUG calculateAutoLayout] mode:', mode, 'container:', containerWidth, 'x', containerHeight);
+  console.log('[DEBUG calculateAutoLayout] children:', children.map(c => ({ id: c.nodeId, w: c.width, h: c.height })));
+
   if (children.length === 0 || mode === 'NONE') {
     return [];
   }
@@ -227,6 +230,7 @@ export function calculateAutoLayout(config: AutoLayoutConfig): AutoLayoutResult[
     mainPosition += size.main + mainGap;
   }
 
+  console.log('[DEBUG calculateAutoLayout] results:', results.map(r => ({ id: r.nodeId, x: r.x, y: r.y, w: r.width, h: r.height })));
   return results;
 }
 

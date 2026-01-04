@@ -215,6 +215,11 @@ export class SwiftParser {
     const modifiers = modifiersResult.modifiers;
     endPos = modifiersResult.end;
 
+    console.log('[DEBUG parsed view]', viewType, 'modifiers:', modifiers.map(m => ({
+      name: m.name,
+      args: m.arguments.map(a => ({ label: a.label, type: a.value.type, value: a.value.value }))
+    })));
+
     // Create source location
     const location = this.createLocation(offset + startPos, offset + endPos);
 
@@ -294,13 +299,35 @@ export class SwiftParser {
       // Check for modifier (starts with .)
       if (content[pos] !== '.') break;
 
-      const modifierMatch = content.slice(pos).match(/^\.(\w+)(\s*\([^)]*\))?/);
-      if (!modifierMatch) break;
+      // Match modifier name
+      const nameMatch = content.slice(pos).match(/^\.(\w+)/);
+      if (!nameMatch) break;
 
-      const modifierName = modifierMatch[1]!;
-      const argsString = modifierMatch[2];
+      const modifierName = nameMatch[1]!;
       const modifierStart = pos;
-      pos += modifierMatch[0].length;
+      pos += nameMatch[0].length;
+
+      // Skip whitespace before potential arguments
+      const wsStart = pos;
+      while (pos < content.length && /\s/.test(content[pos]!)) pos++;
+
+      // Check for arguments (opening paren)
+      let argsString: string | undefined;
+      if (content[pos] === '(') {
+        // Find matching closing paren, handling nested parens
+        const argsStart = pos;
+        const argsEnd = this.findMatchingParen(content, pos);
+        if (argsEnd !== -1) {
+          argsString = content.slice(argsStart, argsEnd + 1);
+          pos = argsEnd + 1;
+        } else {
+          // No matching paren, restore position
+          pos = wsStart;
+        }
+      } else {
+        // No args, restore whitespace position
+        pos = wsStart;
+      }
 
       // Parse modifier arguments
       const args: ParsedModifierArgument[] = [];
@@ -320,6 +347,41 @@ export class SwiftParser {
   }
 
   /**
+   * Find matching closing parenthesis, handling nested parens
+   */
+  private findMatchingParen(content: string, openPos: number): number {
+    if (content[openPos] !== '(') return -1;
+
+    let depth = 1;
+    let pos = openPos + 1;
+    let inString = false;
+    let stringChar = '';
+
+    while (pos < content.length && depth > 0) {
+      const char = content[pos]!;
+
+      // Handle string literals
+      if ((char === '"' || char === "'") && content[pos - 1] !== '\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+        }
+      }
+
+      if (!inString) {
+        if (char === '(') depth++;
+        else if (char === ')') depth--;
+      }
+
+      pos++;
+    }
+
+    return depth === 0 ? pos - 1 : -1;
+  }
+
+  /**
    * Parse modifier arguments
    */
   private parseModifierArgs(
@@ -329,11 +391,28 @@ export class SwiftParser {
   ): void {
     if (!argsString) return;
 
+    console.log('[DEBUG parseModifierArgs] argsString:', argsString);
+
     // Handle different argument patterns
     // .frame(width: 100, height: 50)
     // .padding(16)
     // .foregroundColor(.red)
     // .font(.title)
+    // .fill(Color(hex: "#333333"))
+
+    // First, check if the entire argument is a single complex expression like Color(...)
+    // This prevents Color(hex: "...") from being parsed as named args
+    const trimmed = argsString.trim();
+    if (trimmed.startsWith('Color(') || trimmed.startsWith('UIColor(') || trimmed.startsWith('#colorLiteral(')) {
+      console.log('[DEBUG parseModifierArgs] detected color constructor, treating as single positional arg');
+      const parsedValue = this.parseValueExpression(trimmed, offset);
+      console.log('[DEBUG parseModifierArgs] parsed color:', parsedValue.type, parsedValue.value);
+      args.push({
+        value: parsedValue,
+        location: this.createLocation(offset, offset + argsString.length),
+      });
+      return;
+    }
 
     // Try named arguments first
     const namedPattern = /(\w+)\s*:\s*([^,]+)/g;
@@ -344,7 +423,9 @@ export class SwiftParser {
       hasNamed = true;
       const label = match[1]!;
       const valueStr = match[2]!.trim();
+      console.log('[DEBUG parseModifierArgs] named arg:', label, '=', valueStr);
       const parsedValue = this.parseValueExpression(valueStr, offset);
+      console.log('[DEBUG parseModifierArgs] parsed:', label, parsedValue.type, parsedValue.value);
 
       args.push({
         label,
@@ -355,7 +436,9 @@ export class SwiftParser {
 
     // If no named args, treat as positional
     if (!hasNamed && argsString.trim()) {
+      console.log('[DEBUG parseModifierArgs] positional arg:', argsString.trim());
       const parsedValue = this.parseValueExpression(argsString.trim(), offset);
+      console.log('[DEBUG parseModifierArgs] parsed positional:', parsedValue.type, parsedValue.value);
       args.push({
         value: parsedValue,
         location: this.createLocation(offset, offset + argsString.length),

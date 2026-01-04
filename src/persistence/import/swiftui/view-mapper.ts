@@ -137,8 +137,47 @@ export class SwiftUIViewMapper {
       let childY = 0;
       const spacing = this.getSpacingFromView(view);
 
-      for (const child of view.children) {
-        this.mapView(child, nodeId, { x: childX, y: childY, scale, preserveMetadata });
+      // For ZStack, pre-calculate child sizes to enable centering
+      let parentWidth = 0;
+      let parentHeight = 0;
+      const childSizes: { width: number; height: number }[] = [];
+
+      if (mapping.autoLayoutMode === 'NONE' || !mapping.autoLayoutMode) {
+        // Calculate each child's size from its modifiers
+        for (const child of view.children) {
+          const childProps = this.extractPropertiesFromModifiers(child.modifiers, scale);
+          const childWidth = (childProps['width'] as number) ?? this.getDefaultWidth(child.viewType) * scale;
+          const childHeight = (childProps['height'] as number) ?? this.getDefaultHeight(child.viewType) * scale;
+          childSizes.push({ width: childWidth, height: childHeight });
+          parentWidth = Math.max(parentWidth, childWidth);
+          parentHeight = Math.max(parentHeight, childHeight);
+        }
+        // Add padding to parent dimensions
+        const parentPadding = this.getPaddingFromView(view) * scale;
+        parentWidth += parentPadding * 2;
+        parentHeight += parentPadding * 2;
+
+        // Update ZStack's size to match its content (if no explicit frame)
+        const parentProps = this.extractPropertiesFromModifiers(view.modifiers, scale);
+        if (parentProps['width'] === undefined && parentProps['height'] === undefined) {
+          this.sceneGraph.updateNode(nodeId, { width: parentWidth, height: parentHeight });
+        }
+      }
+
+      for (let i = 0; i < view.children.length; i++) {
+        const child = view.children[i]!;
+        // For ZStack (autoLayoutMode NONE), center children
+        let offsetX = childX;
+        let offsetY = childY;
+        if (mapping.autoLayoutMode === 'NONE' || !mapping.autoLayoutMode) {
+          const childSize = childSizes[i]!;
+          const childPadding = this.getPaddingFromModifiers(child.modifiers) * scale;
+          // Center the child within the parent
+          offsetX = (parentWidth - childSize.width) / 2 + childPadding;
+          offsetY = (parentHeight - childSize.height) / 2 + childPadding;
+        }
+
+        this.mapView(child, nodeId, { x: offsetX, y: offsetY, scale, preserveMetadata });
 
         // Update position for next child (simplified - actual layout handled by engine)
         if (mapping.autoLayoutMode === 'VERTICAL') {
@@ -182,6 +221,7 @@ export class SwiftUIViewMapper {
     }
 
     // Build node options
+    console.log('[DEBUG nodeOptions] viewType:', view.viewType, 'props:', JSON.stringify(props));
     const nodeOptions: NodeBuildOptions = {
       name: this.getNodeName(view),
       x: x + ((props['x'] as number) ?? 0),
@@ -190,10 +230,12 @@ export class SwiftUIViewMapper {
       height: ((props['height'] as number) ?? this.getDefaultHeight(view.viewType)) * scale,
       ...mapping.defaultProps,
     };
+    console.log('[DEBUG nodeOptions] final:', view.viewType, 'width:', nodeOptions.width, 'height:', nodeOptions.height);
 
     // Add appearance properties
     if (props['fills']) {
       nodeOptions.fills = props['fills'] as SolidPaint[];
+      console.log('[DEBUG] Applying fills to', view.viewType, ':', JSON.stringify(props['fills']));
     }
     if (props['opacity'] !== undefined) {
       nodeOptions.opacity = props['opacity'] as number;
@@ -242,6 +284,7 @@ export class SwiftUIViewMapper {
     }
 
     // Create the node
+    console.log('[DEBUG createNode] type:', mapping.nodeType, 'fills:', JSON.stringify(nodeOptions.fills));
     const nodeId = this.sceneGraph.createNode(
       mapping.nodeType as NodeType,
       parentId,
@@ -313,10 +356,15 @@ export class SwiftUIViewMapper {
   ): Record<string, unknown> {
     const props: Record<string, unknown> = {};
 
+    console.log('[DEBUG extractProps] all modifiers:', modifiers.map(m => m.name));
+
     for (const modifier of modifiers) {
+      console.log('[DEBUG extractProps] processing modifier:', modifier.name, 'args:', modifier.arguments.length);
       switch (modifier.name) {
         case 'frame': {
+          console.log('[DEBUG frame] args:', JSON.stringify(modifier.arguments, null, 2));
           for (const arg of modifier.arguments) {
+            console.log('[DEBUG frame arg]', arg.label, arg.value.type, arg.value.value);
             if (arg.label === 'width' && typeof arg.value.value === 'number') {
               props['width'] = arg.value.value;
             }
@@ -346,12 +394,15 @@ export class SwiftUIViewMapper {
         case 'foregroundStyle':
         case 'tint':
         case 'fill': {
+          console.log('[DEBUG fill/bg] modifier:', modifier.name, 'arguments:', modifier.arguments.length);
           const colorArg = modifier.arguments[0]?.value;
+          console.log('[DEBUG fill/bg]', modifier.name, 'colorArg:', JSON.stringify(colorArg, null, 2));
           if (colorArg && colorArg.type === 'color') {
             if (colorArg.value) {
               // Color with resolved RGBA
               const paint = this.createSolidPaint(colorArg.value as RGBA);
               props['fills'] = [paint];
+              console.log('[DEBUG] Created paint:', JSON.stringify(paint));
             } else {
               // Asset color or unresolved - use placeholder magenta
               const placeholderPaint = this.createSolidPaint({ r: 1, g: 0, b: 1, a: 0.5 });
@@ -359,6 +410,12 @@ export class SwiftUIViewMapper {
               // Log for debugging
               console.warn(`Unresolved color: ${colorArg.source?.originalExpression ?? 'unknown'}`);
             }
+          } else {
+            console.log('[DEBUG] colorArg not a color type:', colorArg?.type, 'rawExpression:', colorArg?.rawExpression);
+            // Use placeholder magenta for unparseable colors
+            const placeholderPaint = this.createSolidPaint({ r: 1, g: 0, b: 1, a: 0.5 });
+            props['fills'] = [placeholderPaint];
+            console.warn(`Could not parse color: ${colorArg?.rawExpression ?? 'unknown'}`);
           }
           break;
         }
@@ -551,7 +608,14 @@ export class SwiftUIViewMapper {
    * Get padding from view modifiers
    */
   private getPaddingFromView(view: ParsedSwiftUIView): number {
-    const paddingModifier = view.modifiers.find(m => m.name === 'padding');
+    return this.getPaddingFromModifiers(view.modifiers);
+  }
+
+  /**
+   * Get padding from modifiers array
+   */
+  private getPaddingFromModifiers(modifiers: readonly ParsedModifier[]): number {
+    const paddingModifier = modifiers.find(m => m.name === 'padding');
     if (paddingModifier) {
       const arg = paddingModifier.arguments[0];
       if (arg && typeof arg.value.value === 'number') {

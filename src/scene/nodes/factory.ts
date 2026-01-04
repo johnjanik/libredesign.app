@@ -3,7 +3,7 @@
  */
 
 import { generateNodeId } from '@core/utils/uuid';
-import type { NodeId, BlendMode } from '@core/types/common';
+import type { NodeId, BlendMode, AutoLayoutProps } from '@core/types/common';
 import type { VectorPath } from '@core/types/geometry';
 import type { Paint } from '@core/types/paint';
 import type { Effect } from '@core/types/effect';
@@ -101,6 +101,8 @@ export interface CreateFrameOptions {
   blendMode?: BlendMode;
   effects?: Effect[];
   clipsContent?: boolean;
+  // Auto layout
+  autoLayout?: Partial<AutoLayoutProps>;
 }
 
 /** Create a frame node */
@@ -129,7 +131,9 @@ export function createFrame(options: CreateFrameOptions = {}): FrameNodeData {
     effects: options.effects ?? [],
     constraints: DEFAULT_CONSTRAINTS,
     clipsContent: options.clipsContent ?? true,
-    autoLayout: DEFAULT_AUTO_LAYOUT,
+    autoLayout: options.autoLayout
+      ? { ...DEFAULT_AUTO_LAYOUT, ...options.autoLayout }
+      : DEFAULT_AUTO_LAYOUT,
     cornerRadius: options.cornerRadius ?? 0,
   };
 }
