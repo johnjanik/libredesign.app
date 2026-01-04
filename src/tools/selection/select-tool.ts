@@ -111,20 +111,23 @@ export class SelectTool extends BaseTool {
     // First, check if clicking on a resize handle of a selected node
     const zoom = context.viewport.getZoom();
     for (const nodeId of context.selectedNodeIds) {
-      const node = context.sceneGraph.getNode(nodeId);
-      if (node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
-        const n = node as { x: number; y: number; width: number; height: number };
-        const bounds = { x: n.x, y: n.y, width: n.width, height: n.height };
-        const handle = this.hitTestHandles(worldPoint, bounds, zoom);
+      // Use world bounds to account for parent transforms
+      const worldBounds = context.sceneGraph.getWorldBounds(nodeId);
+      if (worldBounds) {
+        const handle = this.hitTestHandles(worldPoint, worldBounds, zoom);
 
         if (handle) {
-          // Start resizing
-          this.state.mode = 'resizing';
-          this.state.activeHandle = handle;
-          this.state.resizeTarget = nodeId;
-          this.state.resizeStartBounds = { ...bounds };
-          this.state.resizeStartPoint = worldPoint;
-          return true;
+          // Start resizing - need local bounds for resize operations
+          const node = context.sceneGraph.getNode(nodeId);
+          if (node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
+            const n = node as { x: number; y: number; width: number; height: number };
+            this.state.mode = 'resizing';
+            this.state.activeHandle = handle;
+            this.state.resizeTarget = nodeId;
+            this.state.resizeStartBounds = { x: n.x, y: n.y, width: n.width, height: n.height };
+            this.state.resizeStartPoint = worldPoint;
+            return true;
+          }
         }
       }
     }
@@ -279,11 +282,10 @@ export class SelectTool extends BaseTool {
     // Check if hovering over a resize handle
     const zoom = context.viewport.getZoom();
     for (const nodeId of context.selectedNodeIds) {
-      const node = context.sceneGraph.getNode(nodeId);
-      if (node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
-        const n = node as { x: number; y: number; width: number; height: number };
-        const bounds = { x: n.x, y: n.y, width: n.width, height: n.height };
-        const handle = this.hitTestHandles(point, bounds, zoom);
+      // Use world bounds to account for parent transforms
+      const worldBounds = context.sceneGraph.getWorldBounds(nodeId);
+      if (worldBounds) {
+        const handle = this.hitTestHandles(point, worldBounds, zoom);
 
         if (handle) {
           return this.getHandleCursor(handle);
@@ -580,43 +582,41 @@ export class SelectTool extends BaseTool {
     const handleBorderWidth = 1 / zoom;
 
     for (const nodeId of context.selectedNodeIds) {
-      const node = context.sceneGraph.getNode(nodeId);
-      if (!node) continue;
+      // Use world bounds to account for parent transforms
+      const worldBounds = context.sceneGraph.getWorldBounds(nodeId);
+      if (!worldBounds) continue;
 
-      if ('x' in node && 'y' in node && 'width' in node && 'height' in node) {
-        const n = node as { x: number; y: number; width: number; height: number };
-        const bounds = { x: n.x, y: n.y, width: n.width, height: n.height };
+      const bounds = worldBounds;
 
-        ctx.save();
+      ctx.save();
 
-        // Draw selection border
-        ctx.strokeStyle = '#0066ff';
-        ctx.lineWidth = borderWidth;
-        ctx.strokeRect(n.x, n.y, n.width, n.height);
+      // Draw selection border
+      ctx.strokeStyle = '#0066ff';
+      ctx.lineWidth = borderWidth;
+      ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-        // Draw all 8 handles
-        const handlePositions = this.getHandlePositions(bounds);
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#0066ff';
-        ctx.lineWidth = handleBorderWidth;
+      // Draw all 8 handles
+      const handlePositions = this.getHandlePositions(bounds);
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#0066ff';
+      ctx.lineWidth = handleBorderWidth;
 
-        for (const pos of Object.values(handlePositions)) {
-          ctx.fillRect(
-            pos.x - scaledHandleSize / 2,
-            pos.y - scaledHandleSize / 2,
-            scaledHandleSize,
-            scaledHandleSize
-          );
-          ctx.strokeRect(
-            pos.x - scaledHandleSize / 2,
-            pos.y - scaledHandleSize / 2,
-            scaledHandleSize,
-            scaledHandleSize
-          );
-        }
-
-        ctx.restore();
+      for (const pos of Object.values(handlePositions)) {
+        ctx.fillRect(
+          pos.x - scaledHandleSize / 2,
+          pos.y - scaledHandleSize / 2,
+          scaledHandleSize,
+          scaledHandleSize
+        );
+        ctx.strokeRect(
+          pos.x - scaledHandleSize / 2,
+          pos.y - scaledHandleSize / 2,
+          scaledHandleSize,
+          scaledHandleSize
+        );
       }
+
+      ctx.restore();
     }
   }
 

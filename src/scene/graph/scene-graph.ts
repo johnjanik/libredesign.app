@@ -3,6 +3,8 @@
  */
 
 import type { NodeId, NodeType, PropertyPath } from '@core/types/common';
+import type { Matrix2x3, Rect } from '@core/types/geometry';
+import { identity, multiply, compose, transformPoint } from '@core/math/matrix';
 import { EventEmitter } from '@core/events/event-emitter';
 import type { NodeData } from '../nodes/base-node';
 import {
@@ -197,6 +199,90 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
    */
   getCommonAncestor(ids: readonly NodeId[]): NodeId | null {
     return findCommonAncestor(this.registry, ids);
+  }
+
+  /**
+   * Get the world transform for a node by walking up the parent chain.
+   * This accumulates all parent transforms to get the final world position.
+   */
+  getWorldTransform(id: NodeId): Matrix2x3 {
+    const node = this.registry.getNode(id);
+    if (!node) return identity();
+
+    // Build transform chain from root to this node
+    const ancestors = this.registry.getAncestors(id);
+
+    // Start with identity and multiply through the chain
+    // Ancestors are in order from immediate parent to root,
+    // so we need to reverse to go root -> parent -> node
+    let worldTransform = identity();
+
+    // Apply ancestor transforms (root to parent)
+    for (let i = ancestors.length - 1; i >= 0; i--) {
+      const ancestor = ancestors[i];
+      if (ancestor && 'x' in ancestor && 'y' in ancestor) {
+        const a = ancestor as { x: number; y: number; rotation?: number };
+        const rotation = a.rotation ? (a.rotation * Math.PI) / 180 : 0;
+        const localTransform = compose(a.x, a.y, rotation, 1, 1);
+        worldTransform = multiply(worldTransform, localTransform);
+      }
+    }
+
+    // Apply this node's transform
+    if ('x' in node && 'y' in node) {
+      const n = node as { x: number; y: number; rotation?: number };
+      const rotation = n.rotation ? (n.rotation * Math.PI) / 180 : 0;
+      const localTransform = compose(n.x, n.y, rotation, 1, 1);
+      worldTransform = multiply(worldTransform, localTransform);
+    }
+
+    return worldTransform;
+  }
+
+  /**
+   * Get the world bounds for a node (accounting for parent transforms).
+   * Returns the axis-aligned bounding box in world coordinates.
+   */
+  getWorldBounds(id: NodeId): Rect | null {
+    const node = this.registry.getNode(id);
+    if (!node) return null;
+
+    if (!('x' in node) || !('y' in node) || !('width' in node) || !('height' in node)) {
+      return null;
+    }
+
+    const n = node as { x: number; y: number; width: number; height: number; rotation?: number };
+    const worldTransform = this.getWorldTransform(id);
+
+    // Transform all 4 corners of the local bounding box
+    // Local bounds are (0, 0) to (width, height) - the node's x, y is already in the transform
+    // Actually, the node's x, y is part of the transform, so local geometry starts at (0, 0)
+    const corners = [
+      { x: 0, y: 0 },
+      { x: n.width, y: 0 },
+      { x: n.width, y: n.height },
+      { x: 0, y: n.height },
+    ];
+
+    const worldCorners = corners.map(c => transformPoint(worldTransform, c));
+
+    // Find axis-aligned bounding box
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    for (const corner of worldCorners) {
+      minX = Math.min(minX, corner.x);
+      minY = Math.min(minY, corner.y);
+      maxX = Math.max(maxX, corner.x);
+      maxY = Math.max(maxY, corner.y);
+    }
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
   }
 
   // =========================================================================

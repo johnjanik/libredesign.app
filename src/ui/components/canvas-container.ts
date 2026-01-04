@@ -280,28 +280,19 @@ export class CanvasContainer {
     const selectedIds = selectionManager.getSelectedNodeIds();
     if (selectedIds.length === 0) return;
 
-    // Get combined bounds of all selected nodes
+    // Get combined bounds of all selected nodes in world coordinates
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
 
     for (const nodeId of selectedIds) {
-      const node = sceneGraph.getNode(nodeId);
-      if (!node) continue;
+      // Use getWorldBounds to account for parent transforms
+      const worldBounds = sceneGraph.getWorldBounds(nodeId);
+      if (!worldBounds) continue;
 
-      // Skip nodes without position/size (DOCUMENT, PAGE, etc.)
-      if (!('x' in node) || !('y' in node) || !('width' in node) || !('height' in node)) {
-        continue;
-      }
-
-      const x = (node.x ?? 0);
-      const y = (node.y ?? 0);
-      const width = (node.width ?? 0);
-      const height = (node.height ?? 0);
-
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
+      minX = Math.min(minX, worldBounds.x);
+      minY = Math.min(minY, worldBounds.y);
+      maxX = Math.max(maxX, worldBounds.x + worldBounds.width);
+      maxY = Math.max(maxY, worldBounds.y + worldBounds.height);
     }
 
     if (!isFinite(minX)) return;

@@ -357,13 +357,13 @@ export class SelectionManager extends EventEmitter<SelectionManagerEvents> {
     let maxY = -Infinity;
 
     for (const nodeId of this.selectedNodeIds) {
-      const node = this.sceneGraph.getNode(nodeId);
-      if (node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
-        const n = node as { x: number; y: number; width: number; height: number };
-        minX = Math.min(minX, n.x);
-        minY = Math.min(minY, n.y);
-        maxX = Math.max(maxX, n.x + n.width);
-        maxY = Math.max(maxY, n.y + n.height);
+      // Use world bounds to account for parent transforms
+      const worldBounds = this.sceneGraph.getWorldBounds(nodeId);
+      if (worldBounds) {
+        minX = Math.min(minX, worldBounds.x);
+        minY = Math.min(minY, worldBounds.y);
+        maxX = Math.max(maxX, worldBounds.x + worldBounds.width);
+        maxY = Math.max(maxY, worldBounds.y + worldBounds.height);
       }
     }
 
