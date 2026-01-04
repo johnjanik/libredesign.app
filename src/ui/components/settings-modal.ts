@@ -9,6 +9,7 @@
 import { setThemeMode, getSavedThemeMode, type ThemeMode } from '../utils/theme-manager';
 import { getConfigManager, testProviderConnection } from '@ai/config';
 import { AVAILABLE_MODELS, type ProviderType } from '@ai/config/provider-config';
+import { getHotkeyManager, type HotkeyAction } from '@core/hotkeys/hotkey-manager';
 
 /**
  * Settings category definition
@@ -430,7 +431,12 @@ export class SettingsModal {
       description: 'Automatically check for new versions',
       type: 'toggle',
       value: this.getSetting('auto-update', true),
-      onChange: (v) => this.setSetting('auto-update', v),
+      onChange: (v) => {
+        this.setSetting('auto-update', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { autoUpdate: v }
+        }));
+      },
     });
 
     this.addSectionHeader(container, 'Startup');
@@ -440,7 +446,12 @@ export class SettingsModal {
       description: 'Automatically open the last project on startup',
       type: 'toggle',
       value: this.getSetting('open-last-project', true),
-      onChange: (v) => this.setSetting('open-last-project', v),
+      onChange: (v) => {
+        this.setSetting('open-last-project', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { openLastProject: v }
+        }));
+      },
     });
   }
 
@@ -552,7 +563,12 @@ export class SettingsModal {
         { value: 'png', label: 'PNG' },
         { value: 'pdf', label: 'PDF' },
       ],
-      onChange: (v) => this.setSetting('default-export-format', v),
+      onChange: (v) => {
+        this.setSetting('default-export-format', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { defaultExportFormat: v }
+        }));
+      },
     });
   }
 
@@ -620,39 +636,222 @@ export class SettingsModal {
   }
 
   private renderHotkeysSettings(container: HTMLElement): void {
+    const hotkeyManager = getHotkeyManager();
+
+    // Reset all button
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display: flex; justify-content: flex-end; margin-bottom: 16px;';
+
+    const resetAllBtn = document.createElement('button');
+    resetAllBtn.textContent = 'Reset All to Defaults';
+    resetAllBtn.style.cssText = `
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      color: var(--designlibre-text-secondary, #888);
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+    resetAllBtn.addEventListener('click', () => {
+      hotkeyManager.resetAllShortcuts();
+      container.innerHTML = '';
+      this.renderHotkeysSettings(container);
+    });
+    headerRow.appendChild(resetAllBtn);
+    container.appendChild(headerRow);
+
+    // Common Actions
     this.addSectionHeader(container, 'Common Actions');
-
-    const hotkeys = [
-      { action: 'Select All', shortcut: 'Ctrl+A' },
-      { action: 'Copy', shortcut: 'Ctrl+C' },
-      { action: 'Paste', shortcut: 'Ctrl+V' },
-      { action: 'Undo', shortcut: 'Ctrl+Z' },
-      { action: 'Redo', shortcut: 'Ctrl+Shift+Z' },
-      { action: 'Delete', shortcut: 'Delete' },
-      { action: 'Duplicate', shortcut: 'Ctrl+D' },
-      { action: 'Group', shortcut: 'Ctrl+G' },
-      { action: 'Ungroup', shortcut: 'Ctrl+Shift+G' },
-    ];
-
-    for (const hk of hotkeys) {
-      this.addHotkeyRow(container, hk.action, hk.shortcut);
+    const commonActions = hotkeyManager.getActionsByCategory('common');
+    for (const action of commonActions) {
+      this.addEditableHotkeyRow(container, action);
     }
 
+    // Tools
     this.addSectionHeader(container, 'Tools');
-
-    const toolHotkeys = [
-      { action: 'Select Tool', shortcut: 'V' },
-      { action: 'Rectangle Tool', shortcut: 'R' },
-      { action: 'Ellipse Tool', shortcut: 'O' },
-      { action: 'Line Tool', shortcut: 'L' },
-      { action: 'Text Tool', shortcut: 'T' },
-      { action: 'Hand Tool', shortcut: 'H' },
-      { action: 'Zoom Tool', shortcut: 'Z' },
-    ];
-
-    for (const hk of toolHotkeys) {
-      this.addHotkeyRow(container, hk.action, hk.shortcut);
+    const toolActions = hotkeyManager.getActionsByCategory('tools');
+    for (const action of toolActions) {
+      this.addEditableHotkeyRow(container, action);
     }
+
+    // View
+    this.addSectionHeader(container, 'View');
+    const viewActions = hotkeyManager.getActionsByCategory('view');
+    for (const action of viewActions) {
+      this.addEditableHotkeyRow(container, action);
+    }
+
+    // AI
+    this.addSectionHeader(container, 'AI');
+    const aiActions = hotkeyManager.getActionsByCategory('ai');
+    for (const action of aiActions) {
+      this.addEditableHotkeyRow(container, action);
+    }
+  }
+
+  private addEditableHotkeyRow(container: HTMLElement, action: HotkeyAction): void {
+    const hotkeyManager = getHotkeyManager();
+    const currentShortcut = hotkeyManager.getShortcut(action.id);
+    const isCustom = hotkeyManager.hasCustomShortcut(action.id);
+
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--designlibre-border-light, #252525);
+    `;
+
+    const actionEl = document.createElement('span');
+    actionEl.textContent = action.name;
+    actionEl.style.cssText = `
+      font-size: 13px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+    row.appendChild(actionEl);
+
+    const controlsWrapper = document.createElement('div');
+    controlsWrapper.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+    // Shortcut button (clickable to edit)
+    const shortcutBtn = document.createElement('button');
+    shortcutBtn.className = 'hotkey-shortcut-btn';
+    shortcutBtn.textContent = currentShortcut || 'Click to set';
+    shortcutBtn.style.cssText = `
+      padding: 6px 12px;
+      min-width: 80px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-secondary, #888)'};
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
+
+    shortcutBtn.addEventListener('mouseenter', () => {
+      shortcutBtn.style.borderColor = 'var(--designlibre-accent, #0d99ff)';
+    });
+    shortcutBtn.addEventListener('mouseleave', () => {
+      if (!shortcutBtn.classList.contains('recording')) {
+        shortcutBtn.style.borderColor = isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)';
+      }
+    });
+
+    shortcutBtn.addEventListener('click', () => {
+      this.startRecordingHotkey(shortcutBtn, action, container);
+    });
+
+    controlsWrapper.appendChild(shortcutBtn);
+
+    // Reset button (only show if custom)
+    if (isCustom) {
+      const resetBtn = document.createElement('button');
+      resetBtn.innerHTML = '↺';
+      resetBtn.title = `Reset to default (${action.defaultShortcut})`;
+      resetBtn.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: var(--designlibre-text-secondary, #888);
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 4px;
+      `;
+      resetBtn.addEventListener('click', () => {
+        hotkeyManager.resetShortcut(action.id);
+        container.innerHTML = '';
+        this.renderHotkeysSettings(container);
+      });
+      controlsWrapper.appendChild(resetBtn);
+    }
+
+    row.appendChild(controlsWrapper);
+    container.appendChild(row);
+  }
+
+  private startRecordingHotkey(button: HTMLElement, action: HotkeyAction, container: HTMLElement): void {
+    const hotkeyManager = getHotkeyManager();
+
+    button.classList.add('recording');
+    button.textContent = 'Press keys...';
+    button.style.borderColor = 'var(--designlibre-warning, #ff9800)';
+    button.style.color = 'var(--designlibre-warning, #ff9800)';
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Escape cancels
+      if (event.key === 'Escape') {
+        cleanup();
+        button.textContent = hotkeyManager.getShortcut(action.id) || 'Click to set';
+        button.style.borderColor = hotkeyManager.hasCustomShortcut(action.id)
+          ? 'var(--designlibre-accent, #0d99ff)'
+          : 'var(--designlibre-border, #3d3d3d)';
+        button.style.color = hotkeyManager.hasCustomShortcut(action.id)
+          ? 'var(--designlibre-accent, #0d99ff)'
+          : 'var(--designlibre-text-secondary, #888)';
+        return;
+      }
+
+      // Don't capture modifier-only presses
+      if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) {
+        return;
+      }
+
+      const shortcut = hotkeyManager.eventToShortcut(event);
+      if (!shortcut) return;
+
+      // Check for conflicts
+      const conflict = hotkeyManager.findConflict(shortcut, action.id);
+      if (conflict) {
+        const conflictAction = hotkeyManager.getAllActions().find((a) => a.id === conflict);
+        if (conflictAction) {
+          // Show brief conflict warning
+          button.textContent = `Conflicts with ${conflictAction.name}!`;
+          button.style.color = 'var(--designlibre-error, #f44336)';
+          setTimeout(() => {
+            cleanup();
+            hotkeyManager.setShortcut(action.id, shortcut);
+            container.innerHTML = '';
+            this.renderHotkeysSettings(container);
+          }, 800);
+          return;
+        }
+      }
+
+      cleanup();
+      hotkeyManager.setShortcut(action.id, shortcut);
+      container.innerHTML = '';
+      this.renderHotkeysSettings(container);
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      if (!button.contains(event.target as Node)) {
+        cleanup();
+        button.textContent = hotkeyManager.getShortcut(action.id) || 'Click to set';
+        button.style.borderColor = hotkeyManager.hasCustomShortcut(action.id)
+          ? 'var(--designlibre-accent, #0d99ff)'
+          : 'var(--designlibre-border, #3d3d3d)';
+        button.style.color = hotkeyManager.hasCustomShortcut(action.id)
+          ? 'var(--designlibre-accent, #0d99ff)'
+          : 'var(--designlibre-text-secondary, #888)';
+      }
+    };
+
+    const cleanup = () => {
+      button.classList.remove('recording');
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('click', handleClick, true);
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('click', handleClick, true);
   }
 
   private renderAISettings(container: HTMLElement): void {
@@ -1246,9 +1445,9 @@ export class SettingsModal {
     this.addSectionHeader(container, 'Core Plugins');
 
     const corePlugins = [
-      { name: 'Code Export', description: 'Export designs to React, SwiftUI, Compose', enabled: true },
-      { name: 'Version History', description: 'Track changes with Git integration', enabled: true },
-      { name: 'AI Assistant', description: 'AI-powered design suggestions', enabled: false },
+      { id: 'code-export', name: 'Code Export', description: 'Export designs to React, SwiftUI, Compose', enabled: true },
+      { id: 'version-history', name: 'Version History', description: 'Track changes with Git integration', enabled: true },
+      { id: 'ai-assistant', name: 'AI Assistant', description: 'AI-powered design suggestions', enabled: false },
     ];
 
     for (const plugin of corePlugins) {
@@ -1256,8 +1455,13 @@ export class SettingsModal {
         title: plugin.name,
         description: plugin.description,
         type: 'toggle',
-        value: this.getSetting(`plugin-${plugin.name.toLowerCase().replace(/\s+/g, '-')}`, plugin.enabled),
-        onChange: (v) => this.setSetting(`plugin-${plugin.name.toLowerCase().replace(/\s+/g, '-')}`, v),
+        value: this.getSetting(`plugin-${plugin.id}`, plugin.enabled),
+        onChange: (v) => {
+          this.setSetting(`plugin-${plugin.id}`, v);
+          window.dispatchEvent(new CustomEvent('designlibre-plugin-toggle', {
+            detail: { pluginId: plugin.id, enabled: v }
+          }));
+        },
       });
     }
 

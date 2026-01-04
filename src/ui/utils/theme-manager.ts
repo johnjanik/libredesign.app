@@ -116,12 +116,32 @@ export function setThemeMode(mode: ThemeMode): void {
 }
 
 /**
- * Initialize the theme system
+ * Initialize the theme system and other appearance settings
  * Call this on app startup
  */
 export function initializeTheme(): void {
   const mode = getSavedThemeMode();
   setThemeMode(mode);
+
+  // Initialize text scale
+  initializeTextScale();
+}
+
+/**
+ * Initialize text scale from saved setting
+ */
+function initializeTextScale(): void {
+  try {
+    const saved = localStorage.getItem('designlibre-text-scale');
+    if (saved !== null) {
+      const scale = parseFloat(saved);
+      if (!isNaN(scale) && scale >= 0.5 && scale <= 2.5) {
+        document.documentElement.style.setProperty('--designlibre-text-scale', String(scale));
+      }
+    }
+  } catch {
+    // localStorage not available
+  }
 }
 
 /**

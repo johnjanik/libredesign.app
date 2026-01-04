@@ -23,6 +23,31 @@ import { createAIController, getConfigManager } from '@ai/index';
 import type { AIController } from '@ai/index';
 // Theme system
 import { initializeTheme } from './ui/utils/theme-manager';
+// App settings - re-exported below for external use
+import { getDefaultExportFormat } from '@core/settings/app-settings';
+export type { AppSettings } from '@core/settings/app-settings';
+export { getSetting, setSetting, getDefaultExportFormat } from '@core/settings/app-settings';
+// Plugin system
+import { getPluginManager, registerBuiltInPlugins } from '@core/plugins/plugin-manager';
+export { getPluginManager, type Plugin } from '@core/plugins/plugin-manager';
+// Keyboard shortcuts help
+import { setupShortcutsHelpHotkey } from '@ui/components/shortcuts-help';
+// Hotkey system
+export { getHotkeyManager, type HotkeyAction, type HotkeyManager } from '@core/hotkeys/hotkey-manager';
+// History/Undo system
+export {
+  getHistoryManager,
+  createHistoryManager,
+  createPropertyChangeCommand,
+  createNodeCreationCommand,
+  createNodeDeletionCommand,
+  createMoveCommand,
+  createResizeCommand,
+  type Command,
+  type HistoryManager
+} from '@core/history/history-manager';
+// Silence unused import warning - re-exported items
+void getDefaultExportFormat;
 import './ui/styles/main.css';
 
 // Re-export for external use
@@ -343,6 +368,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize theme system first to prevent flash of wrong theme
   initializeTheme();
 
+  // Initialize plugin system
+  registerBuiltInPlugins();
+  const pluginManager = getPluginManager();
+  pluginManager.initializeAll().catch(console.error);
+
+  // Initialize keyboard shortcuts help (? key)
+  setupShortcutsHelpHotkey();
+
+  // Listen for plugin toggle events
+  window.addEventListener('designlibre-plugin-toggle', ((e: CustomEvent) => {
+    const { pluginId, enabled } = e.detail as { pluginId: string; enabled: boolean };
+    if (enabled) {
+      pluginManager.enable(pluginId).catch(console.error);
+    } else {
+      pluginManager.disable(pluginId).catch(console.error);
+    }
+  }) as EventListener);
+
   const appElement = document.getElementById('app');
   if (appElement) {
     // Check URL param for UI mode: ?ui=new or ?ui=classic
@@ -374,5 +417,7 @@ export { createProjectSelector } from '@ui/components/project-selector';
 export { createLayerTree } from '@ui/components/layer-tree';
 export { createWorkspaceManager } from '@runtime/workspace-manager';
 export { Modal, openModal, confirm, alert } from '@ui/components/modal';
+export { showExportDialog, type ExportFormat, type ExportResult } from '@ui/components/export-dialog';
 export { openSettingsModal, closeSettingsModal, getSettingsModal } from '@ui/components/settings-modal';
+export { showShortcutsHelp, setupShortcutsHelpHotkey } from '@ui/components/shortcuts-help';
 export { initializeTheme, setThemeMode, getThemeManager, type ThemeMode, type ResolvedTheme } from './ui/utils/theme-manager';
