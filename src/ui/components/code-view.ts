@@ -14,6 +14,13 @@ import { createAndroidCodeGenerator } from '@persistence/export/android-code-gen
 import { copyToClipboard, showCopyFeedback } from '@devtools/code-export/clipboard';
 import { createSwiftUIImporter } from '@persistence/import/swiftui/swiftui-importer';
 import type { SwiftUIImportResult } from '@persistence/import/swiftui/types';
+import { createReactImporter } from '@persistence/import/react/react-importer';
+import type { ReactImportResult } from '@persistence/import/react/types';
+import { createComposeImporter } from '@persistence/import/compose/compose-importer';
+import type { ComposeImportResult } from '@persistence/import/compose/types';
+
+/** Import result type union */
+type ImportResult = SwiftUIImportResult | ReactImportResult | ComposeImportResult;
 
 /** Supported code languages */
 export type CodeLanguage = 'typescript' | 'swift' | 'kotlin';
@@ -178,8 +185,8 @@ export class CodeView {
     // Import button click
     this.importButton.addEventListener('click', async () => {
       const code = this.textareaElement.value.trim();
-      if (code && this.looksLikeSwiftUI(code)) {
-        await this.importSwiftUICode(code);
+      if (code && this.looksLikeCode(code, this.currentLanguage)) {
+        await this.importCode(code);
       }
     });
 
@@ -456,18 +463,27 @@ export class CodeView {
 
   /**
    * Update editable state based on current language
+   * All languages now support paste-to-render
    */
   private updateEditableState(): void {
-    const isEditable = this.currentLanguage === 'swift';
+    const isEditable = true; // All languages are now editable
     this.element.classList.toggle('editable', isEditable);
     this.importButton.style.display = isEditable ? 'flex' : 'none';
+
+    // Update placeholder text based on language
+    const placeholders: Record<CodeLanguage, string> = {
+      typescript: 'Paste React/JSX code here to render as design layers...',
+      swift: 'Paste SwiftUI code here to render as design layers...',
+      kotlin: 'Paste Kotlin/Compose code here to render as design layers...',
+    };
+    this.textareaElement.placeholder = placeholders[this.currentLanguage];
 
     if (isEditable) {
       // Show textarea, hide code display
       this.codeElement.style.display = 'none';
       this.textareaElement.style.display = 'block';
       // Populate textarea with current generated code
-      const cached = this.codeCache.get('swift');
+      const cached = this.codeCache.get(this.currentLanguage);
       if (cached) {
         this.textareaElement.value = cached;
       }
@@ -482,18 +498,34 @@ export class CodeView {
    * Handle paste event in the textarea
    */
   private async handlePaste(e: ClipboardEvent): Promise<void> {
-    if (this.currentLanguage !== 'swift' || this.isImporting) return;
+    if (this.isImporting) return;
 
     const text = e.clipboardData?.getData('text');
     if (!text) return;
 
-    // Check if it looks like SwiftUI code
-    if (this.looksLikeSwiftUI(text)) {
+    // Check if it looks like code for the current language
+    if (this.looksLikeCode(text, this.currentLanguage)) {
       e.preventDefault();
       this.textareaElement.value = text;
-      await this.importSwiftUICode(text);
+      await this.importCode(text);
     }
     // Otherwise, let the default paste behavior happen
+  }
+
+  /**
+   * Check if code looks like the specified language
+   */
+  private looksLikeCode(code: string, language: CodeLanguage): boolean {
+    switch (language) {
+      case 'swift':
+        return this.looksLikeSwiftUI(code);
+      case 'typescript':
+        return this.looksLikeReact(code);
+      case 'kotlin':
+        return this.looksLikeCompose(code);
+      default:
+        return false;
+    }
   }
 
   /**
@@ -509,23 +541,73 @@ export class CodeView {
   }
 
   /**
-   * Import SwiftUI code as design layers
+   * Check if code looks like React/JSX
    */
-  private async importSwiftUICode(code: string): Promise<void> {
+  private looksLikeReact(code: string): boolean {
+    return (
+      code.includes('import React') ||
+      code.includes('from \'react\'') ||
+      code.includes('from "react"') ||
+      /<[A-Za-z][A-Za-z0-9]*[^>]*>/.test(code) || // JSX tags
+      /className\s*=/.test(code) ||
+      /style\s*=\s*\{\{/.test(code) ||
+      /export\s+(default\s+)?function\s+\w+/.test(code)
+    );
+  }
+
+  /**
+   * Check if code looks like Kotlin/Compose
+   */
+  private looksLikeCompose(code: string): boolean {
+    return (
+      code.includes('@Composable') ||
+      code.includes('import androidx.compose') ||
+      /\b(Column|Row|Box|Text|Button|Card|Surface|Scaffold|LazyColumn|LazyRow)\s*\(/.test(code) ||
+      /Modifier\s*\./.test(code) ||
+      /\.dp\b/.test(code) ||
+      /\.sp\b/.test(code)
+    );
+  }
+
+  /**
+   * Import code as design layers based on current language
+   */
+  private async importCode(code: string): Promise<void> {
     if (this.isImporting) return;
     this.isImporting = true;
 
     try {
-      const importer = createSwiftUIImporter(this.sceneGraph);
-
-      // Get viewport center for placement
       const { x, y } = this.getViewportCenter();
+      let result: ImportResult;
 
-      const result = await importer.import(code, 'pasted-code.swift', {
-        x,
-        y,
-        preserveSourceMetadata: true,
-      });
+      switch (this.currentLanguage) {
+        case 'swift': {
+          const importer = createSwiftUIImporter(this.sceneGraph);
+          result = await importer.import(code, 'pasted-code.swift', {
+            x, y,
+            preserveSourceMetadata: true,
+          });
+          break;
+        }
+        case 'typescript': {
+          const importer = createReactImporter(this.sceneGraph);
+          result = await importer.import(code, 'pasted-code.tsx', {
+            x, y,
+            preserveSourceMetadata: true,
+          });
+          break;
+        }
+        case 'kotlin': {
+          const importer = createComposeImporter(this.sceneGraph);
+          result = await importer.import(code, 'pasted-code.kt', {
+            x, y,
+            preserveSourceMetadata: true,
+          });
+          break;
+        }
+        default:
+          throw new Error(`Unsupported language: ${this.currentLanguage}`);
+      }
 
       // Select the newly created root node
       this.runtime.emit('selection:set', { nodeIds: [result.rootId] });
@@ -560,14 +642,34 @@ export class CodeView {
   /**
    * Show import success feedback
    */
-  private showImportFeedback(result: SwiftUIImportResult): void {
-    const viewCount = result.viewsFound.length;
-    const msg = `Imported ${result.nodeCount} layer${result.nodeCount !== 1 ? 's' : ''} from ${viewCount} SwiftUI view${viewCount !== 1 ? 's' : ''}`;
+  private showImportFeedback(result: ImportResult): void {
+    let componentCount: number;
+    let componentType: string;
+
+    // Handle different result types
+    if ('viewsFound' in result) {
+      // SwiftUI result
+      componentCount = result.viewsFound.length;
+      componentType = 'SwiftUI view';
+    } else if ('componentsFound' in result) {
+      // React result
+      componentCount = result.componentsFound.length;
+      componentType = 'React component';
+    } else if ('composablesFound' in result) {
+      // Compose result
+      componentCount = result.composablesFound.length;
+      componentType = 'Composable';
+    } else {
+      componentCount = 0;
+      componentType = 'element';
+    }
+
+    const msg = `Imported ${result.nodeCount} layer${result.nodeCount !== 1 ? 's' : ''} from ${componentCount} ${componentType}${componentCount !== 1 ? 's' : ''}`;
 
     this.showToast(msg, result.warnings.length > 0 ? 'warning' : 'success');
 
     if (result.warnings.length > 0) {
-      console.warn('SwiftUI import warnings:', result.warnings);
+      console.warn('Import warnings:', result.warnings);
     }
   }
 

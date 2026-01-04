@@ -49,32 +49,32 @@ export type {
 export {
   ComposeImporter,
   createComposeImporter,
-  analyzeKotlinFile,
-  KotlinComposeParser,
-  createKotlinComposeParser,
-  ComposeMapper,
-  createComposeMapper,
-  DEFAULT_LIGHT_COLOR_SCHEME,
+  ComposeParser,
+  createComposeParser,
 } from './compose';
 
 export type {
   ComposeImportOptions,
   ComposeImportResult,
-  AndroidProjectImportOptions,
-  AndroidProjectImportResult,
   ParsedComposable,
   ParsedComposeModifier,
-  ParsedModifierArgument as ComposeParsedModifierArgument,
-  ParsedParameterValue,
-  LazyListContext as ComposeLazyListContext,
-  ParsedComposeColor,
-  ParsedDimension,
-  ComposeColorType,
-  ComposeDimensionUnit,
-  ComposableToNodeMapping,
-  AndroidProject,
-  KotlinFileInfo,
-  MaterialColorScheme,
-  ComposeComposableType,
-  ComposeModifierType,
+  ParsedParamValue,
+  AndroidProjectImportOptions,
+  AndroidProjectImportResult,
 } from './compose';
+
+// React/JSX importer
+export {
+  ReactImporter,
+  createReactImporter,
+  ReactParser,
+  createReactParser,
+} from './react';
+
+export type {
+  ReactImportOptions,
+  ReactImportResult,
+  ParsedJSXElement,
+  ParsedPropValue,
+  ParsedStyle,
+} from './react';

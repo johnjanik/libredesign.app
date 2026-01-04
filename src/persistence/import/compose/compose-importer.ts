@@ -1,41 +1,124 @@
 /**
- * Compose Importer
+ * Kotlin/Compose Importer
  *
- * Import Kotlin Compose code files and Android Studio projects into DesignLibre.
- * Parses Jetpack Compose source code and creates corresponding scene graph nodes.
+ * Import Kotlin/Compose code into DesignLibre scene graph.
  */
 
-import type { NodeId } from '@core/types/common';
+import type { NodeId, NodeType } from '@core/types/common';
 import type { RGBA } from '@core/types/color';
 import type { SceneGraph, CreateNodeOptions } from '@scene/graph/scene-graph';
-import { KotlinComposeParser } from './kotlin-parser';
-import { ComposeMapper } from './composable-mapper';
+import { ComposeParser } from './compose-parser';
 import type {
+  ParsedComposable,
+  ParsedComposeModifier,
+  ParsedParamValue,
   ComposeImportOptions,
   ComposeImportResult,
   AndroidProjectImportOptions,
   AndroidProjectImportResult,
-  AndroidProject,
-  KotlinFileInfo,
 } from './types';
+
+// ============================================================================
+// Component to Node Mappings
+// ============================================================================
+
+interface ComponentMapping {
+  nodeType: NodeType;
+  layoutMode?: 'HORIZONTAL' | 'VERTICAL';
+  defaultWidth?: number;
+  defaultHeight?: number;
+  defaultCornerRadius?: number;
+  defaultFillColor?: RGBA;
+  defaultStrokeColor?: RGBA;
+  defaultStrokeWeight?: number;
+}
+
+const COMPONENT_MAPPINGS: Record<string, ComponentMapping> = {
+  // Layout
+  Column: { nodeType: 'FRAME', layoutMode: 'VERTICAL' },
+  Row: { nodeType: 'FRAME', layoutMode: 'HORIZONTAL' },
+  Box: { nodeType: 'FRAME' },
+  LazyColumn: { nodeType: 'FRAME', layoutMode: 'VERTICAL' },
+  LazyRow: { nodeType: 'FRAME', layoutMode: 'HORIZONTAL' },
+  Surface: { nodeType: 'FRAME' },
+  Card: {
+    nodeType: 'FRAME',
+    defaultCornerRadius: 8,
+    defaultFillColor: { r: 1, g: 1, b: 1, a: 1 },
+  },
+  Scaffold: { nodeType: 'FRAME' },
+
+  // Text
+  Text: { nodeType: 'TEXT' },
+
+  // Interactive
+  Button: {
+    nodeType: 'FRAME',
+    defaultFillColor: { r: 0.384, g: 0.51, b: 0.965, a: 1 },
+    defaultCornerRadius: 4,
+  },
+  IconButton: {
+    nodeType: 'FRAME',
+    defaultWidth: 48,
+    defaultHeight: 48,
+    defaultCornerRadius: 24,
+  },
+  TextButton: { nodeType: 'FRAME' },
+  OutlinedButton: {
+    nodeType: 'FRAME',
+    defaultStrokeColor: { r: 0.384, g: 0.51, b: 0.965, a: 1 },
+    defaultStrokeWeight: 1,
+    defaultCornerRadius: 4,
+  },
+  TextField: {
+    nodeType: 'FRAME',
+    defaultWidth: 280,
+    defaultHeight: 56,
+    defaultFillColor: { r: 0.96, g: 0.96, b: 0.96, a: 1 },
+    defaultCornerRadius: 4,
+  },
+  OutlinedTextField: {
+    nodeType: 'FRAME',
+    defaultWidth: 280,
+    defaultHeight: 56,
+    defaultStrokeColor: { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+    defaultStrokeWeight: 1,
+    defaultCornerRadius: 4,
+  },
+
+  // Media
+  Image: { nodeType: 'FRAME' },
+  Icon: { nodeType: 'FRAME', defaultWidth: 24, defaultHeight: 24 },
+
+  // Spacing
+  Spacer: { nodeType: 'FRAME' },
+  Divider: {
+    nodeType: 'FRAME',
+    defaultHeight: 1,
+    defaultFillColor: { r: 0.8, g: 0.8, b: 0.8, a: 1 },
+  },
+
+  // Default
+  _default: { nodeType: 'FRAME' },
+};
 
 // ============================================================================
 // Compose Importer Class
 // ============================================================================
 
 /**
- * Imports Kotlin Compose code into DesignLibre scene graph
+ * Imports Kotlin/Compose code into DesignLibre scene graph
  */
 export class ComposeImporter {
   private sceneGraph: SceneGraph;
-  private parser: KotlinComposeParser;
-  private mapper: ComposeMapper;
+  private parser: ComposeParser;
   private warnings: string[] = [];
+  private nodeCount: number = 0;
+  private composablesFound: string[] = [];
 
   constructor(sceneGraph: SceneGraph) {
     this.sceneGraph = sceneGraph;
-    this.parser = new KotlinComposeParser();
-    this.mapper = new ComposeMapper(sceneGraph);
+    this.parser = new ComposeParser();
   }
 
   /**
@@ -48,23 +131,15 @@ export class ComposeImporter {
   ): Promise<ComposeImportResult> {
     const startTime = performance.now();
     this.warnings = [];
-    this.mapper.reset();
+    this.nodeCount = 0;
+    this.composablesFound = [];
 
-    // Set theme colors if specified
-    if (options.themeVariant) {
-      this.parser.setThemeColors(options.themeVariant);
-    }
-
-    // Get or create parent
     const parentId = options.parentId ?? this.getDefaultParent();
+    const composables = this.parser.parse(code, filePath);
 
-    // Parse the Compose code
-    const parsedComposables = this.parser.parse(code, filePath);
-
-    if (parsedComposables.length === 0) {
-      this.warnings.push('No Compose composables found in source file');
-      // Create empty container
-      const rootId = this.sceneGraph.createNode('FRAME', parentId, -1, {
+    if (composables.length === 0) {
+      this.warnings.push('No Composable elements found in source file');
+      const rootId = this.sceneGraph.createNode('FRAME', parentId as NodeId, -1, {
         name: this.getFileName(filePath),
         x: options.x ?? 0,
         y: options.y ?? 0,
@@ -77,336 +152,426 @@ export class ComposeImporter {
         nodeCount: 1,
         sourceFile: filePath,
         composablesFound: [],
-        unresolvedComposables: [],
-        codeControlledCount: 0,
         warnings: this.warnings,
         processingTime: performance.now() - startTime,
       };
     }
 
-    // Create root container for the file
-    const rootId = this.sceneGraph.createNode('FRAME', parentId, -1, {
+    // Create root container
+    const rootId = this.sceneGraph.createNode('FRAME', parentId as NodeId, -1, {
       name: this.getFileName(filePath),
       x: options.x ?? 0,
       y: options.y ?? 0,
       width: 360,
       height: 800,
-      fills: [{ type: 'SOLID', visible: true, color: { r: 1, g: 0.98, b: 1, a: 1 }, opacity: 1 }],
+      fills: [],
     } as CreateNodeOptions);
+    this.nodeCount++;
 
-    // Map each parsed composable to nodes
-    const composablesFound: string[] = [];
-    const unresolvedComposables: string[] = [];
-
-    for (const composable of parsedComposables) {
-      composablesFound.push(composable.name);
-
-      this.mapper.mapComposable(composable, rootId, {
-        x: 0,
-        y: 0,
-        scale: options.scale ?? 1,
-        preserveMetadata: options.preserveSourceMetadata ?? true,
-      });
-    }
-
-    const stats = this.mapper.getStats();
-    this.warnings.push(...stats.warnings);
-
-    // Collect unresolved (custom) composables from warnings
-    for (const warning of stats.warnings) {
-      const match = warning.match(/Unknown composable: (\w+)/);
-      if (match) {
-        unresolvedComposables.push(match[1]!);
-      }
+    // Map each Composable to nodes
+    for (const composable of composables) {
+      this.mapComposable(composable, rootId, options.scale ?? 1);
     }
 
     return {
       rootId,
-      nodeCount: stats.nodeCount + 1, // +1 for root
+      nodeCount: this.nodeCount,
       sourceFile: filePath,
-      composablesFound,
-      unresolvedComposables,
-      codeControlledCount: stats.codeControlledCount,
+      composablesFound: [...new Set(this.composablesFound)],
       warnings: this.warnings,
       processingTime: performance.now() - startTime,
     };
   }
 
   /**
-   * Import from a File object
-   */
-  async importFile(
-    file: File,
-    options: ComposeImportOptions = {}
-  ): Promise<ComposeImportResult> {
-    const code = await file.text();
-    return this.import(code, file.name, options);
-  }
-
-  /**
-   * Import from a FileSystemFileHandle (File System Access API)
-   */
-  async importFromHandle(
-    handle: FileSystemFileHandle,
-    options: ComposeImportOptions = {}
-  ): Promise<ComposeImportResult> {
-    const file = await handle.getFile();
-    const code = await file.text();
-    const path = (handle as { fullPath?: string }).fullPath ?? handle.name;
-    return this.import(code, path, options);
-  }
-
-  /**
-   * Import an entire Android project
+   * Import an Android project directory
    */
   async importAndroidProject(
     directoryHandle: FileSystemDirectoryHandle,
     options: AndroidProjectImportOptions = {}
   ): Promise<AndroidProjectImportResult> {
-    this.warnings = [];
+    const startTime = performance.now();
+    const warnings: string[] = [];
+    const files: ComposeImportResult[] = [];
+    let totalNodeCount = 0;
 
-    // Scan for Kotlin files
-    const project = await this.scanAndroidProject(directoryHandle);
-
-    if (project.composeFiles.length === 0) {
-      throw new Error('No Compose files found in project');
-    }
-
-    // Get or create parent
     const parentId = options.parentId ?? this.getDefaultParent();
 
-    // Create project root node
-    const rootId = this.sceneGraph.createNode('FRAME', parentId, -1, {
-      name: project.name,
+    // Create root container for the project
+    const rootId = this.sceneGraph.createNode('FRAME', parentId as NodeId, -1, {
+      name: directoryHandle.name,
       x: options.x ?? 0,
       y: options.y ?? 0,
-      width: 1200,
-      height: 900,
+      width: 360,
+      height: 800,
+      fills: [],
     } as CreateNodeOptions);
+    totalNodeCount++;
 
-    // Import each Compose file
-    const fileResults: ComposeImportResult[] = [];
-    const themeColors = new Map<string, RGBA>();
-    let offsetY = 0;
+    // Find and import all .kt files
+    const ktFiles = await this.findKotlinFiles(directoryHandle, options);
 
-    for (const filePath of project.composeFiles) {
-      // Check file patterns
-      if (options.filePatterns && options.filePatterns.length > 0) {
-        const matches = options.filePatterns.some(pattern =>
-          this.matchesPattern(filePath, pattern as string)
-        );
-        if (!matches) continue;
-      }
-
-      if (options.excludePatterns && options.excludePatterns.length > 0) {
-        const excluded = options.excludePatterns.some(pattern =>
-          this.matchesPattern(filePath, pattern as string)
-        );
-        if (excluded) continue;
-      }
-
-      // Read and import the file
+    let yOffset = 0;
+    for (const { path, content } of ktFiles) {
       try {
-        const code = await this.readFileFromProject(directoryHandle, filePath);
-
-        // Check if it's a Compose file
-        if (!this.isComposeFile(code)) {
-          continue;
-        }
-
-        const result = await this.import(code, filePath, {
-          ...options,
-          parentId: rootId,
-          y: offsetY,
-        });
-
-        fileResults.push(result);
-        offsetY += 900;
+        const importOptions: ComposeImportOptions = {
+          parentId: rootId as unknown as string,
+          x: 0,
+          y: yOffset,
+        };
+        if (options.scale !== undefined) importOptions.scale = options.scale;
+        if (options.preserveSourceMetadata !== undefined) importOptions.preserveSourceMetadata = options.preserveSourceMetadata;
+        const result = await this.import(content, path, importOptions);
+        files.push(result);
+        totalNodeCount += result.nodeCount;
+        yOffset += 850; // Space between screens
       } catch (error) {
-        this.warnings.push(`Failed to import ${filePath}: ${error}`);
+        warnings.push(`Failed to import ${path}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
-    // Parse theme colors if requested
-    if (options.parseThemeColors !== false) {
-      for (const themePath of project.themeFiles) {
-        try {
-          const themeCode = await this.readFileFromProject(directoryHandle, themePath);
-          const colors = this.parseThemeColors(themeCode);
-          for (const [name, color] of colors) {
-            themeColors.set(name, color);
-          }
-        } catch {
-          this.warnings.push(`Failed to parse theme: ${themePath}`);
-        }
-      }
+    if (ktFiles.length === 0) {
+      warnings.push('No Kotlin files found in project');
     }
 
     return {
-      rootId,
-      files: fileResults,
-      themeColors,
-      customComposables: new Map(),
-      totalNodeCount: fileResults.reduce((sum, r) => sum + r.nodeCount, 0) + 1,
-      warnings: this.warnings,
+      rootId: rootId as unknown as string,
+      files,
+      totalNodeCount,
+      processingTime: performance.now() - startTime,
+      warnings,
+      themeColors: new Map(), // Theme colors not yet parsed from Android projects
     };
   }
 
   /**
-   * Scan Android project structure
+   * Find all Kotlin files in directory
    */
-  private async scanAndroidProject(
-    directoryHandle: FileSystemDirectoryHandle
-  ): Promise<AndroidProject> {
-    const composeFiles: string[] = [];
-    const themeFiles: string[] = [];
-    let projectName = directoryHandle.name;
+  private async findKotlinFiles(
+    directoryHandle: FileSystemDirectoryHandle,
+    options: AndroidProjectImportOptions,
+    basePath: string = ''
+  ): Promise<Array<{ path: string; content: string }>> {
+    const files: Array<{ path: string; content: string }> = [];
+    const filePatterns = options.filePatterns ?? ['**/*.kt'];
+    const excludePatterns = options.excludePatterns ?? ['**/build/**', '**/test/**'];
 
-    // Look for build.gradle to get project name
-    try {
-      const buildGradle = await directoryHandle.getFileHandle('build.gradle.kts');
-      const file = await buildGradle.getFile();
-      const content = await file.text();
-      const nameMatch = content.match(/rootProject\.name\s*=\s*"([^"]+)"/);
-      if (nameMatch) {
-        projectName = nameMatch[1]!;
-      }
-    } catch {
-      // Try settings.gradle
-      try {
-        const settingsGradle = await directoryHandle.getFileHandle('settings.gradle.kts');
-        const file = await settingsGradle.getFile();
-        const content = await file.text();
-        const nameMatch = content.match(/rootProject\.name\s*=\s*"([^"]+)"/);
-        if (nameMatch) {
-          projectName = nameMatch[1]!;
-        }
-      } catch {
-        // Use directory name
-      }
+    // Use async iterator directly on directory handle
+    const entries: FileSystemHandle[] = [];
+    // @ts-expect-error - File System API iteration
+    for await (const [, entry] of directoryHandle.entries()) {
+      entries.push(entry as FileSystemHandle);
     }
 
-    // Recursively find Kotlin files
-    await this.scanDirectory(directoryHandle, '', composeFiles, themeFiles);
+    for (const entry of entries) {
+      const currentPath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
-    return {
-      rootPath: '',
-      name: projectName,
-      composeFiles,
-      themeFiles,
-    };
-  }
+      // Check exclude patterns
+      if (excludePatterns.some(pattern => this.matchesPattern(currentPath, pattern))) {
+        continue;
+      }
 
-  /**
-   * Recursively scan directory for Kotlin files
-   */
-  private async scanDirectory(
-    handle: FileSystemDirectoryHandle,
-    path: string,
-    composeFiles: string[],
-    themeFiles: string[]
-  ): Promise<void> {
-    // Use type assertion for FileSystemDirectoryHandle.values() which isn't in default TS types
-    const entries = (handle as unknown as { values(): AsyncIterable<FileSystemHandle> }).values();
-    for await (const entry of entries) {
-      const entryPath = path ? `${path}/${entry.name}` : entry.name;
-
-      if (entry.kind === 'file' && entry.name.endsWith('.kt')) {
-        // Skip test files
-        if (!entry.name.includes('Test') && !entryPath.includes('test/')) {
-          composeFiles.push(entryPath);
-
-          // Check for theme files
-          if (entry.name.includes('Theme') || entry.name.includes('Color')) {
-            themeFiles.push(entryPath);
-          }
-        }
-      } else if (entry.kind === 'directory') {
-        if (
-          !entry.name.startsWith('.') &&
-          !entry.name.includes('test') &&
-          !entry.name.includes('build') &&
-          entry.name !== 'node_modules'
-        ) {
-          const subHandle = await handle.getDirectoryHandle(entry.name);
-          await this.scanDirectory(subHandle, entryPath, composeFiles, themeFiles);
+      if (entry.kind === 'directory') {
+        const subFiles = await this.findKotlinFiles(
+          await directoryHandle.getDirectoryHandle(entry.name),
+          options,
+          currentPath
+        );
+        files.push(...subFiles);
+      } else if (entry.kind === 'file' && entry.name.endsWith('.kt')) {
+        // Check file patterns
+        if (filePatterns.some(pattern => this.matchesPattern(currentPath, pattern))) {
+          const fileHandle = await directoryHandle.getFileHandle(entry.name);
+          const file = await fileHandle.getFile();
+          const content = await file.text();
+          files.push({ path: currentPath, content });
         }
       }
     }
+
+    return files;
   }
 
   /**
-   * Read a file from the project
-   */
-  private async readFileFromProject(
-    rootHandle: FileSystemDirectoryHandle,
-    filePath: string
-  ): Promise<string> {
-    const parts = filePath.split('/');
-    let currentHandle: FileSystemDirectoryHandle = rootHandle;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-      currentHandle = await currentHandle.getDirectoryHandle(parts[i]!);
-    }
-
-    const fileName = parts[parts.length - 1]!;
-    const fileHandle = await currentHandle.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    return file.text();
-  }
-
-  /**
-   * Check if code is a Compose file
-   */
-  private isComposeFile(code: string): boolean {
-    return (
-      code.includes('import androidx.compose') ||
-      code.includes('@Composable') ||
-      code.includes('Modifier.')
-    );
-  }
-
-  /**
-   * Parse theme colors from Kotlin code
-   */
-  private parseThemeColors(code: string): Map<string, RGBA> {
-    const colors = new Map<string, RGBA>();
-
-    // Match val colorName = Color(0xFFRRGGBB)
-    const colorMatches = code.matchAll(/val\s+(\w+)\s*=\s*Color\s*\(\s*0x([0-9A-Fa-f]{6,8})\s*\)/g);
-
-    for (const match of colorMatches) {
-      const name = match[1]!;
-      const hex = match[2]!;
-
-      let r: number, g: number, b: number, a: number;
-      if (hex.length === 8) {
-        a = parseInt(hex.slice(0, 2), 16) / 255;
-        r = parseInt(hex.slice(2, 4), 16) / 255;
-        g = parseInt(hex.slice(4, 6), 16) / 255;
-        b = parseInt(hex.slice(6, 8), 16) / 255;
-      } else {
-        a = 1;
-        r = parseInt(hex.slice(0, 2), 16) / 255;
-        g = parseInt(hex.slice(2, 4), 16) / 255;
-        b = parseInt(hex.slice(4, 6), 16) / 255;
-      }
-
-      colors.set(name, { r, g, b, a });
-    }
-
-    return colors;
-  }
-
-  /**
-   * Check if a path matches a glob pattern
+   * Simple pattern matching
    */
   private matchesPattern(path: string, pattern: string): boolean {
-    const regex = pattern
-      .replace(/\./g, '\\.')
+    // Convert glob pattern to regex
+    const regexPattern = pattern
       .replace(/\*\*/g, '.*')
-      .replace(/\*/g, '[^/]*');
-    return new RegExp(regex).test(path);
+      .replace(/\*/g, '[^/]*')
+      .replace(/\?/g, '.');
+    return new RegExp(`^${regexPattern}$`).test(path);
+  }
+
+  /**
+   * Map a Composable to scene graph nodes
+   */
+  private mapComposable(composable: ParsedComposable, parentId: NodeId, scale: number): NodeId | null {
+    const mapping = COMPONENT_MAPPINGS[composable.name] ?? COMPONENT_MAPPINGS['_default']!;
+    this.composablesFound.push(composable.name);
+
+    // Build node options
+    const nodeOptions = this.buildNodeOptions(composable, mapping, scale);
+
+    // Create the node
+    const nodeId = this.sceneGraph.createNode(mapping.nodeType, parentId, -1, nodeOptions);
+    this.nodeCount++;
+
+    // Handle text content for Text nodes
+    if (mapping.nodeType === 'TEXT') {
+      const textParam = composable.parameters.get('_arg0') ?? composable.parameters.get('text');
+      const text = textParam?.type === 'string' ? textParam.value as string : composable.textContent;
+      if (text) {
+        // Set text through options during creation - already done above via nodeOptions
+      }
+    }
+
+    // Handle button text
+    if (composable.name === 'Button' && composable.textContent) {
+      const textId = this.sceneGraph.createNode('TEXT', nodeId, -1, {
+        name: 'Button Text',
+        characters: composable.textContent,
+        fontSize: 14,
+        fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 } }],
+      } as CreateNodeOptions);
+      this.nodeCount++;
+      void textId;
+    }
+
+    // Process children
+    for (const child of composable.children) {
+      this.mapComposable(child, nodeId, scale);
+    }
+
+    return nodeId;
+  }
+
+  /**
+   * Build node options from composable
+   */
+  private buildNodeOptions(
+    composable: ParsedComposable,
+    mapping: ComponentMapping,
+    scale: number
+  ): CreateNodeOptions {
+    const options: Record<string, unknown> = {
+      name: composable.name,
+    };
+
+    // Apply defaults from mapping
+    if (mapping.defaultWidth) options['width'] = mapping.defaultWidth * scale;
+    if (mapping.defaultHeight) options['height'] = mapping.defaultHeight * scale;
+    if (mapping.defaultCornerRadius) options['cornerRadius'] = mapping.defaultCornerRadius * scale;
+    if (mapping.defaultFillColor) {
+      options['fills'] = [{ type: 'SOLID', color: mapping.defaultFillColor }];
+    }
+    if (mapping.defaultStrokeColor) {
+      options['strokes'] = [{ type: 'SOLID', color: mapping.defaultStrokeColor }];
+      options['strokeWeight'] = mapping.defaultStrokeWeight ?? 1;
+    }
+
+    // Apply layout mode
+    if (mapping.layoutMode) {
+      options['layoutMode'] = mapping.layoutMode;
+    }
+
+    // Handle text content for TEXT nodes
+    if (mapping.nodeType === 'TEXT') {
+      const textParam = composable.parameters.get('_arg0') ?? composable.parameters.get('text');
+      if (textParam?.type === 'string') {
+        options['characters'] = textParam.value as string;
+      } else if (composable.textContent) {
+        options['characters'] = composable.textContent;
+      }
+    }
+
+    // Apply modifiers
+    for (const modifier of composable.modifiers) {
+      this.applyModifier(modifier, options, scale);
+    }
+
+    // Check for arrangement/alignment in parameters
+    const arrangement = composable.parameters.get('horizontalArrangement') ?? composable.parameters.get('verticalArrangement');
+    if (arrangement?.type === 'expression') {
+      const expr = arrangement.rawExpression;
+      if (expr.includes('SpacedBy')) {
+        const match = expr.match(/(\d+)/);
+        if (match) {
+          options['itemSpacing'] = parseFloat(match[1]!) * scale;
+        }
+      } else if (expr.includes('SpaceBetween')) {
+        options['primaryAxisAlignItems'] = 'SPACE_BETWEEN';
+      } else if (expr.includes('Center')) {
+        options['primaryAxisAlignItems'] = 'CENTER';
+      }
+    }
+
+    return options as CreateNodeOptions;
+  }
+
+  /**
+   * Apply a modifier to node options
+   */
+  private applyModifier(modifier: ParsedComposeModifier, options: Record<string, unknown>, scale: number): void {
+    switch (modifier.name) {
+      case 'size': {
+        const size = this.getDpValue(modifier.arguments.get('_arg0'));
+        if (size !== null) {
+          options['width'] = size * scale;
+          options['height'] = size * scale;
+        }
+        break;
+      }
+
+      case 'width': {
+        const width = this.getDpValue(modifier.arguments.get('_arg0'));
+        if (width !== null) options['width'] = width * scale;
+        break;
+      }
+
+      case 'height': {
+        const height = this.getDpValue(modifier.arguments.get('_arg0'));
+        if (height !== null) options['height'] = height * scale;
+        break;
+      }
+
+      case 'fillMaxWidth':
+        options['layoutGrow'] = 1;
+        break;
+
+      case 'fillMaxHeight':
+        options['layoutGrow'] = 1;
+        break;
+
+      case 'padding': {
+        const all = this.getDpValue(modifier.arguments.get('_arg0') ?? modifier.arguments.get('all'));
+        if (all !== null) {
+          options['paddingTop'] = all * scale;
+          options['paddingRight'] = all * scale;
+          options['paddingBottom'] = all * scale;
+          options['paddingLeft'] = all * scale;
+        }
+        const horizontal = this.getDpValue(modifier.arguments.get('horizontal'));
+        if (horizontal !== null) {
+          options['paddingLeft'] = horizontal * scale;
+          options['paddingRight'] = horizontal * scale;
+        }
+        const vertical = this.getDpValue(modifier.arguments.get('vertical'));
+        if (vertical !== null) {
+          options['paddingTop'] = vertical * scale;
+          options['paddingBottom'] = vertical * scale;
+        }
+        break;
+      }
+
+      case 'background': {
+        const colorArg = modifier.arguments.get('_arg0') ?? modifier.arguments.get('color');
+        const color = this.parseColor(colorArg);
+        if (color) {
+          options['fills'] = [{ type: 'SOLID', color }];
+        }
+        break;
+      }
+
+      case 'clip': {
+        const shapeArg = modifier.arguments.get('_arg0');
+        if (shapeArg?.rawExpression.includes('RoundedCornerShape')) {
+          const match = shapeArg.rawExpression.match(/(\d+)/);
+          if (match) {
+            options['cornerRadius'] = parseFloat(match[1]!) * scale;
+          }
+        } else if (shapeArg?.rawExpression.includes('CircleShape')) {
+          options['cornerRadius'] = 9999;
+        }
+        break;
+      }
+
+      case 'border': {
+        const width = this.getDpValue(modifier.arguments.get('width') ?? modifier.arguments.get('_arg0'));
+        const colorArg = modifier.arguments.get('color') ?? modifier.arguments.get('_arg1');
+        if (width !== null) {
+          options['strokeWeight'] = width * scale;
+          const color = this.parseColor(colorArg);
+          if (color) {
+            options['strokes'] = [{ type: 'SOLID', color }];
+          }
+        }
+        break;
+      }
+
+      case 'alpha': {
+        const alpha = modifier.arguments.get('_arg0');
+        if (alpha?.type === 'number') {
+          options['opacity'] = alpha.value as number;
+        }
+        break;
+      }
+    }
+  }
+
+  /**
+   * Get dp value from parameter
+   */
+  private getDpValue(param?: ParsedParamValue): number | null {
+    if (!param) return null;
+    if (param.type === 'dp' || param.type === 'number') {
+      return param.value as number;
+    }
+    return null;
+  }
+
+  /**
+   * Parse color from parameter
+   */
+  private parseColor(param?: ParsedParamValue): RGBA | null {
+    if (!param) return null;
+
+    if (param.type === 'color') {
+      const value = param.value as string;
+
+      // Hex color: 0xFFRRGGBB or 0xRRGGBB
+      const hexMatch = value.match(/0x([A-Fa-f0-9]{6,8})/);
+      if (hexMatch) {
+        const hex = hexMatch[1]!;
+        if (hex.length === 8) {
+          return {
+            a: parseInt(hex.slice(0, 2), 16) / 255,
+            r: parseInt(hex.slice(2, 4), 16) / 255,
+            g: parseInt(hex.slice(4, 6), 16) / 255,
+            b: parseInt(hex.slice(6, 8), 16) / 255,
+          };
+        }
+        return {
+          r: parseInt(hex.slice(0, 2), 16) / 255,
+          g: parseInt(hex.slice(2, 4), 16) / 255,
+          b: parseInt(hex.slice(4, 6), 16) / 255,
+          a: 1,
+        };
+      }
+
+      // Named colors
+      const namedColors: Record<string, RGBA> = {
+        Red: { r: 0.957, g: 0.263, b: 0.212, a: 1 },
+        Green: { r: 0.298, g: 0.686, b: 0.314, a: 1 },
+        Blue: { r: 0.129, g: 0.588, b: 0.953, a: 1 },
+        Yellow: { r: 1, g: 0.922, b: 0.231, a: 1 },
+        Cyan: { r: 0, g: 0.737, b: 0.831, a: 1 },
+        Magenta: { r: 0.914, g: 0.118, b: 0.388, a: 1 },
+        White: { r: 1, g: 1, b: 1, a: 1 },
+        Black: { r: 0, g: 0, b: 0, a: 1 },
+        Gray: { r: 0.62, g: 0.62, b: 0.62, a: 1 },
+        LightGray: { r: 0.827, g: 0.827, b: 0.827, a: 1 },
+        DarkGray: { r: 0.412, g: 0.412, b: 0.412, a: 1 },
+        Transparent: { r: 0, g: 0, b: 0, a: 0 },
+      };
+
+      for (const [name, color] of Object.entries(namedColors)) {
+        if (value.includes(name)) return color;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -415,62 +580,24 @@ export class ComposeImporter {
   private getFileName(path: string): string {
     const parts = path.split('/');
     const fileName = parts[parts.length - 1] ?? path;
-    return fileName.replace('.kt', '');
+    return fileName.replace(/\.kt$/, '');
   }
 
   /**
    * Get default parent node
    */
-  private getDefaultParent(): NodeId {
+  private getDefaultParent(): string {
     const doc = this.sceneGraph.getDocument();
-    if (!doc) {
-      throw new Error('No document in scene graph');
-    }
-
+    if (!doc) throw new Error('No document in scene graph');
     const pageIds = this.sceneGraph.getChildIds(doc.id);
-    if (pageIds.length === 0) {
-      throw new Error('No pages in document');
-    }
-
-    return pageIds[0]!;
+    if (pageIds.length === 0) throw new Error('No pages in document');
+    return pageIds[0] as unknown as string;
   }
 }
-
-// ============================================================================
-// Factory Functions
-// ============================================================================
 
 /**
  * Create a Compose importer
  */
 export function createComposeImporter(sceneGraph: SceneGraph): ComposeImporter {
   return new ComposeImporter(sceneGraph);
-}
-
-/**
- * Analyze a Kotlin file without importing
- */
-export function analyzeKotlinFile(code: string, filePath: string): KotlinFileInfo {
-  const parser = new KotlinComposeParser();
-  const composables = parser.parse(code, filePath);
-
-  return {
-    path: filePath,
-    name: filePath.split('/').pop()?.replace('.kt', '') ?? filePath,
-    composables: composables.map(c => c.name),
-    imports: extractImports(code),
-    isCompose: code.includes('import androidx.compose') || composables.length > 0,
-  };
-}
-
-/**
- * Extract import statements from Kotlin code
- */
-function extractImports(code: string): string[] {
-  const imports: string[] = [];
-  const importMatches = code.matchAll(/import\s+([\w.]+)/g);
-  for (const match of importMatches) {
-    imports.push(match[1]!);
-  }
-  return imports;
 }
