@@ -9,6 +9,7 @@ import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import type { Unsubscribe } from '@core/events/event-emitter';
 import type { WorkspaceManager } from '@runtime/workspace-manager';
 import type { Trunk } from '@core/types/workspace';
+import { openSettingsModal } from './settings-modal';
 
 /**
  * Nav rail action definition
@@ -132,8 +133,6 @@ export class NavRail {
   private trunkDropdownOpen: boolean = false;
   private projectDropdown: HTMLElement | null = null;
   private projectDropdownOpen: boolean = false;
-  private settingsDropdown: HTMLElement | null = null;
-  private settingsDropdownOpen: boolean = false;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -328,14 +327,6 @@ export class NavRail {
         const projectButton = this.buttons.get('project');
         if (!this.projectDropdown.contains(target) && !projectButton?.contains(target)) {
           this.closeProjectDropdown();
-        }
-      }
-
-      // Close settings dropdown if clicking outside
-      if (this.settingsDropdownOpen && this.settingsDropdown) {
-        const settingsButton = this.buttons.get('settings');
-        if (!this.settingsDropdown.contains(target) && !settingsButton?.contains(target)) {
-          this.closeSettingsDropdown();
         }
       }
     };
@@ -1201,284 +1192,14 @@ export class NavRail {
     }));
   }
 
-  /** Toggle settings dropdown */
+  /** Open settings modal */
   private openSettings(): void {
-    if (this.settingsDropdownOpen) {
-      this.closeSettingsDropdown();
-    } else {
-      this.openSettingsDropdown();
-    }
-  }
-
-  private openSettingsDropdown(): void {
-    // Close other dropdowns
+    // Close any open dropdowns
     if (this.trunkDropdownOpen) this.closeTrunkDropdown();
     if (this.projectDropdownOpen) this.closeProjectDropdown();
 
-    this.settingsDropdownOpen = true;
-    const button = this.buttons.get('settings');
-    if (button) {
-      button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-      button.style.color = 'var(--designlibre-accent, #0d99ff)';
-    }
-
-    // Create dropdown
-    this.settingsDropdown = document.createElement('div');
-    this.settingsDropdown.className = 'nav-rail-settings-dropdown';
-    this.settingsDropdown.style.cssText = `
-      position: fixed;
-      left: ${this.options.size + 8}px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      min-width: 300px;
-      max-height: 400px;
-      overflow-y: auto;
-      z-index: 1000;
-      padding: 8px;
-    `;
-
-    // Position near the settings button
-    const buttonRect = button?.getBoundingClientRect();
-    if (buttonRect) {
-      const dropdownHeight = 300;
-      const spaceBelow = window.innerHeight - buttonRect.bottom;
-      if (spaceBelow >= dropdownHeight) {
-        this.settingsDropdown.style.top = `${buttonRect.top}px`;
-      } else {
-        this.settingsDropdown.style.bottom = `${window.innerHeight - buttonRect.bottom}px`;
-      }
-    }
-
-    // Header
-    const header = document.createElement('div');
-    header.style.cssText = `
-      font-weight: 600;
-      padding: 4px 8px 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-      margin-bottom: 8px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
-    header.textContent = 'Settings';
-    this.settingsDropdown.appendChild(header);
-
-    // Syntax Highlighting toggle
-    const syntaxHighlightSetting = this.createToggleSetting(
-      'Syntax Highlighting',
-      'Color code in Code view by language',
-      this.getSyntaxHighlightingSetting(),
-      (enabled) => this.setSyntaxHighlightingSetting(enabled)
-    );
-    this.settingsDropdown.appendChild(syntaxHighlightSetting);
-
-    // Text Scale slider
-    const textScaleSetting = this.createSliderSetting(
-      'Text Scale',
-      'Adjust text size in sidebars',
-      this.getTextScaleSetting(),
-      0.5, 2.5, 0.1,
-      (value) => `${Math.round(value * 100)}%`,
-      (scale) => this.setTextScaleSetting(scale)
-    );
-    this.settingsDropdown.appendChild(textScaleSetting);
-
-    // Show Origin Crosshair toggle
-    const showOriginSetting = this.createToggleSetting(
-      'Show Origin Crosshair',
-      'Display red crosshair at canvas origin (0,0)',
-      this.getShowOriginSetting(),
-      (enabled) => this.setShowOriginSetting(enabled)
-    );
-    this.settingsDropdown.appendChild(showOriginSetting);
-
-    document.body.appendChild(this.settingsDropdown);
-  }
-
-  private closeSettingsDropdown(): void {
-    this.settingsDropdownOpen = false;
-    const button = this.buttons.get('settings');
-    if (button) {
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #888)';
-    }
-
-    if (this.settingsDropdown) {
-      this.settingsDropdown.remove();
-      this.settingsDropdown = null;
-    }
-  }
-
-  // Settings helper methods
-  private createToggleSetting(
-    label: string,
-    description: string,
-    initialValue: boolean,
-    onChange: (enabled: boolean) => void
-  ): HTMLElement {
-    const row = document.createElement('div');
-    row.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 8px;
-      border-radius: 4px;
-    `;
-
-    const textContainer = document.createElement('div');
-    textContainer.style.cssText = 'flex: 1; margin-right: 12px;';
-
-    const labelEl = document.createElement('div');
-    labelEl.textContent = label;
-    labelEl.style.cssText = 'font-weight: 500; margin-bottom: 2px; color: var(--designlibre-text-primary, #e4e4e4);';
-    textContainer.appendChild(labelEl);
-
-    const descEl = document.createElement('div');
-    descEl.textContent = description;
-    descEl.style.cssText = 'font-size: 11px; color: var(--designlibre-text-secondary, #888);';
-    textContainer.appendChild(descEl);
-
-    row.appendChild(textContainer);
-
-    // Toggle switch
-    const toggle = document.createElement('button');
-    toggle.style.cssText = `
-      width: 40px;
-      height: 22px;
-      border-radius: 11px;
-      border: none;
-      cursor: pointer;
-      position: relative;
-      transition: background-color 0.2s;
-      background: ${initialValue ? 'var(--designlibre-accent, #0d99ff)' : '#444'};
-      flex-shrink: 0;
-    `;
-
-    const knob = document.createElement('div');
-    knob.style.cssText = `
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: white;
-      position: absolute;
-      top: 2px;
-      transition: left 0.2s;
-      left: ${initialValue ? '20px' : '2px'};
-    `;
-    toggle.appendChild(knob);
-
-    let enabled = initialValue;
-    toggle.addEventListener('click', () => {
-      enabled = !enabled;
-      toggle.style.background = enabled ? 'var(--designlibre-accent, #0d99ff)' : '#444';
-      knob.style.left = enabled ? '20px' : '2px';
-      onChange(enabled);
-    });
-
-    row.appendChild(toggle);
-    return row;
-  }
-
-  private createSliderSetting(
-    label: string,
-    description: string,
-    initialValue: number,
-    min: number,
-    max: number,
-    step: number,
-    formatValue: (value: number) => string,
-    onChange: (value: number) => void
-  ): HTMLElement {
-    const row = document.createElement('div');
-    row.style.cssText = 'padding: 8px; border-radius: 4px;';
-
-    const headerRow = document.createElement('div');
-    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
-
-    const textContainer = document.createElement('div');
-
-    const labelEl = document.createElement('div');
-    labelEl.textContent = label;
-    labelEl.style.cssText = 'font-weight: 500; margin-bottom: 2px; color: var(--designlibre-text-primary, #e4e4e4);';
-    textContainer.appendChild(labelEl);
-
-    const descEl = document.createElement('div');
-    descEl.textContent = description;
-    descEl.style.cssText = 'font-size: 11px; color: var(--designlibre-text-secondary, #888);';
-    textContainer.appendChild(descEl);
-
-    headerRow.appendChild(textContainer);
-
-    const valueDisplay = document.createElement('span');
-    valueDisplay.textContent = formatValue(initialValue);
-    valueDisplay.style.cssText = 'font-size: 12px; color: var(--designlibre-accent, #0d99ff); font-weight: 500; min-width: 40px; text-align: right;';
-    headerRow.appendChild(valueDisplay);
-
-    row.appendChild(headerRow);
-
-    // Slider
-    const slider = document.createElement('input');
-    slider.type = 'range';
-    slider.min = String(min);
-    slider.max = String(max);
-    slider.step = String(step);
-    slider.value = String(initialValue);
-    slider.style.cssText = `
-      width: 100%;
-      height: 4px;
-      -webkit-appearance: none;
-      background: #444;
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    `;
-
-    slider.addEventListener('input', () => {
-      const value = parseFloat(slider.value);
-      valueDisplay.textContent = formatValue(value);
-      onChange(value);
-    });
-
-    row.appendChild(slider);
-    return row;
-  }
-
-  // Settings getters/setters
-  private getSyntaxHighlightingSetting(): boolean {
-    const stored = localStorage.getItem('designlibre-syntax-highlighting');
-    return stored !== 'false';
-  }
-
-  private setSyntaxHighlightingSetting(enabled: boolean): void {
-    localStorage.setItem('designlibre-syntax-highlighting', String(enabled));
-    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
-      detail: { syntaxHighlighting: enabled }
-    }));
-  }
-
-  private getTextScaleSetting(): number {
-    const stored = localStorage.getItem('designlibre-text-scale');
-    return stored ? parseFloat(stored) : 1.0;
-  }
-
-  private setTextScaleSetting(scale: number): void {
-    localStorage.setItem('designlibre-text-scale', String(scale));
-    document.documentElement.style.setProperty('--designlibre-text-scale', String(scale));
-    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
-      detail: { textScale: scale }
-    }));
-  }
-
-  private getShowOriginSetting(): boolean {
-    const stored = localStorage.getItem('designlibre-show-origin');
-    return stored === 'true';
-  }
-
-  private setShowOriginSetting(enabled: boolean): void {
-    localStorage.setItem('designlibre-show-origin', String(enabled));
-    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
-      detail: { showOrigin: enabled }
-    }));
+    // Open the full settings modal
+    openSettingsModal();
   }
 
   /** Show the nav rail */

@@ -345,3 +345,4 @@ export { createProjectSelector } from '@ui/components/project-selector';
 export { createLayerTree } from '@ui/components/layer-tree';
 export { createWorkspaceManager } from '@runtime/workspace-manager';
 export { Modal, openModal, confirm, alert } from '@ui/components/modal';
+export { openSettingsModal, closeSettingsModal, getSettingsModal } from '@ui/components/settings-modal';
