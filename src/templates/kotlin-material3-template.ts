@@ -1,24 +1,24 @@
 /**
  * Kotlin/Android Material Design 3 Template Generator
  *
- * Creates a comprehensive .preserve template file containing all Material Design 3
+ * Creates a comprehensive .seed template file containing all Material Design 3
  * components with 1:1 WYSIWYG mapping to Jetpack Compose code.
  *
  * Based on Material Design 3 guidelines and Compose component library.
  */
 
 import type {
-  PreserveArchive,
-  PreserveDocument,
-  PreservePage,
-  PreserveNode,
-  PreserveFrameNode,
-  PreserveTextNode,
-  PreserveVectorNode,
-  PreserveTokens,
-  PreserveTokenGroup,
-  PreserveComponentRegistry,
-} from '../persistence/preserve/preserve-types';
+  SeedArchive,
+  SeedDocument,
+  SeedPage,
+  SeedNode,
+  SeedFrameNode,
+  SeedTextNode,
+  SeedVectorNode,
+  SeedTokens,
+  SeedTokenGroup,
+  SeedComponentRegistry,
+} from '../persistence/seed/seed-types';
 import type { RGBA } from '@core/types/color';
 
 // =============================================================================
@@ -181,7 +181,7 @@ function createTextLabel(
   y: number,
   style: keyof typeof M3Typography,
   color: RGBA = M3Colors.onSurface
-): PreserveTextNode {
+): SeedTextNode {
   const typo = M3Typography[style];
   return {
     id: generateNodeId(),
@@ -215,7 +215,7 @@ function createMaterialIcon(
   y: number,
   size: number,
   color: RGBA
-): PreserveVectorNode {
+): SeedVectorNode {
   return {
     id: generateNodeId(),
     type: 'VECTOR',
@@ -247,14 +247,14 @@ function createFilledButton(
   x: number,
   y: number,
   options: { icon?: string; disabled?: boolean } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 40;
   const paddingH = options.icon ? 16 : 24;
   const width = label.length * 9 + paddingH * 2 + (options.icon ? 24 : 0);
   const bgColor = options.disabled ? M3Colors.surfaceVariant : M3Colors.primary;
   const textColor = options.disabled ? M3Colors.onSurfaceVariant : M3Colors.onPrimary;
 
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
   let contentX = paddingH;
 
   if (options.icon) {
@@ -293,7 +293,7 @@ function createOutlinedButton(
   label: string,
   x: number,
   y: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 40;
   const paddingH = 24;
   const width = label.length * 9 + paddingH * 2;
@@ -328,7 +328,7 @@ function createTonalButton(
   label: string,
   x: number,
   y: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 40;
   const paddingH = 24;
   const width = label.length * 9 + paddingH * 2;
@@ -361,7 +361,7 @@ function createTextButton(
   label: string,
   x: number,
   y: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 40;
   const paddingH = 12;
   const width = label.length * 9 + paddingH * 2;
@@ -396,7 +396,7 @@ function createFAB(
   y: number,
   size: 'small' | 'regular' | 'large' | 'extended' = 'regular',
   label?: string
-): PreserveFrameNode {
+): SeedFrameNode {
   const sizes = {
     small: 40,
     regular: 56,
@@ -414,7 +414,7 @@ function createFAB(
   const iconSize = iconSizes[size];
   const width = size === 'extended' && label ? 56 + label.length * 8 : dim;
 
-  const children: PreserveNode[] = [
+  const children: SeedNode[] = [
     createMaterialIcon(icon, (width - iconSize) / 2, (dim - iconSize) / 2, iconSize, M3Colors.onPrimaryContainer),
   ];
 
@@ -454,8 +454,8 @@ function createCard(
   width: number,
   height: number,
   variant: 'elevated' | 'filled' | 'outlined' = 'elevated'
-): PreserveFrameNode {
-  const appearance: PreserveFrameNode['appearance'] = {
+): SeedFrameNode {
+  const appearance: SeedFrameNode['appearance'] = {
     cornerRadius: M3Shape.medium,
   };
 
@@ -506,11 +506,11 @@ function createTextField(
   y: number,
   width: number,
   options: { supportingText?: string; hasError?: boolean; leadingIcon?: string; trailingIcon?: string } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 56;
   const borderColor = options.hasError ? M3Colors.error : M3Colors.outline;
 
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   // Label (positioned at top)
   children.push(createTextLabel(`${name}-label`, label, 16, 16, 'bodyLarge', M3Colors.onSurfaceVariant));
@@ -523,7 +523,7 @@ function createTextField(
     children.push(createMaterialIcon(options.trailingIcon, width - 40, 16, 24, M3Colors.onSurfaceVariant));
   }
 
-  const container: PreserveFrameNode = {
+  const container: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name,
@@ -570,7 +570,7 @@ function createChip(
   y: number,
   variant: 'assist' | 'filter' | 'input' | 'suggestion' = 'assist',
   selected?: boolean
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 32;
   const width = label.length * 8 + 32;
 
@@ -583,7 +583,7 @@ function createChip(
     textColor = M3Colors.onSecondaryContainer;
   }
 
-  const appearance: PreserveFrameNode['appearance'] = {
+  const appearance: SeedFrameNode['appearance'] = {
     fills: bgColor.a > 0 ? [{ type: 'SOLID', color: bgColor, visible: true }] : [],
     cornerRadius: M3Shape.small,
   };
@@ -617,7 +617,7 @@ function createSwitch(
   x: number,
   y: number,
   checked: boolean
-): PreserveFrameNode {
+): SeedFrameNode {
   const width = 52;
   const height = 32;
   const trackColor = checked ? M3Colors.primary : M3Colors.surfaceContainerHighest;
@@ -656,7 +656,7 @@ function createSwitch(
           visible: true,
         }] : [],
       },
-    } as PreserveFrameNode],
+    } as SeedFrameNode],
   };
 }
 
@@ -667,7 +667,7 @@ function createCheckbox(
   x: number,
   y: number,
   checked: boolean
-): PreserveFrameNode {
+): SeedFrameNode {
   const size = 18;
 
   return {
@@ -695,10 +695,10 @@ function createRadioButton(
   x: number,
   y: number,
   selected: boolean
-): PreserveFrameNode {
+): SeedFrameNode {
   const size = 20;
 
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
   if (selected) {
     children.push({
       id: generateNodeId(),
@@ -710,7 +710,7 @@ function createRadioButton(
         fills: [{ type: 'SOLID', color: M3Colors.primary, visible: true }],
         cornerRadius: 6,
       },
-    } as PreserveFrameNode);
+    } as SeedFrameNode);
   }
 
   return {
@@ -737,7 +737,7 @@ function createSlider(
   y: number,
   width: number,
   value: number // 0-1
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 44;
   const trackHeight = 4;
   const thumbSize = 20;
@@ -761,7 +761,7 @@ function createSlider(
           fills: [{ type: 'SOLID', color: M3Colors.surfaceContainerHighest, visible: true }],
           cornerRadius: trackHeight / 2,
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
       // Active track
       {
         id: generateNodeId(),
@@ -773,7 +773,7 @@ function createSlider(
           fills: [{ type: 'SOLID', color: M3Colors.primary, visible: true }],
           cornerRadius: trackHeight / 2,
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
       // Thumb
       {
         id: generateNodeId(),
@@ -793,7 +793,7 @@ function createSlider(
             visible: true,
           }],
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
     ],
   };
 }
@@ -807,11 +807,11 @@ function createTopAppBar(
   y: number,
   width: number,
   variant: 'small' | 'medium' | 'large' = 'small'
-): PreserveFrameNode {
+): SeedFrameNode {
   const heights = { small: 64, medium: 112, large: 152 };
   const height = heights[variant];
 
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   // Navigation icon
   children.push(createMaterialIcon('arrow_back', 16, (variant === 'small' ? height : 16) - 40, 24, M3Colors.onSurface));
@@ -845,10 +845,10 @@ function createBottomNavBar(
   y: number,
   width: number,
   items: Array<{ icon: string; label: string; selected?: boolean }>
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 80;
   const itemWidth = width / items.length;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   items.forEach((item, index) => {
     const itemX = index * itemWidth;
@@ -856,7 +856,7 @@ function createBottomNavBar(
     const bgColor = item.selected ? M3Colors.secondaryContainer : { r: 0, g: 0, b: 0, a: 0 };
 
     // Icon container with pill background if selected
-    const iconContainer: PreserveFrameNode = {
+    const iconContainer: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Nav Item ${index}`,
@@ -902,7 +902,7 @@ function createNavDrawerItem(
   y: number,
   width: number,
   selected?: boolean
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 56;
   const bgColor = selected ? M3Colors.secondaryContainer : { r: 0, g: 0, b: 0, a: 0 };
   const textColor = selected ? M3Colors.onSecondaryContainer : M3Colors.onSurfaceVariant;
@@ -944,9 +944,9 @@ function createListItem(
     trailingIcon?: string;
     trailingSwitch?: boolean;
   } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = options.supportingText ? 72 : 56;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   let contentX = 16;
 
@@ -991,12 +991,12 @@ function createDialog(
   x: number,
   y: number,
   buttons: Array<{ label: string; style?: 'text' | 'filled' }>
-): PreserveFrameNode {
+): SeedFrameNode {
   const width = 312;
   const contentHeight = Math.ceil(content.length / 40) * 20;
   const height = 24 + 28 + 16 + contentHeight + 24 + 40 + 24;
 
-  const children: PreserveNode[] = [
+  const children: SeedNode[] = [
     createTextLabel('dialog-title', title, 24, 24, 'headlineSmall', M3Colors.onSurface),
     createTextLabel('dialog-content', content, 24, 68, 'bodyMedium', M3Colors.onSurfaceVariant),
   ];
@@ -1047,10 +1047,10 @@ function createSnackbar(
   y: number,
   width: number,
   action?: string
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 48;
 
-  const children: PreserveNode[] = [
+  const children: SeedNode[] = [
     createTextLabel('snackbar-message', message, 16, 14, 'bodyMedium', M3Colors.inversePrimary),
   ];
 
@@ -1088,7 +1088,7 @@ function createLinearProgress(
   y: number,
   width: number,
   progress: number // 0-1
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 4;
 
   return {
@@ -1111,7 +1111,7 @@ function createLinearProgress(
         fills: [{ type: 'SOLID', color: M3Colors.primary, visible: true }],
         cornerRadius: height / 2,
       },
-    } as PreserveFrameNode],
+    } as SeedFrameNode],
   };
 }
 
@@ -1122,7 +1122,7 @@ function createCircularProgress(
   x: number,
   y: number,
   size: number
-): PreserveFrameNode {
+): SeedFrameNode {
   // Simplified representation - a ring with a partial fill
   const strokeWidth = 4;
   const innerSize = size - strokeWidth * 2;
@@ -1151,7 +1151,7 @@ function createCircularProgress(
         strokeWeight: strokeWidth,
         cornerRadius: innerSize / 2,
       },
-    } as PreserveFrameNode],
+    } as SeedFrameNode],
   };
 }
 
@@ -1162,12 +1162,12 @@ function createCircularProgress(
 /**
  * Create the Component Library page
  */
-function createComponentLibraryPage(): PreservePage {
+function createComponentLibraryPage(): SeedPage {
   const device = AndroidDevices.pixel8Pro;
-  const nodes: PreserveNode[] = [];
+  const nodes: SeedNode[] = [];
 
   // Phone frame
-  const phoneFrame: PreserveFrameNode = {
+  const phoneFrame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'Pixel 8 Pro - Components',
@@ -1247,7 +1247,7 @@ function createComponentLibraryPage(): PreservePage {
 
   // Tablet frame
   const tabletDevice = AndroidDevices.pixelTablet;
-  const tabletFrame: PreserveFrameNode = {
+  const tabletFrame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'Pixel Tablet - Components',
@@ -1291,7 +1291,7 @@ function createComponentLibraryPage(): PreservePage {
   nodes.push(tabletFrame);
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-components',
     name: 'Component Library',
     backgroundColor: { r: 0.12, g: 0.11, b: 0.14, a: 1 },
@@ -1302,10 +1302,10 @@ function createComponentLibraryPage(): PreservePage {
 /**
  * Create Typography page
  */
-function createTypographyPage(): PreservePage {
-  const nodes: PreserveNode[] = [];
+function createTypographyPage(): SeedPage {
+  const nodes: SeedNode[] = [];
 
-  const frame: PreserveFrameNode = {
+  const frame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'Typography Scale',
@@ -1343,7 +1343,7 @@ function createTypographyPage(): PreservePage {
 
   styles.forEach(([name, style]) => {
     const typo = M3Typography[style];
-    const row: PreserveFrameNode = {
+    const row: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Typography: ${name}`,
@@ -1365,7 +1365,7 @@ function createTypographyPage(): PreservePage {
   nodes.push(frame);
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-typography',
     name: 'Typography',
     backgroundColor: { r: 0.12, g: 0.11, b: 0.14, a: 1 },
@@ -1376,8 +1376,8 @@ function createTypographyPage(): PreservePage {
 /**
  * Create Color Palette page
  */
-function createColorsPage(): PreservePage {
-  const nodes: PreserveNode[] = [];
+function createColorsPage(): SeedPage {
+  const nodes: SeedNode[] = [];
 
   const colorGroups = [
     { name: 'Primary', colors: ['primary', 'onPrimary', 'primaryContainer', 'onPrimaryContainer'] },
@@ -1402,7 +1402,7 @@ function createColorsPage(): PreservePage {
       const color = M3Colors[colorName as keyof typeof M3Colors];
       if (!color) return;
 
-      const swatch: PreserveFrameNode = {
+      const swatch: SeedFrameNode = {
         id: generateNodeId(),
         type: 'FRAME',
         name: `Color: ${colorName}`,
@@ -1432,7 +1432,7 @@ function createColorsPage(): PreservePage {
                 visible: true,
               }],
             },
-          } as PreserveFrameNode,
+          } as SeedFrameNode,
           createTextLabel(`label-${colorName}`, colorName.replace(/([A-Z])/g, '\n$1').trim(), 0, 0, 'labelSmall', M3Colors.onSurface),
         ],
       };
@@ -1445,7 +1445,7 @@ function createColorsPage(): PreservePage {
   });
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-colors',
     name: 'Color Palette',
     backgroundColor: M3Colors.surface,
@@ -1457,8 +1457,8 @@ function createColorsPage(): PreservePage {
 // Token Generation
 // =============================================================================
 
-function generateDesignTokens(): PreserveTokens {
-  const groups: PreserveTokenGroup[] = [];
+function generateDesignTokens(): SeedTokens {
+  const groups: SeedTokenGroup[] = [];
 
   // Color tokens
   groups.push({
@@ -1515,7 +1515,7 @@ function generateDesignTokens(): PreserveTokens {
   });
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/tokens.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/tokens.json',
     version: '1.0.0',
     groups,
   };
@@ -1528,7 +1528,7 @@ function generateDesignTokens(): PreserveTokens {
 /**
  * Generate the complete Kotlin/Android Material Design 3 template archive
  */
-export function generateKotlinMaterial3Template(): PreserveArchive {
+export function generateKotlinMaterial3Template(): SeedArchive {
   nodeIdCounter = 0;
 
   const now = new Date().toISOString();
@@ -1537,13 +1537,13 @@ export function generateKotlinMaterial3Template(): PreserveArchive {
   const typographyPage = createTypographyPage();
   const colorsPage = createColorsPage();
 
-  const pages = new Map<string, PreservePage>();
+  const pages = new Map<string, SeedPage>();
   pages.set('page-components', componentLibraryPage);
   pages.set('page-typography', typographyPage);
   pages.set('page-colors', colorsPage);
 
-  const document: PreserveDocument = {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/document.json',
+  const document: SeedDocument = {
+    $schema: 'https://designlibre.app/schemas/seed/1.0/document.json',
     id: 'doc-kotlin-m3-template',
     name: 'Kotlin Material Design 3 Template',
     formatVersion: '1.0.0',
@@ -1561,8 +1561,8 @@ export function generateKotlinMaterial3Template(): PreserveArchive {
     },
   };
 
-  const components: PreserveComponentRegistry = {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/components.json',
+  const components: SeedComponentRegistry = {
+    $schema: 'https://designlibre.app/schemas/seed/1.0/components.json',
     components: [],
     componentSets: [],
   };

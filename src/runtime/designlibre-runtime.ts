@@ -34,8 +34,8 @@ import { IndexedDBStorage, createIndexedDBStorage } from '@persistence/storage/i
 import { AutosaveManager, createAutosaveManager } from '@persistence/storage/autosave';
 import { PNGExporter, createPNGExporter } from '@persistence/export/png-exporter';
 import { SVGExporter, createSVGExporter } from '@persistence/export/svg-exporter';
-import { createPreserveArchive, readPreserveArchive, preserveToNode } from '@persistence/preserve';
-import type { PreserveArchive, PreserveWriteOptions, PreserveNode } from '@persistence/preserve';
+import { createSeedArchive, readSeedArchive, seedToNode } from '@persistence/seed';
+import type { SeedArchive, SeedWriteOptions, SeedNode } from '@persistence/seed';
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
@@ -441,29 +441,29 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   // =========================================================================
-  // .preserve Format (Open Standard)
+  // .seed Format (Open Standard)
   // =========================================================================
 
   /**
-   * Save the current document as a .preserve file.
+   * Save the current document as a .seed file.
    */
-  async saveAsPreserve(filename: string = 'document.preserve', options?: PreserveWriteOptions): Promise<void> {
-    const blob = await createPreserveArchive(this.sceneGraph, null, options);
+  async saveAsSeed(filename: string = 'document.seed', options?: SeedWriteOptions): Promise<void> {
+    const blob = await createSeedArchive(this.sceneGraph, null, options);
     this.downloadBlob(blob, filename);
   }
 
   /**
-   * Get the current document as a .preserve Blob.
+   * Get the current document as a .seed Blob.
    */
-  async getPreserveBlob(options?: PreserveWriteOptions): Promise<Blob> {
-    return createPreserveArchive(this.sceneGraph, null, options);
+  async getSeedBlob(options?: SeedWriteOptions): Promise<Blob> {
+    return createSeedArchive(this.sceneGraph, null, options);
   }
 
   /**
-   * Load a .preserve file and replace the current document with its contents.
+   * Load a .seed file and replace the current document with its contents.
    */
-  async loadPreserve(file: File | Blob): Promise<void> {
-    const archive = await readPreserveArchive(file);
+  async loadSeed(file: File | Blob): Promise<void> {
+    const archive = await readSeedArchive(file);
 
     // Clear current document and rebuild from archive
     // First, get the document node
@@ -479,16 +479,16 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     }
 
     // Import pages from archive
-    for (const [_pageId, preservePage] of archive.pages) {
+    for (const [_pageId, seedPage] of archive.pages) {
       // Create the page
       const newPageId = this.sceneGraph.createNode('PAGE', doc.id, -1, {
-        name: preservePage.name,
-        backgroundColor: preservePage.backgroundColor,
+        name: seedPage.name,
+        backgroundColor: seedPage.backgroundColor,
       } as Parameters<typeof this.sceneGraph.createNode>[3]);
 
       // Import nodes into this page
-      for (const preserveNode of preservePage.nodes) {
-        this.importPreserveNode(preserveNode, newPageId);
+      for (const seedNode of seedPage.nodes) {
+        this.importSeedNode(seedNode, newPageId);
       }
     }
 
@@ -500,25 +500,25 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
-   * Recursively import a preserve node and its children.
+   * Recursively import a seed node and its children.
    */
-  private importPreserveNode(preserveNode: PreserveNode, parentId: NodeId): NodeId {
+  private importSeedNode(seedNode: SeedNode, parentId: NodeId): NodeId {
     // Use the converter to get proper internal node format
-    const nodeData = preserveToNode(preserveNode);
+    const nodeData = seedToNode(seedNode);
 
     // Create the node with converted properties
     const nodeId = this.sceneGraph.createNode(
-      preserveNode.type as Parameters<typeof this.sceneGraph.createNode>[0],
+      seedNode.type as Parameters<typeof this.sceneGraph.createNode>[0],
       parentId,
       -1,
       nodeData as Parameters<typeof this.sceneGraph.createNode>[3]
     );
 
     // Import children recursively
-    const nodeWithChildren = preserveNode as { children?: PreserveNode[] };
+    const nodeWithChildren = seedNode as { children?: SeedNode[] };
     if (nodeWithChildren.children) {
       for (const childNode of nodeWithChildren.children) {
-        this.importPreserveNode(childNode, nodeId);
+        this.importSeedNode(childNode, nodeId);
       }
     }
 
@@ -526,9 +526,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
-   * Import nodes from a .preserve archive into the current page (append mode).
+   * Import nodes from a .seed archive into the current page (append mode).
    */
-  async importFromPreserve(archive: PreserveArchive): Promise<NodeId[]> {
+  async importFromSeed(archive: SeedArchive): Promise<NodeId[]> {
     const currentPageId = this.getCurrentPageId();
     if (!currentPageId) {
       throw new Error('No current page');
@@ -539,8 +539,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     // Import nodes from the first page of the archive
     const firstPage = archive.pages.values().next().value;
     if (firstPage) {
-      for (const preserveNode of firstPage.nodes) {
-        const nodeId = this.importPreserveNode(preserveNode, currentPageId);
+      for (const seedNode of firstPage.nodes) {
+        const nodeId = this.importSeedNode(seedNode, currentPageId);
         importedIds.push(nodeId);
       }
     }

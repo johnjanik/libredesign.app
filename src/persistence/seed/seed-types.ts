@@ -1,7 +1,7 @@
 /**
- * .preserve File Format Type Definitions
+ * .seed File Format Type Definitions
  *
- * The .preserve format is an open-source, LLM-friendly design document format.
+ * The .seed format is an open-source, LLM-friendly design document format.
  * It is a ZIP archive containing JSON files for all structured data.
  */
 
@@ -11,66 +11,66 @@ import type { RGBA } from '@core/types/color';
 // Format Constants
 // =============================================================================
 
-export const PRESERVE_MIMETYPE = 'application/vnd.designlibre.preserve+zip';
-export const PRESERVE_EXTENSION = '.preserve';
-export const PRESERVE_FORMAT_VERSION = '1.0.0';
+export const SEED_MIMETYPE = 'application/vnd.designlibre.seed+zip';
+export const SEED_EXTENSION = '.seed';
+export const SEED_FORMAT_VERSION = '1.0.0';
 
 // =============================================================================
 // Manifest Types
 // =============================================================================
 
-export interface PreserveManifestEntry {
+export interface SeedManifestEntry {
   path: string;
   type: 'document' | 'page' | 'component' | 'tokens' | 'prototypes' | 'asset' | 'history';
   size: number;
   mediaType?: string;
 }
 
-export interface PreserveManifest {
+export interface SeedManifest {
   version: string;
   generator: string;
   created: string;
   modified: string;
-  entries: PreserveManifestEntry[];
+  entries: SeedManifestEntry[];
 }
 
 // =============================================================================
 // Document Types
 // =============================================================================
 
-export interface PreserveDocumentSettings {
+export interface SeedDocumentSettings {
   colorSpace: 'sRGB' | 'Display P3';
   defaultUnit: 'px' | 'pt' | 'rem';
 }
 
-export interface PreservePageRef {
+export interface SeedPageRef {
   id: string;
   name: string;
   path: string;
 }
 
-export interface PreserveAuthor {
+export interface SeedAuthor {
   name: string;
   email?: string;
 }
 
-export interface PreserveDocument {
+export interface SeedDocument {
   $schema?: string;
   id: string;
   name: string;
   formatVersion: string;
   created: string;
   modified: string;
-  authors?: PreserveAuthor[];
-  pages: PreservePageRef[];
-  settings: PreserveDocumentSettings;
+  authors?: SeedAuthor[];
+  pages: SeedPageRef[];
+  settings: SeedDocumentSettings;
 }
 
 // =============================================================================
 // Node Types
 // =============================================================================
 
-export interface PreserveTransform {
+export interface SeedTransform {
   x: number;
   y: number;
   width: number;
@@ -78,26 +78,26 @@ export interface PreserveTransform {
   rotation: number;
 }
 
-export interface PreserveSolidPaint {
+export interface SeedSolidPaint {
   type: 'SOLID';
   color: RGBA;
   opacity?: number;
   visible?: boolean;
 }
 
-export interface PreserveGradientStop {
+export interface SeedGradientStop {
   position: number;
   color: RGBA;
 }
 
-export interface PreserveGradientPaint {
+export interface SeedGradientPaint {
   type: 'GRADIENT_LINEAR' | 'GRADIENT_RADIAL' | 'GRADIENT_ANGULAR';
-  stops: PreserveGradientStop[];
+  stops: SeedGradientStop[];
   opacity?: number;
   visible?: boolean;
 }
 
-export interface PreserveImagePaint {
+export interface SeedImagePaint {
   type: 'IMAGE';
   assetRef: string;
   scaleMode: 'FILL' | 'FIT' | 'CROP' | 'TILE';
@@ -105,9 +105,9 @@ export interface PreserveImagePaint {
   visible?: boolean;
 }
 
-export type PreservePaint = PreserveSolidPaint | PreserveGradientPaint | PreserveImagePaint;
+export type SeedPaint = SeedSolidPaint | SeedGradientPaint | SeedImagePaint;
 
-export interface PreserveShadowEffect {
+export interface SeedShadowEffect {
   type: 'DROP_SHADOW' | 'INNER_SHADOW';
   color: RGBA;
   offset: { x: number; y: number };
@@ -116,29 +116,29 @@ export interface PreserveShadowEffect {
   visible?: boolean;
 }
 
-export interface PreserveBlurEffect {
+export interface SeedBlurEffect {
   type: 'BLUR' | 'BACKGROUND_BLUR';
   radius: number;
   visible?: boolean;
 }
 
-export type PreserveEffect = PreserveShadowEffect | PreserveBlurEffect;
+export type SeedEffect = SeedShadowEffect | SeedBlurEffect;
 
-export interface PreserveAppearance {
+export interface SeedAppearance {
   opacity?: number;
   blendMode?: string;
-  fills?: PreservePaint[];
-  strokes?: PreservePaint[];
+  fills?: SeedPaint[];
+  strokes?: SeedPaint[];
   strokeWeight?: number;
   strokeAlign?: 'INSIDE' | 'CENTER' | 'OUTSIDE';
   strokeCap?: 'NONE' | 'ROUND' | 'SQUARE';
   strokeJoin?: 'MITER' | 'BEVEL' | 'ROUND';
   dashPattern?: number[];
-  effects?: PreserveEffect[];
+  effects?: SeedEffect[];
   cornerRadius?: number | [number, number, number, number];
 }
 
-export interface PreserveLayout {
+export interface SeedLayout {
   autoLayout?: 'NONE' | 'HORIZONTAL' | 'VERTICAL';
   padding?: { top: number; right: number; bottom: number; left: number };
   gap?: number;
@@ -146,12 +146,12 @@ export interface PreserveLayout {
   justifyContent?: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN';
 }
 
-export interface PreserveConstraints {
+export interface SeedConstraints {
   horizontal: 'MIN' | 'CENTER' | 'MAX' | 'STRETCH' | 'SCALE';
   vertical: 'MIN' | 'CENTER' | 'MAX' | 'STRETCH' | 'SCALE';
 }
 
-export interface PreservePathCommand {
+export interface SeedPathCommand {
   type: 'M' | 'L' | 'C' | 'Q' | 'Z';
   x?: number;
   y?: number;
@@ -161,12 +161,12 @@ export interface PreservePathCommand {
   y2?: number;
 }
 
-export interface PreserveVectorPath {
+export interface SeedVectorPath {
   windingRule: 'NONZERO' | 'EVENODD';
-  commands: PreservePathCommand[];
+  commands: SeedPathCommand[];
 }
 
-export interface PreserveTextStyle {
+export interface SeedTextStyle {
   start: number;
   end: number;
   fontFamily: string;
@@ -175,16 +175,16 @@ export interface PreserveTextStyle {
   lineHeight?: { unit: 'PERCENT' | 'PIXELS' | 'AUTO'; value?: number };
   letterSpacing?: { unit: 'PERCENT' | 'PIXELS'; value: number };
   textDecoration?: 'NONE' | 'UNDERLINE' | 'STRIKETHROUGH';
-  fills?: PreservePaint[];
+  fills?: SeedPaint[];
 }
 
-export interface PreserveOverride {
+export interface SeedOverride {
   path: string[];
   value: unknown;
 }
 
 // Base node structure
-export interface PreserveNodeBase {
+export interface SeedNodeBase {
   id: string;
   type: string;
   name: string;
@@ -193,44 +193,44 @@ export interface PreserveNodeBase {
 }
 
 // Frame/Group node
-export interface PreserveFrameNode extends PreserveNodeBase {
+export interface SeedFrameNode extends SeedNodeBase {
   type: 'FRAME' | 'GROUP';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  layout?: PreserveLayout;
-  constraints?: PreserveConstraints;
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  layout?: SeedLayout;
+  constraints?: SeedConstraints;
   clipContent?: boolean;
-  children?: PreserveNode[];
+  children?: SeedNode[];
 }
 
 // Vector node
-export interface PreserveVectorNode extends PreserveNodeBase {
+export interface SeedVectorNode extends SeedNodeBase {
   type: 'VECTOR';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  constraints?: PreserveConstraints;
-  paths: PreserveVectorPath[];
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  constraints?: SeedConstraints;
+  paths: SeedVectorPath[];
 }
 
 // Text node
-export interface PreserveTextNode extends PreserveNodeBase {
+export interface SeedTextNode extends SeedNodeBase {
   type: 'TEXT';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  constraints?: PreserveConstraints;
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  constraints?: SeedConstraints;
   characters: string;
-  styles: PreserveTextStyle[];
+  styles: SeedTextStyle[];
   textAlignHorizontal?: 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED';
   textAlignVertical?: 'TOP' | 'CENTER' | 'BOTTOM';
   textAutoResize?: 'NONE' | 'WIDTH_AND_HEIGHT' | 'HEIGHT';
 }
 
 // Image node
-export interface PreserveImageNode extends PreserveNodeBase {
+export interface SeedImageNode extends SeedNodeBase {
   type: 'IMAGE';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  constraints?: PreserveConstraints;
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  constraints?: SeedConstraints;
   assetRef: string;
   scaleMode: 'FILL' | 'FIT' | 'CROP' | 'TILE';
   naturalWidth: number;
@@ -238,81 +238,81 @@ export interface PreserveImageNode extends PreserveNodeBase {
 }
 
 // Component node
-export interface PreserveComponentNode extends PreserveNodeBase {
+export interface SeedComponentNode extends SeedNodeBase {
   type: 'COMPONENT';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  layout?: PreserveLayout;
-  constraints?: PreserveConstraints;
-  propertyDefinitions?: Record<string, PreservePropertyDefinition>;
-  children?: PreserveNode[];
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  layout?: SeedLayout;
+  constraints?: SeedConstraints;
+  propertyDefinitions?: Record<string, SeedPropertyDefinition>;
+  children?: SeedNode[];
 }
 
 // Instance node
-export interface PreserveInstanceNode extends PreserveNodeBase {
+export interface SeedInstanceNode extends SeedNodeBase {
   type: 'INSTANCE';
-  transform: PreserveTransform;
-  constraints?: PreserveConstraints;
+  transform: SeedTransform;
+  constraints?: SeedConstraints;
   componentRef: string;
-  overrides?: PreserveOverride[];
+  overrides?: SeedOverride[];
 }
 
 // Boolean operation node
-export interface PreserveBooleanNode extends PreserveNodeBase {
+export interface SeedBooleanNode extends SeedNodeBase {
   type: 'BOOLEAN_OPERATION';
-  transform: PreserveTransform;
-  appearance?: PreserveAppearance;
-  constraints?: PreserveConstraints;
+  transform: SeedTransform;
+  appearance?: SeedAppearance;
+  constraints?: SeedConstraints;
   booleanOperation: 'UNION' | 'SUBTRACT' | 'INTERSECT' | 'EXCLUDE';
-  children?: PreserveNode[];
+  children?: SeedNode[];
 }
 
 // Slice node
-export interface PreserveSliceNode extends PreserveNodeBase {
+export interface SeedSliceNode extends SeedNodeBase {
   type: 'SLICE';
-  transform: PreserveTransform;
-  exportSettings?: PreserveExportSetting[];
+  transform: SeedTransform;
+  exportSettings?: SeedExportSetting[];
 }
 
-export interface PreserveExportSetting {
+export interface SeedExportSetting {
   format: 'PNG' | 'JPG' | 'SVG' | 'PDF';
   suffix?: string;
   scale?: number;
 }
 
-export type PreserveNode =
-  | PreserveFrameNode
-  | PreserveVectorNode
-  | PreserveTextNode
-  | PreserveImageNode
-  | PreserveComponentNode
-  | PreserveInstanceNode
-  | PreserveBooleanNode
-  | PreserveSliceNode;
+export type SeedNode =
+  | SeedFrameNode
+  | SeedVectorNode
+  | SeedTextNode
+  | SeedImageNode
+  | SeedComponentNode
+  | SeedInstanceNode
+  | SeedBooleanNode
+  | SeedSliceNode;
 
 // =============================================================================
 // Page Types
 // =============================================================================
 
-export interface PreservePage {
+export interface SeedPage {
   $schema?: string;
   id: string;
   name: string;
   backgroundColor?: RGBA;
-  nodes: PreserveNode[];
+  nodes: SeedNode[];
 }
 
 // =============================================================================
 // Component Types
 // =============================================================================
 
-export interface PreservePropertyDefinition {
+export interface SeedPropertyDefinition {
   type: 'BOOLEAN' | 'TEXT' | 'INSTANCE_SWAP' | 'VARIANT';
   defaultValue: unknown;
   preferredValues?: unknown[];
 }
 
-export interface PreserveComponentEntry {
+export interface SeedComponentEntry {
   id: string;
   name: string;
   path: string;
@@ -321,33 +321,33 @@ export interface PreserveComponentEntry {
   modified: string;
 }
 
-export interface PreserveComponentSet {
+export interface SeedComponentSet {
   id: string;
   name: string;
   components: string[];
   variantProperties: string[];
 }
 
-export interface PreserveComponentRegistry {
+export interface SeedComponentRegistry {
   $schema?: string;
-  components: PreserveComponentEntry[];
-  componentSets: PreserveComponentSet[];
+  components: SeedComponentEntry[];
+  componentSets: SeedComponentSet[];
 }
 
-export interface PreserveComponent {
+export interface SeedComponent {
   $schema?: string;
   id: string;
   name: string;
   description?: string;
-  propertyDefinitions?: Record<string, PreservePropertyDefinition>;
-  nodes: PreserveNode[];
+  propertyDefinitions?: Record<string, SeedPropertyDefinition>;
+  nodes: SeedNode[];
 }
 
 // =============================================================================
 // Token Types
 // =============================================================================
 
-export interface PreserveColorToken {
+export interface SeedColorToken {
   id: string;
   name: string;
   type: 'COLOR';
@@ -356,7 +356,7 @@ export interface PreserveColorToken {
   description?: string;
 }
 
-export interface PreserveTypographyValue {
+export interface SeedTypographyValue {
   fontFamily: string;
   fontWeight: number;
   fontSize: number;
@@ -364,15 +364,15 @@ export interface PreserveTypographyValue {
   letterSpacing?: { unit: 'PERCENT' | 'PIXELS'; value: number };
 }
 
-export interface PreserveTypographyToken {
+export interface SeedTypographyToken {
   id: string;
   name: string;
   type: 'TYPOGRAPHY';
-  value: PreserveTypographyValue;
+  value: SeedTypographyValue;
   description?: string;
 }
 
-export interface PreserveSpacingToken {
+export interface SeedSpacingToken {
   id: string;
   name: string;
   type: 'SPACING';
@@ -380,7 +380,7 @@ export interface PreserveSpacingToken {
   description?: string;
 }
 
-export interface PreserveShadowValue {
+export interface SeedShadowValue {
   type: 'DROP_SHADOW' | 'INNER_SHADOW';
   color: RGBA;
   offset: { x: number; y: number };
@@ -388,15 +388,15 @@ export interface PreserveShadowValue {
   spread: number;
 }
 
-export interface PreserveShadowToken {
+export interface SeedShadowToken {
   id: string;
   name: string;
   type: 'SHADOW';
-  value: PreserveShadowValue;
+  value: SeedShadowValue;
   description?: string;
 }
 
-export interface PreserveRadiusToken {
+export interface SeedRadiusToken {
   id: string;
   name: string;
   type: 'RADIUS';
@@ -404,86 +404,86 @@ export interface PreserveRadiusToken {
   description?: string;
 }
 
-export type PreserveToken =
-  | PreserveColorToken
-  | PreserveTypographyToken
-  | PreserveSpacingToken
-  | PreserveShadowToken
-  | PreserveRadiusToken;
+export type SeedToken =
+  | SeedColorToken
+  | SeedTypographyToken
+  | SeedSpacingToken
+  | SeedShadowToken
+  | SeedRadiusToken;
 
-export interface PreserveTokenGroup {
+export interface SeedTokenGroup {
   name: string;
-  tokens: PreserveToken[];
+  tokens: SeedToken[];
 }
 
-export interface PreserveTokens {
+export interface SeedTokens {
   $schema?: string;
   version: string;
-  groups: PreserveTokenGroup[];
+  groups: SeedTokenGroup[];
 }
 
 // =============================================================================
 // Prototype Types
 // =============================================================================
 
-export interface PreserveFlow {
+export interface SeedFlow {
   id: string;
   name: string;
   startingPoint: string;
   description?: string;
 }
 
-export interface PreserveTrigger {
+export interface SeedTrigger {
   type: 'ON_CLICK' | 'ON_HOVER' | 'ON_PRESS' | 'ON_DRAG' | 'AFTER_TIMEOUT' | 'MOUSE_ENTER' | 'MOUSE_LEAVE';
   delay?: number;
 }
 
-export interface PreserveTransition {
+export interface SeedTransition {
   type: 'INSTANT' | 'DISSOLVE' | 'SMART_ANIMATE' | 'MOVE_IN' | 'MOVE_OUT' | 'PUSH' | 'SLIDE_IN' | 'SLIDE_OUT';
   duration?: number;
   easing?: 'LINEAR' | 'EASE_IN' | 'EASE_OUT' | 'EASE_IN_OUT' | 'SPRING';
   direction?: 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM';
 }
 
-export interface PreserveNavigateAction {
+export interface SeedNavigateAction {
   type: 'NAVIGATE';
   destinationPageId: string;
-  transition?: PreserveTransition;
+  transition?: SeedTransition;
 }
 
-export interface PreserveOverlayAction {
+export interface SeedOverlayAction {
   type: 'OPEN_OVERLAY' | 'CLOSE_OVERLAY';
   overlayNodeId?: string;
   position?: 'CENTER' | 'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT' | 'MANUAL';
   offset?: { x: number; y: number };
 }
 
-export interface PreserveUrlAction {
+export interface SeedUrlAction {
   type: 'OPEN_URL';
   url: string;
   openInNewTab?: boolean;
 }
 
-export type PreserveAction = PreserveNavigateAction | PreserveOverlayAction | PreserveUrlAction;
+export type SeedAction = SeedNavigateAction | SeedOverlayAction | SeedUrlAction;
 
-export interface PreserveInteraction {
+export interface SeedInteraction {
   id: string;
   sourceNodeId: string;
-  trigger: PreserveTrigger;
-  actions: PreserveAction[];
+  trigger: SeedTrigger;
+  actions: SeedAction[];
 }
 
-export interface PreservePrototypes {
+export interface SeedPrototypes {
   $schema?: string;
-  flows: PreserveFlow[];
-  interactions: PreserveInteraction[];
+  flows: SeedFlow[];
+  interactions: SeedInteraction[];
 }
 
 // =============================================================================
 // Asset Types
 // =============================================================================
 
-export interface PreserveAsset {
+export interface SeedAsset {
   id: string;
   name: string;
   path: string;
@@ -495,7 +495,7 @@ export interface PreserveAsset {
   hash?: string;
 }
 
-export interface PreserveExternalRef {
+export interface SeedExternalRef {
   id: string;
   name: string;
   type: 'image' | 'font' | 'video' | 'other';
@@ -504,57 +504,57 @@ export interface PreserveExternalRef {
   size?: number;
 }
 
-export interface PreserveAssetManifest {
+export interface SeedAssetManifest {
   $schema?: string;
-  assets: PreserveAsset[];
-  externalRefs?: PreserveExternalRef[];
+  assets: SeedAsset[];
+  externalRefs?: SeedExternalRef[];
 }
 
 // =============================================================================
 // History Types
 // =============================================================================
 
-export interface PreserveChangelogEntry {
+export interface SeedChangelogEntry {
   version: string;
   date: string;
   author?: string;
   message: string;
 }
 
-export interface PreserveCommentMessage {
+export interface SeedCommentMessage {
   author: string;
   text: string;
   timestamp: string;
 }
 
-export interface PreserveComment {
+export interface SeedComment {
   id: string;
   nodeId: string;
   author: string;
   created: string;
   resolved: boolean;
-  thread: PreserveCommentMessage[];
+  thread: SeedCommentMessage[];
 }
 
-export interface PreserveHistory {
+export interface SeedHistory {
   $schema?: string;
   currentVersion: string;
-  changelog: PreserveChangelogEntry[];
-  comments: PreserveComment[];
+  changelog: SeedChangelogEntry[];
+  comments: SeedComment[];
 }
 
 // =============================================================================
 // Writer/Reader Options
 // =============================================================================
 
-export interface PreserveWriteOptions {
+export interface SeedWriteOptions {
   includeThumbnail?: boolean;
   thumbnailSize?: number;
   includeHistory?: boolean;
   compression?: 'STORE' | 'DEFLATE';
 }
 
-export interface PreserveReadOptions {
+export interface SeedReadOptions {
   validateSchema?: boolean;
   loadAssets?: boolean;
 }
@@ -563,16 +563,16 @@ export interface PreserveReadOptions {
 // Full Archive Structure
 // =============================================================================
 
-export interface PreserveArchive {
-  manifest: PreserveManifest;
-  document: PreserveDocument;
-  pages: Map<string, PreservePage>;
-  components?: PreserveComponentRegistry;
-  componentData?: Map<string, PreserveComponent>;
-  tokens?: PreserveTokens;
-  prototypes?: PreservePrototypes;
-  assets?: PreserveAssetManifest;
+export interface SeedArchive {
+  manifest: SeedManifest;
+  document: SeedDocument;
+  pages: Map<string, SeedPage>;
+  components?: SeedComponentRegistry;
+  componentData?: Map<string, SeedComponent>;
+  tokens?: SeedTokens;
+  prototypes?: SeedPrototypes;
+  assets?: SeedAssetManifest;
   assetData?: Map<string, Blob>;
-  history?: PreserveHistory;
+  history?: SeedHistory;
   thumbnail?: Blob;
 }

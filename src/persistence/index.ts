@@ -35,5 +35,5 @@ export * from './import/font-handler';
 // Asset Management
 export * from './assets/asset-manager';
 
-// .preserve Format (Open Standard)
-export * from './preserve';
+// .seed Format (Open Standard)
+export * from './seed';

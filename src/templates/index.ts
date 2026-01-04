@@ -8,19 +8,19 @@ export { generateiOS26Template, iOS26Colors, iOS26Typography, iOS26Spacing, iOS2
 export { generateKotlinMaterial3Template, M3Colors, M3ColorsDark, M3Typography, M3Spacing, M3Shape, AndroidDevices, KotlinComposeMappings } from './kotlin-material3-template';
 
 import JSZip from 'jszip';
-import type { PreserveArchive } from '../persistence/preserve/preserve-types';
-import { PRESERVE_MIMETYPE, PRESERVE_FORMAT_VERSION } from '../persistence/preserve/preserve-types';
+import type { SeedArchive } from '../persistence/seed/seed-types';
+import { SEED_MIMETYPE, SEED_FORMAT_VERSION } from '../persistence/seed/seed-types';
 import { generateiOS26Template } from './ios26-liquid-glass-template';
 import { generateKotlinMaterial3Template } from './kotlin-material3-template';
 
 /**
- * Create a downloadable .preserve file from a template archive
+ * Create a downloadable .seed file from a template archive
  */
-export async function exportTemplateAsPreserve(archive: PreserveArchive): Promise<Blob> {
+export async function exportTemplateAsSeed(archive: SeedArchive): Promise<Blob> {
   const zip = new JSZip();
 
   // 1. Write mimetype (uncompressed, first)
-  zip.file('mimetype', PRESERVE_MIMETYPE, { compression: 'STORE' });
+  zip.file('mimetype', SEED_MIMETYPE, { compression: 'STORE' });
 
   // 2. Write manifest
   const manifestJson = JSON.stringify(archive.manifest, null, 2);
@@ -59,24 +59,24 @@ export async function exportTemplateAsPreserve(archive: PreserveArchive): Promis
 
   // 8. Write prototypes (placeholder)
   zip.file('prototypes/flows.json', JSON.stringify({
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/prototypes.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/prototypes.json',
     flows: [],
     interactions: [],
   }, null, 2));
 
   // 9. Write assets manifest
   zip.file('assets/manifest.json', JSON.stringify({
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/assets.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/assets.json',
     assets: [],
     externalRefs: [],
   }, null, 2));
 
   // 10. Write history
   zip.file('history/changelog.json', JSON.stringify({
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/history.json',
-    currentVersion: PRESERVE_FORMAT_VERSION,
+    $schema: 'https://designlibre.app/schemas/seed/1.0/history.json',
+    currentVersion: SEED_FORMAT_VERSION,
     changelog: [{
-      version: PRESERVE_FORMAT_VERSION,
+      version: SEED_FORMAT_VERSION,
       date: new Date().toISOString(),
       message: 'iOS 26 Liquid Glass Template',
     }],
@@ -92,17 +92,17 @@ export async function exportTemplateAsPreserve(archive: PreserveArchive): Promis
 }
 
 /**
- * Download the iOS 26 Liquid Glass template as a .preserve file
+ * Download the iOS 26 Liquid Glass template as a .seed file
  */
 export async function downloadiOS26Template(): Promise<void> {
   const archive = generateiOS26Template();
-  const blob = await exportTemplateAsPreserve(archive);
+  const blob = await exportTemplateAsSeed(archive);
 
   // Create download link
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'iOS-26-Liquid-Glass-Template.preserve';
+  link.download = 'iOS-26-Liquid-Glass-Template.seed';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -110,17 +110,17 @@ export async function downloadiOS26Template(): Promise<void> {
 }
 
 /**
- * Download the Kotlin Material Design 3 template as a .preserve file
+ * Download the Kotlin Material Design 3 template as a .seed file
  */
 export async function downloadKotlinMaterial3Template(): Promise<void> {
   const archive = generateKotlinMaterial3Template();
-  const blob = await exportTemplateAsPreserve(archive);
+  const blob = await exportTemplateAsSeed(archive);
 
   // Create download link
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'Kotlin-Material3-Template.preserve';
+  link.download = 'Kotlin-Material3-Template.seed';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

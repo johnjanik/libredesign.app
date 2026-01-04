@@ -1,24 +1,24 @@
 /**
  * iOS 26 Liquid Glass Template Generator
  *
- * Creates a comprehensive .preserve template file containing all iOS 26
+ * Creates a comprehensive .seed template file containing all iOS 26
  * Liquid Glass design elements with 1:1 WYSIWYG mapping to SwiftUI code.
  *
  * Based on Apple's iOS 26 Human Interface Guidelines and Liquid Glass design system.
  */
 
 import type {
-  PreserveArchive,
-  PreserveDocument,
-  PreservePage,
-  PreserveNode,
-  PreserveFrameNode,
-  PreserveTextNode,
-  PreserveVectorNode,
-  PreserveTokens,
-  PreserveTokenGroup,
-  PreserveComponentRegistry,
-} from '../persistence/preserve/preserve-types';
+  SeedArchive,
+  SeedDocument,
+  SeedPage,
+  SeedNode,
+  SeedFrameNode,
+  SeedTextNode,
+  SeedVectorNode,
+  SeedTokens,
+  SeedTokenGroup,
+  SeedComponentRegistry,
+} from '../persistence/seed/seed-types';
 import type { RGBA } from '@core/types/color';
 
 // =============================================================================
@@ -143,9 +143,9 @@ function createGlassContainer(
     material?: 'regular' | 'thick' | 'thin' | 'ultraThin';
     cornerRadius?: number;
     tint?: RGBA;
-    children?: PreserveNode[];
+    children?: SeedNode[];
   } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const material = options.material ?? 'regular';
   const materialColors = {
     regular: iOS26Colors.glassRegular,
@@ -159,7 +159,7 @@ function createGlassContainer(
     ? { r: (baseColor.r + options.tint.r) / 2, g: (baseColor.g + options.tint.g) / 2, b: (baseColor.b + options.tint.b) / 2, a: baseColor.a }
     : baseColor;
 
-  const node: PreserveFrameNode = {
+  const node: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name,
@@ -209,7 +209,7 @@ function createTextLabel(
   y: number,
   style: keyof typeof iOS26Typography,
   color: RGBA = iOS26Colors.labelPrimary
-): PreserveTextNode {
+): SeedTextNode {
   const typo = iOS26Typography[style];
   return {
     id: generateNodeId(),
@@ -242,7 +242,7 @@ function createButton(
   x: number,
   y: number,
   style: 'primary' | 'secondary' | 'bordered' | 'glass' = 'primary'
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 50;
   const padding = 20;
   const width = label.length * 10 + padding * 2;
@@ -269,7 +269,7 @@ function createButton(
       break;
   }
 
-  const appearance: PreserveFrameNode['appearance'] = {
+  const appearance: SeedFrameNode['appearance'] = {
     fills: [{ type: 'SOLID', color: fill, visible: true }],
     cornerRadius: iOS26Radius.pill,
   };
@@ -317,9 +317,9 @@ function createNavigationBar(
     rightButtons?: string[];
     style?: 'inline' | 'large';
   } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = options.style === 'large' ? 96 : 44;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   // Back button
   if (options.hasBackButton) {
@@ -370,10 +370,10 @@ function createTabBar(
   y: number,
   width: number,
   tabs: Array<{ icon: string; label: string; selected?: boolean }>
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 83; // Standard tab bar height with safe area
   const tabWidth = width / tabs.length;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   tabs.forEach((tab, index) => {
     const color = tab.selected ? iOS26Colors.systemBlue : iOS26Colors.labelSecondary;
@@ -413,7 +413,7 @@ function createSFSymbol(
   y: number,
   size: number,
   color: RGBA
-): PreserveVectorNode {
+): SeedVectorNode {
   // Create a simple placeholder shape for the symbol
   // In a real implementation, we'd use actual SF Symbol paths
   return {
@@ -452,9 +452,9 @@ function createListRow(
     hasSwitch?: boolean;
     leadingIcon?: string;
   } = {}
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = subtitle ? 72 : 44;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   let contentX = 16;
 
@@ -498,7 +498,7 @@ function createListRow(
 /**
  * Create a toggle switch (maps to Toggle in SwiftUI)
  */
-function createSwitch(x: number, y: number, isOn: boolean): PreserveFrameNode {
+function createSwitch(x: number, y: number, isOn: boolean): SeedFrameNode {
   const width = 51;
   const height = 31;
 
@@ -530,7 +530,7 @@ function createSwitch(x: number, y: number, isOn: boolean): PreserveFrameNode {
           visible: true,
         }],
       },
-    } as PreserveFrameNode],
+    } as SeedFrameNode],
   };
 }
 
@@ -542,7 +542,7 @@ function createTextField(
   x: number,
   y: number,
   width: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 44;
 
   return {
@@ -573,7 +573,7 @@ function createCard(
   x: number,
   y: number,
   width: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const contentHeight = Math.ceil(content.length / 40) * 22;
   const height = 16 + 22 + 8 + contentHeight + 16;
 
@@ -616,16 +616,16 @@ function createSegmentedControl(
   x: number,
   y: number,
   width: number
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 32;
   const segmentWidth = (width - 4) / segments.length;
-  const children: PreserveNode[] = [];
+  const children: SeedNode[] = [];
 
   segments.forEach((segment, index) => {
     const isSelected = index === selectedIndex;
     const segmentX = 2 + index * segmentWidth;
 
-    const segmentAppearance: PreserveFrameNode['appearance'] = {
+    const segmentAppearance: SeedFrameNode['appearance'] = {
       cornerRadius: iOS26Radius.sm,
     };
 
@@ -641,7 +641,7 @@ function createSegmentedControl(
       }];
     }
 
-    const segmentFrame: PreserveFrameNode = {
+    const segmentFrame: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Segment: ${segment}`,
@@ -681,7 +681,7 @@ function createSlider(
   y: number,
   width: number,
   value: number // 0-1
-): PreserveFrameNode {
+): SeedFrameNode {
   const height = 28;
   const trackHeight = 4;
   const thumbSize = 28;
@@ -705,7 +705,7 @@ function createSlider(
           fills: [{ type: 'SOLID', color: iOS26Colors.systemFill, visible: true }],
           cornerRadius: trackHeight / 2,
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
       // Track fill
       {
         id: generateNodeId(),
@@ -717,7 +717,7 @@ function createSlider(
           fills: [{ type: 'SOLID', color: iOS26Colors.systemBlue, visible: true }],
           cornerRadius: trackHeight / 2,
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
       // Thumb
       {
         id: generateNodeId(),
@@ -737,7 +737,7 @@ function createSlider(
             visible: true,
           }],
         },
-      } as PreserveFrameNode,
+      } as SeedFrameNode,
     ],
   };
 }
@@ -751,14 +751,14 @@ function createAlert(
   x: number,
   y: number,
   buttons: Array<{ label: string; style?: 'default' | 'cancel' | 'destructive' }>
-): PreserveFrameNode {
+): SeedFrameNode {
   const width = 270;
   const buttonHeight = 44;
   const contentPadding = 16;
   const messageHeight = Math.ceil(message.length / 35) * 20;
   const height = contentPadding + 22 + 8 + messageHeight + contentPadding + buttons.length * buttonHeight;
 
-  const children: PreserveNode[] = [
+  const children: SeedNode[] = [
     createTextLabel('alert-title', title, contentPadding, contentPadding, 'headline'),
     createTextLabel('alert-message', message, contentPadding, contentPadding + 30, 'footnote', iOS26Colors.labelSecondary),
   ];
@@ -769,7 +769,7 @@ function createAlert(
     let textColor = iOS26Colors.systemBlue;
     if (btn.style === 'destructive') textColor = iOS26Colors.systemRed;
 
-    const buttonFrame: PreserveFrameNode = {
+    const buttonFrame: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Alert Button: ${btn.label}`,
@@ -823,12 +823,12 @@ function createAlert(
 /**
  * Create the iOS 26 Component Library page
  */
-function createComponentLibraryPage(): PreservePage {
+function createComponentLibraryPage(): SeedPage {
   const device = iOS26Devices.iPhone16Pro;
-  const nodes: PreserveNode[] = [];
+  const nodes: SeedNode[] = [];
 
   // Device frame
-  const deviceFrame: PreserveFrameNode = {
+  const deviceFrame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'iPhone 16 Pro - Component Library',
@@ -880,7 +880,7 @@ function createComponentLibraryPage(): PreservePage {
 
   // iPad frame with same components
   const iPadDevice = iOS26Devices.iPadPro11;
-  const iPadFrame: PreserveFrameNode = {
+  const iPadFrame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'iPad Pro 11" - Component Library',
@@ -931,7 +931,7 @@ function createComponentLibraryPage(): PreservePage {
   nodes.push(iPadFrame);
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-components',
     name: 'Component Library',
     backgroundColor: { r: 0.1, g: 0.1, b: 0.12, a: 1 },
@@ -942,12 +942,12 @@ function createComponentLibraryPage(): PreservePage {
 /**
  * Create the iOS 26 Typography page
  */
-function createTypographyPage(): PreservePage {
-  const nodes: PreserveNode[] = [];
+function createTypographyPage(): SeedPage {
+  const nodes: SeedNode[] = [];
   let y = 100;
 
   // Typography scale showcase
-  const frame: PreserveFrameNode = {
+  const frame: SeedFrameNode = {
     id: generateNodeId(),
     type: 'FRAME',
     name: 'Typography Scale',
@@ -981,7 +981,7 @@ function createTypographyPage(): PreservePage {
 
   styles.forEach(([name, style]) => {
     const typo = iOS26Typography[style];
-    const row: PreserveFrameNode = {
+    const row: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Typography: ${name}`,
@@ -1004,7 +1004,7 @@ function createTypographyPage(): PreservePage {
   nodes.push(frame);
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-typography',
     name: 'Typography',
     backgroundColor: { r: 0.1, g: 0.1, b: 0.12, a: 1 },
@@ -1015,8 +1015,8 @@ function createTypographyPage(): PreservePage {
 /**
  * Create the iOS 26 Colors page
  */
-function createColorsPage(): PreservePage {
-  const nodes: PreserveNode[] = [];
+function createColorsPage(): SeedPage {
+  const nodes: SeedNode[] = [];
 
   // System colors grid
   const colorEntries = Object.entries(iOS26Colors);
@@ -1033,7 +1033,7 @@ function createColorsPage(): PreservePage {
       y += swatchSize + gap + 24;
     }
 
-    const swatch: PreserveFrameNode = {
+    const swatch: SeedFrameNode = {
       id: generateNodeId(),
       type: 'FRAME',
       name: `Color: ${name}`,
@@ -1063,7 +1063,7 @@ function createColorsPage(): PreservePage {
               visible: true,
             }],
           },
-        } as PreserveFrameNode,
+        } as SeedFrameNode,
         createTextLabel(`color-${name}`, name.replace(/([A-Z])/g, ' $1').trim(), 0, 0, 'caption2', iOS26Colors.labelPrimary),
       ],
     };
@@ -1073,7 +1073,7 @@ function createColorsPage(): PreservePage {
   });
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
     id: 'page-colors',
     name: 'Color Palette',
     backgroundColor: { r: 0.95, g: 0.95, b: 0.97, a: 1 },
@@ -1085,8 +1085,8 @@ function createColorsPage(): PreservePage {
 // Token Generation
 // =============================================================================
 
-function generateDesignTokens(): PreserveTokens {
-  const groups: PreserveTokenGroup[] = [];
+function generateDesignTokens(): SeedTokens {
+  const groups: SeedTokenGroup[] = [];
 
   // Color tokens
   groups.push({
@@ -1143,7 +1143,7 @@ function generateDesignTokens(): PreserveTokens {
   });
 
   return {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/tokens.json',
+    $schema: 'https://designlibre.app/schemas/seed/1.0/tokens.json',
     version: '1.0.0',
     groups,
   };
@@ -1156,7 +1156,7 @@ function generateDesignTokens(): PreserveTokens {
 /**
  * Generate the complete iOS 26 Liquid Glass template archive
  */
-export function generateiOS26Template(): PreserveArchive {
+export function generateiOS26Template(): SeedArchive {
   nodeIdCounter = 0; // Reset counter
 
   const now = new Date().toISOString();
@@ -1166,14 +1166,14 @@ export function generateiOS26Template(): PreserveArchive {
   const typographyPage = createTypographyPage();
   const colorsPage = createColorsPage();
 
-  const pages = new Map<string, PreservePage>();
+  const pages = new Map<string, SeedPage>();
   pages.set('page-components', componentLibraryPage);
   pages.set('page-typography', typographyPage);
   pages.set('page-colors', colorsPage);
 
   // Create document
-  const document: PreserveDocument = {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/document.json',
+  const document: SeedDocument = {
+    $schema: 'https://designlibre.app/schemas/seed/1.0/document.json',
     id: 'doc-ios26-template',
     name: 'iOS 26 Liquid Glass Template',
     formatVersion: '1.0.0',
@@ -1192,8 +1192,8 @@ export function generateiOS26Template(): PreserveArchive {
   };
 
   // Create component registry
-  const components: PreserveComponentRegistry = {
-    $schema: 'https://designlibre.app/schemas/preserve/1.0/components.json',
+  const components: SeedComponentRegistry = {
+    $schema: 'https://designlibre.app/schemas/seed/1.0/components.json',
     components: [],
     componentSets: [],
   };

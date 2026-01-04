@@ -1,7 +1,7 @@
 /**
  * Node Converter
  *
- * Converts between internal NodeData and PreserveNode formats.
+ * Converts between internal NodeData and SeedNode formats.
  */
 
 import type {
@@ -22,31 +22,31 @@ import type { Paint, SolidPaint, GradientPaint, ImagePaint } from '@core/types/p
 import type { Effect, DropShadowEffect, InnerShadowEffect, BlurEffect, BackgroundBlurEffect } from '@core/types/effect';
 import type { VectorPath, PathCommand } from '@core/types/geometry';
 import type {
-  PreserveNode,
-  PreserveFrameNode,
-  PreserveVectorNode,
-  PreserveTextNode,
-  PreserveImageNode,
-  PreserveComponentNode,
-  PreserveInstanceNode,
-  PreserveBooleanNode,
-  PreserveSliceNode,
-  PreserveTransform,
-  PreserveAppearance,
-  PreserveLayout,
-  PreserveConstraints,
-  PreservePaint,
-  PreserveEffect,
-  PreserveVectorPath,
-  PreservePathCommand,
-  PreserveTextStyle,
-  PreserveOverride,
-} from '../preserve-types';
+  SeedNode,
+  SeedFrameNode,
+  SeedVectorNode,
+  SeedTextNode,
+  SeedImageNode,
+  SeedComponentNode,
+  SeedInstanceNode,
+  SeedBooleanNode,
+  SeedSliceNode,
+  SeedTransform,
+  SeedAppearance,
+  SeedLayout,
+  SeedConstraints,
+  SeedPaint,
+  SeedEffect,
+  SeedVectorPath,
+  SeedPathCommand,
+  SeedTextStyle,
+  SeedOverride,
+} from '../seed-types';
 
 /**
- * Convert internal NodeData to PreserveNode format.
+ * Convert internal NodeData to SeedNode format.
  */
-export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): PreserveNode {
+export function nodeToSeed(node: NodeData, children?: SeedNode[]): SeedNode {
   const base = {
     id: node.id,
     name: node.name,
@@ -60,13 +60,13 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'FRAME',
-        transform: transformToPreserve(frame),
-        appearance: appearanceToPreserve(frame),
-        layout: layoutToPreserve(frame),
-        constraints: constraintsToPreserve(frame),
+        transform: transformToSeed(frame),
+        appearance: appearanceToSeed(frame),
+        layout: layoutToSeed(frame),
+        constraints: constraintsToSeed(frame),
         clipContent: frame.clipsContent,
         children,
-      } as PreserveFrameNode;
+      } as SeedFrameNode;
     }
 
     case 'GROUP': {
@@ -74,11 +74,11 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'GROUP',
-        transform: transformToPreserve(group),
-        appearance: appearanceToPreserve(group),
-        constraints: constraintsToPreserve(group),
+        transform: transformToSeed(group),
+        appearance: appearanceToSeed(group),
+        constraints: constraintsToSeed(group),
         children,
-      } as PreserveFrameNode;
+      } as SeedFrameNode;
     }
 
     case 'VECTOR': {
@@ -86,11 +86,11 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'VECTOR',
-        transform: transformToPreserve(vector),
-        appearance: appearanceToPreserve(vector),
-        constraints: constraintsToPreserve(vector),
-        paths: vector.vectorPaths?.map(pathToPreserve) ?? [],
-      } as PreserveVectorNode;
+        transform: transformToSeed(vector),
+        appearance: appearanceToSeed(vector),
+        constraints: constraintsToSeed(vector),
+        paths: vector.vectorPaths?.map(pathToSeed) ?? [],
+      } as SeedVectorNode;
     }
 
     case 'TEXT': {
@@ -98,15 +98,15 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'TEXT',
-        transform: transformToPreserve(text),
-        appearance: appearanceToPreserve(text),
-        constraints: constraintsToPreserve(text),
+        transform: transformToSeed(text),
+        appearance: appearanceToSeed(text),
+        constraints: constraintsToSeed(text),
         characters: text.characters,
-        styles: text.textStyles?.map(styleToPreserve) ?? [],
+        styles: text.textStyles?.map(styleToSeed) ?? [],
         textAlignHorizontal: text.textAlignHorizontal,
         textAlignVertical: text.textAlignVertical,
         textAutoResize: text.textAutoResize,
-      } as PreserveTextNode;
+      } as SeedTextNode;
     }
 
     case 'IMAGE': {
@@ -114,14 +114,14 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'IMAGE',
-        transform: transformToPreserve(image),
-        appearance: appearanceToPreserve(image),
-        constraints: constraintsToPreserve(image),
+        transform: transformToSeed(image),
+        appearance: appearanceToSeed(image),
+        constraints: constraintsToSeed(image),
         assetRef: image.imageRef,
         scaleMode: image.scaleMode,
         naturalWidth: image.naturalWidth,
         naturalHeight: image.naturalHeight,
-      } as PreserveImageNode;
+      } as SeedImageNode;
     }
 
     case 'COMPONENT': {
@@ -129,12 +129,12 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'COMPONENT',
-        transform: transformToPreserve(comp),
-        appearance: appearanceToPreserve(comp),
-        constraints: constraintsToPreserve(comp),
+        transform: transformToSeed(comp),
+        appearance: appearanceToSeed(comp),
+        constraints: constraintsToSeed(comp),
         propertyDefinitions: comp.propertyDefinitions as Record<string, unknown>,
         children,
-      } as PreserveComponentNode;
+      } as SeedComponentNode;
     }
 
     case 'INSTANCE': {
@@ -142,11 +142,11 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'INSTANCE',
-        transform: transformToPreserve(instance),
-        constraints: constraintsToPreserve(instance),
+        transform: transformToSeed(instance),
+        constraints: constraintsToSeed(instance),
         componentRef: instance.componentId ?? '',
-        overrides: instance.overrides?.map(overrideToPreserve),
-      } as PreserveInstanceNode;
+        overrides: instance.overrides?.map(overrideToSeed),
+      } as SeedInstanceNode;
     }
 
     case 'BOOLEAN_OPERATION': {
@@ -154,12 +154,12 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
       return {
         ...base,
         type: 'BOOLEAN_OPERATION',
-        transform: transformToPreserve(bool),
-        appearance: appearanceToPreserve(bool),
-        constraints: constraintsToPreserve(bool),
+        transform: transformToSeed(bool),
+        appearance: appearanceToSeed(bool),
+        constraints: constraintsToSeed(bool),
         booleanOperation: bool.booleanOperation ?? 'UNION',
         children,
-      } as PreserveBooleanNode;
+      } as SeedBooleanNode;
     }
 
     case 'SLICE': {
@@ -174,8 +174,8 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
           height: slice.height ?? 100,
           rotation: slice.rotation ?? 0,
         },
-        exportSettings: slice.exportSettings?.map(exportSettingToPreserve),
-      } as PreserveSliceNode;
+        exportSettings: slice.exportSettings?.map(exportSettingToSeed),
+      } as SeedSliceNode;
     }
 
     default:
@@ -185,11 +185,11 @@ export function nodeToPreserve(node: NodeData, children?: PreserveNode[]): Prese
         type: 'FRAME',
         transform: { x: 0, y: 0, width: 100, height: 100, rotation: 0 },
         children,
-      } as PreserveFrameNode;
+      } as SeedFrameNode;
   }
 }
 
-function transformToPreserve(node: SceneNodeData): PreserveTransform {
+function transformToSeed(node: SceneNodeData): SeedTransform {
   return {
     x: node.x ?? 0,
     y: node.y ?? 0,
@@ -199,8 +199,8 @@ function transformToPreserve(node: SceneNodeData): PreserveTransform {
   };
 }
 
-function appearanceToPreserve(node: SceneNodeData): PreserveAppearance | undefined {
-  const appearance: PreserveAppearance = {};
+function appearanceToSeed(node: SceneNodeData): SeedAppearance | undefined {
+  const appearance: SeedAppearance = {};
 
   if (node.opacity !== undefined && node.opacity !== 1) {
     appearance.opacity = node.opacity;
@@ -211,11 +211,11 @@ function appearanceToPreserve(node: SceneNodeData): PreserveAppearance | undefin
   }
 
   if (node.fills && node.fills.length > 0) {
-    appearance.fills = node.fills.map(paintToPreserve);
+    appearance.fills = node.fills.map(paintToSeed);
   }
 
   if (node.strokes && node.strokes.length > 0) {
-    appearance.strokes = node.strokes.map(paintToPreserve);
+    appearance.strokes = node.strokes.map(paintToSeed);
   }
 
   if (node.strokeWeight !== undefined) {
@@ -239,20 +239,20 @@ function appearanceToPreserve(node: SceneNodeData): PreserveAppearance | undefin
   }
 
   if (node.effects && node.effects.length > 0) {
-    appearance.effects = node.effects.map(effectToPreserve);
+    appearance.effects = node.effects.map(effectToSeed);
   }
 
   // Return undefined if empty
   return Object.keys(appearance).length > 0 ? appearance : undefined;
 }
 
-function layoutToPreserve(node: FrameNodeData): PreserveLayout | undefined {
+function layoutToSeed(node: FrameNodeData): SeedLayout | undefined {
   const autoLayout = node.autoLayout;
   if (!autoLayout || autoLayout.mode === 'NONE') {
     return undefined;
   }
 
-  const result: PreserveLayout = {
+  const result: SeedLayout = {
     autoLayout: autoLayout.mode,
     gap: autoLayout.itemSpacing,
   };
@@ -278,7 +278,7 @@ function layoutToPreserve(node: FrameNodeData): PreserveLayout | undefined {
   return result;
 }
 
-function constraintsToPreserve(node: SceneNodeData): PreserveConstraints | undefined {
+function constraintsToSeed(node: SceneNodeData): SeedConstraints | undefined {
   if (!node.constraints) {
     return undefined;
   }
@@ -289,7 +289,7 @@ function constraintsToPreserve(node: SceneNodeData): PreserveConstraints | undef
   };
 }
 
-function paintToPreserve(paint: Paint): PreservePaint {
+function paintToSeed(paint: Paint): SeedPaint {
   if (paint.type === 'SOLID') {
     const solid = paint as SolidPaint;
     return {
@@ -331,7 +331,7 @@ function paintToPreserve(paint: Paint): PreservePaint {
   };
 }
 
-function effectToPreserve(effect: Effect): PreserveEffect {
+function effectToSeed(effect: Effect): SeedEffect {
   if (effect.type === 'DROP_SHADOW' || effect.type === 'INNER_SHADOW') {
     const shadow = effect as DropShadowEffect | InnerShadowEffect;
     return {
@@ -360,15 +360,15 @@ function effectToPreserve(effect: Effect): PreserveEffect {
   };
 }
 
-function pathToPreserve(path: VectorPath): PreserveVectorPath {
+function pathToSeed(path: VectorPath): SeedVectorPath {
   return {
     windingRule: path.windingRule,
-    commands: path.commands.map(commandToPreserve),
+    commands: path.commands.map(commandToSeed),
   };
 }
 
-function commandToPreserve(cmd: PathCommand): PreservePathCommand {
-  const result: PreservePathCommand = { type: cmd.type };
+function commandToSeed(cmd: PathCommand): SeedPathCommand {
+  const result: SeedPathCommand = { type: cmd.type };
 
   if ('x' in cmd && cmd.x !== undefined) result.x = cmd.x;
   if ('y' in cmd && cmd.y !== undefined) result.y = cmd.y;
@@ -380,8 +380,8 @@ function commandToPreserve(cmd: PathCommand): PreservePathCommand {
   return result;
 }
 
-function styleToPreserve(style: TextStyleRange): PreserveTextStyle {
-  const result: PreserveTextStyle = {
+function styleToSeed(style: TextStyleRange): SeedTextStyle {
+  const result: SeedTextStyle = {
     start: style.start ?? 0,
     end: style.end ?? 0,
     fontFamily: style.fontFamily ?? 'Inter',
@@ -404,13 +404,13 @@ function styleToPreserve(style: TextStyleRange): PreserveTextStyle {
   }
 
   if (style.fills) {
-    result.fills = [...style.fills].map(paintToPreserve);
+    result.fills = [...style.fills].map(paintToSeed);
   }
 
   return result;
 }
 
-function overrideToPreserve(override: unknown): PreserveOverride {
+function overrideToSeed(override: unknown): SeedOverride {
   const o = override as { path?: string[]; value?: unknown };
   return {
     path: o.path ?? [],
@@ -418,7 +418,7 @@ function overrideToPreserve(override: unknown): PreserveOverride {
   };
 }
 
-function exportSettingToPreserve(setting: ExportSetting): { format: 'PNG' | 'JPG' | 'SVG' | 'PDF'; suffix?: string; scale?: number } {
+function exportSettingToSeed(setting: ExportSetting): { format: 'PNG' | 'JPG' | 'SVG' | 'PDF'; suffix?: string; scale?: number } {
   return {
     format: setting.format ?? 'PNG',
     suffix: setting.suffix,
@@ -430,55 +430,55 @@ function exportSettingToPreserve(setting: ExportSetting): { format: 'PNG' | 'JPG
 import type { ExportSetting } from '@core/types/common';
 
 /**
- * Convert PreserveNode back to internal NodeData format.
- * This is used when importing .preserve files.
+ * Convert SeedNode back to internal NodeData format.
+ * This is used when importing .seed files.
  */
-export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
+export function seedToNode(seed: SeedNode): Partial<NodeData> {
   const base = {
-    name: preserve.name,
-    visible: preserve.visible ?? true,
-    locked: preserve.locked ?? false,
+    name: seed.name,
+    visible: seed.visible ?? true,
+    locked: seed.locked ?? false,
   };
 
   // Helper to extract common scene node properties
-  const getSceneProps = (node: { transform: PreserveTransform; appearance?: PreserveAppearance }) => ({
+  const getSceneProps = (node: { transform: SeedTransform; appearance?: SeedAppearance }) => ({
     x: node.transform.x,
     y: node.transform.y,
     width: node.transform.width,
     height: node.transform.height,
     rotation: node.transform.rotation,
     opacity: node.appearance?.opacity ?? 1,
-    fills: node.appearance?.fills?.map(preserveToPaint) ?? [],
-    strokes: node.appearance?.strokes?.map(preserveToPaint) ?? [],
+    fills: node.appearance?.fills?.map(seedToPaint) ?? [],
+    strokes: node.appearance?.strokes?.map(seedToPaint) ?? [],
     strokeWeight: node.appearance?.strokeWeight,
     cornerRadius: node.appearance?.cornerRadius,
-    effects: node.appearance?.effects?.map(preserveToEffect) ?? [],
+    effects: node.appearance?.effects?.map(seedToEffect) ?? [],
   });
 
-  switch (preserve.type) {
+  switch (seed.type) {
     case 'FRAME':
     case 'GROUP': {
-      const frame = preserve as PreserveFrameNode;
+      const frame = seed as SeedFrameNode;
       return {
         ...base,
-        type: preserve.type,
+        type: seed.type,
         ...getSceneProps(frame),
         clipsContent: frame.clipContent,
       } as Partial<FrameNodeData>;
     }
 
     case 'VECTOR': {
-      const vector = preserve as PreserveVectorNode;
+      const vector = seed as SeedVectorNode;
       return {
         ...base,
         type: 'VECTOR',
         ...getSceneProps(vector),
-        vectorPaths: vector.paths?.map(preserveToPath),
+        vectorPaths: vector.paths?.map(seedToPath),
       } as Partial<VectorNodeData>;
     }
 
     case 'TEXT': {
-      const text = preserve as PreserveTextNode;
+      const text = seed as SeedTextNode;
       return {
         ...base,
         type: 'TEXT',
@@ -491,7 +491,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     }
 
     case 'IMAGE': {
-      const image = preserve as PreserveImageNode;
+      const image = seed as SeedImageNode;
       return {
         ...base,
         type: 'IMAGE',
@@ -504,7 +504,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     }
 
     case 'COMPONENT': {
-      const comp = preserve as PreserveComponentNode;
+      const comp = seed as SeedComponentNode;
       return {
         ...base,
         type: 'COMPONENT',
@@ -513,7 +513,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     }
 
     case 'INSTANCE': {
-      const instance = preserve as PreserveInstanceNode;
+      const instance = seed as SeedInstanceNode;
       return {
         ...base,
         type: 'INSTANCE',
@@ -527,7 +527,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     }
 
     case 'BOOLEAN_OPERATION': {
-      const bool = preserve as PreserveBooleanNode;
+      const bool = seed as SeedBooleanNode;
       return {
         ...base,
         type: 'BOOLEAN_OPERATION',
@@ -537,7 +537,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
     }
 
     case 'SLICE': {
-      const slice = preserve as PreserveSliceNode;
+      const slice = seed as SeedSliceNode;
       return {
         ...base,
         type: 'SLICE',
@@ -554,7 +554,7 @@ export function preserveToNode(preserve: PreserveNode): Partial<NodeData> {
   }
 }
 
-function preserveToPath(path: PreserveVectorPath): VectorPath {
+function seedToPath(path: SeedVectorPath): VectorPath {
   return {
     windingRule: path.windingRule,
     commands: path.commands
@@ -582,7 +582,7 @@ function preserveToPath(path: PreserveVectorPath): VectorPath {
   };
 }
 
-function preserveToPaint(paint: PreservePaint): Paint {
+function seedToPaint(paint: SeedPaint): Paint {
   if (paint.type === 'SOLID') {
     return {
       type: 'SOLID',
@@ -600,7 +600,7 @@ function preserveToPaint(paint: PreservePaint): Paint {
   } as SolidPaint;
 }
 
-function preserveToEffect(effect: PreserveEffect): Effect {
+function seedToEffect(effect: SeedEffect): Effect {
   if (effect.type === 'DROP_SHADOW' || effect.type === 'INNER_SHADOW') {
     return {
       type: effect.type,

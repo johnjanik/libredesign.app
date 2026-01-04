@@ -849,7 +849,7 @@ export class LeftSidebar {
 
     // Download button
     const downloadBtn = document.createElement('button');
-    downloadBtn.textContent = 'Download .preserve';
+    downloadBtn.textContent = 'Download .seed';
     downloadBtn.style.cssText = `
       margin-top: 8px;
       padding: 6px 12px;
@@ -870,7 +870,7 @@ export class LeftSidebar {
         await onDownload();
         downloadBtn.textContent = 'Downloaded!';
         setTimeout(() => {
-          downloadBtn.textContent = 'Download .preserve';
+          downloadBtn.textContent = 'Download .seed';
           downloadBtn.style.opacity = '1';
         }, 2000);
       } catch (error) {
@@ -1359,10 +1359,10 @@ export class LeftSidebar {
 
     const menuItems = [
       { label: 'New File', shortcut: 'Ctrl+N', action: () => this.createNewFile() },
-      { label: 'Open .preserve...', shortcut: 'Ctrl+O', action: () => this.openPreserveFile() },
+      { label: 'Open .seed...', shortcut: 'Ctrl+O', action: () => this.openSeedFile() },
       { separator: true },
       { label: 'Save', shortcut: 'Ctrl+S', action: () => this.runtime.saveDocument() },
-      { label: 'Save as .preserve...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsPreserve() },
+      { label: 'Save as .seed...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsSeed() },
       { separator: true },
       { label: 'Templates', submenu: true, action: () => this.showTemplatesMenu(anchor) },
       { separator: true },
@@ -2304,26 +2304,26 @@ export class LeftSidebar {
   }
 
   /**
-   * Save the current document as a .preserve file.
+   * Save the current document as a .seed file.
    */
-  private async saveAsPreserve(): Promise<void> {
+  private async saveAsSeed(): Promise<void> {
     try {
-      const filename = `${this.documentName.replace(/[^a-zA-Z0-9-_ ]/g, '')}.preserve`;
-      await this.runtime.saveAsPreserve(filename);
+      const filename = `${this.documentName.replace(/[^a-zA-Z0-9-_ ]/g, '')}.seed`;
+      await this.runtime.saveAsSeed(filename);
     } catch (error) {
-      console.error('Failed to save .preserve file:', error);
+      console.error('Failed to save .seed file:', error);
       // Could show an error notification here
     }
   }
 
   /**
-   * Open a .preserve file.
+   * Open a .seed file.
    */
-  private openPreserveFile(): void {
+  private openSeedFile(): void {
     // Create a hidden file input to trigger file selection
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.preserve';
+    fileInput.accept = '.seed';
     fileInput.style.display = 'none';
 
     fileInput.addEventListener('change', async (e) => {
@@ -2332,14 +2332,14 @@ export class LeftSidebar {
       if (!file) return;
 
       try {
-        await this.runtime.loadPreserve(file);
+        await this.runtime.loadSeed(file);
         // Update document name from filename
-        this.documentName = file.name.replace('.preserve', '');
+        this.documentName = file.name.replace('.seed', '');
         // Sync leaves and re-render
         this.syncLeavesFromSceneGraph();
         this.render();
       } catch (error) {
-        console.error('Failed to open .preserve file:', error);
+        console.error('Failed to open .seed file:', error);
         // Could show an error notification here
       }
 

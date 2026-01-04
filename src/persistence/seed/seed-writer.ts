@@ -1,7 +1,7 @@
 /**
- * Preserve Writer
+ * Seed Writer
  *
- * Creates .preserve archive files from DesignLibre documents.
+ * Creates .seed archive files from DesignLibre documents.
  */
 
 import JSZip from 'jszip';
@@ -10,26 +10,26 @@ import type { NodeData, PageNodeData } from '@scene/nodes/base-node';
 import type { NodeId } from '@core/types/common';
 import type { TokenRegistry } from '@devtools/tokens/token-registry';
 import type {
-  PreserveManifest,
-  PreserveManifestEntry,
-  PreserveDocument,
-  PreservePage,
-  PreserveNode,
-  PreserveTokens,
-  PreserveTokenGroup,
-  PreserveComponentRegistry,
-  PreservePrototypes,
-  PreserveAssetManifest,
-  PreserveHistory,
-  PreserveWriteOptions,
-} from './preserve-types';
+  SeedManifest,
+  SeedManifestEntry,
+  SeedDocument,
+  SeedPage,
+  SeedNode,
+  SeedTokens,
+  SeedTokenGroup,
+  SeedComponentRegistry,
+  SeedPrototypes,
+  SeedAssetManifest,
+  SeedHistory,
+  SeedWriteOptions,
+} from './seed-types';
 import {
-  PRESERVE_MIMETYPE,
-  PRESERVE_FORMAT_VERSION,
-} from './preserve-types';
-import { nodeToPreserve } from './converters/node-converter';
+  SEED_MIMETYPE,
+  SEED_FORMAT_VERSION,
+} from './seed-types';
+import { nodeToSeed } from './converters/node-converter';
 
-const DEFAULT_OPTIONS: Required<PreserveWriteOptions> = {
+const DEFAULT_OPTIONS: Required<SeedWriteOptions> = {
   includeThumbnail: true,
   thumbnailSize: 512,
   includeHistory: true,
@@ -37,19 +37,19 @@ const DEFAULT_OPTIONS: Required<PreserveWriteOptions> = {
 };
 
 /**
- * PreserveWriter - Creates .preserve archives from DesignLibre documents.
+ * SeedWriter - Creates .seed archives from DesignLibre documents.
  */
-export class PreserveWriter {
+export class SeedWriter {
   private zip: JSZip;
   private sceneGraph: SceneGraph;
   private tokenRegistry: TokenRegistry | null;
-  private options: Required<PreserveWriteOptions>;
-  private entries: PreserveManifestEntry[] = [];
+  private options: Required<SeedWriteOptions>;
+  private entries: SeedManifestEntry[] = [];
 
   constructor(
     sceneGraph: SceneGraph,
     tokenRegistry: TokenRegistry | null = null,
-    options: PreserveWriteOptions = {}
+    options: SeedWriteOptions = {}
   ) {
     this.zip = new JSZip();
     this.sceneGraph = sceneGraph;
@@ -58,7 +58,7 @@ export class PreserveWriter {
   }
 
   /**
-   * Write the document to a .preserve archive.
+   * Write the document to a .seed archive.
    */
   async write(): Promise<Blob> {
     // 1. Write mimetype (uncompressed, first)
@@ -105,14 +105,14 @@ export class PreserveWriter {
 
   private writeMimetype(): void {
     // Must be uncompressed and first in archive
-    this.zip.file('mimetype', PRESERVE_MIMETYPE, { compression: 'STORE' });
+    this.zip.file('mimetype', SEED_MIMETYPE, { compression: 'STORE' });
   }
 
   private writeManifest(): void {
     const now = new Date().toISOString();
 
-    const manifest: PreserveManifest = {
-      version: PRESERVE_FORMAT_VERSION,
+    const manifest: SeedManifest = {
+      version: SEED_FORMAT_VERSION,
       generator: 'DesignLibre 0.1.0',
       created: now,
       modified: now,
@@ -130,11 +130,11 @@ export class PreserveWriter {
     const pageIds = this.sceneGraph.getChildIds(doc.id);
     const now = new Date().toISOString();
 
-    const document: PreserveDocument = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/document.json',
+    const document: SeedDocument = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/document.json',
       id: doc.id,
       name: doc.name,
-      formatVersion: PRESERVE_FORMAT_VERSION,
+      formatVersion: SEED_FORMAT_VERSION,
       created: now,
       modified: now,
       pages: pageIds.map((pageId, index) => {
@@ -167,7 +167,7 @@ export class PreserveWriter {
       if (!pageNode) continue;
 
       const childIds = this.sceneGraph.getChildIds(pageId);
-      const nodes: PreserveNode[] = [];
+      const nodes: SeedNode[] = [];
 
       for (const childId of childIds) {
         const node = this.sceneGraph.getNode(childId);
@@ -176,8 +176,8 @@ export class PreserveWriter {
         }
       }
 
-      const page: PreservePage = {
-        $schema: 'https://designlibre.app/schemas/preserve/1.0/page.json',
+      const page: SeedPage = {
+        $schema: 'https://designlibre.app/schemas/seed/1.0/page.json',
         id: pageId,
         name: pageNode.name,
         backgroundColor: pageNode.backgroundColor,
@@ -191,9 +191,9 @@ export class PreserveWriter {
     }
   }
 
-  private convertNodeTree(node: NodeData): PreserveNode {
+  private convertNodeTree(node: NodeData): SeedNode {
     const childIds = this.sceneGraph.getChildIds(node.id);
-    let children: PreserveNode[] | undefined;
+    let children: SeedNode[] | undefined;
 
     if (childIds.length > 0) {
       children = [];
@@ -205,7 +205,7 @@ export class PreserveWriter {
       }
     }
 
-    return nodeToPreserve(node, children);
+    return nodeToSeed(node, children);
   }
 
   private writeComponents(): void {
@@ -224,8 +224,8 @@ export class PreserveWriter {
 
     if (componentNodes.length === 0) return;
 
-    const registry: PreserveComponentRegistry = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/components.json',
+    const registry: SeedComponentRegistry = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/components.json',
       components: componentNodes.map(node => ({
         id: node.id,
         name: node.name,
@@ -243,7 +243,7 @@ export class PreserveWriter {
     // Write individual component files
     for (const node of componentNodes) {
       const component = {
-        $schema: 'https://designlibre.app/schemas/preserve/1.0/component.json',
+        $schema: 'https://designlibre.app/schemas/seed/1.0/component.json',
         id: node.id,
         name: node.name,
         nodes: [this.convertNodeTree(node)],
@@ -259,7 +259,7 @@ export class PreserveWriter {
   private writeTokens(): void {
     if (!this.tokenRegistry) return;
 
-    const groups: PreserveTokenGroup[] = [];
+    const groups: SeedTokenGroup[] = [];
 
     // Get all tokens by type (using lowercase type names)
     const colorTokens = this.tokenRegistry.getByType('color');
@@ -333,8 +333,8 @@ export class PreserveWriter {
 
     if (groups.length === 0) return;
 
-    const tokens: PreserveTokens = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/tokens.json',
+    const tokens: SeedTokens = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/tokens.json',
       version: '1.0.0',
       groups,
     };
@@ -347,8 +347,8 @@ export class PreserveWriter {
   private writePrototypes(): void {
     // Placeholder for prototype data
     // Will be implemented when prototype system is complete
-    const prototypes: PreservePrototypes = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/prototypes.json',
+    const prototypes: SeedPrototypes = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/prototypes.json',
       flows: [],
       interactions: [],
     };
@@ -383,8 +383,8 @@ export class PreserveWriter {
       }
     }
 
-    const manifest: PreserveAssetManifest = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/assets.json',
+    const manifest: SeedAssetManifest = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/assets.json',
       assets: [],
       externalRefs: [],
     };
@@ -439,8 +439,8 @@ export class PreserveWriter {
   }
 
   private writeHistory(): void {
-    const history: PreserveHistory = {
-      $schema: 'https://designlibre.app/schemas/preserve/1.0/history.json',
+    const history: SeedHistory = {
+      $schema: 'https://designlibre.app/schemas/seed/1.0/history.json',
       currentVersion: '1.0.0',
       changelog: [
         {
@@ -487,8 +487,8 @@ export class PreserveWriter {
     return nodes;
   }
 
-  private addEntry(path: string, type: PreserveManifestEntry['type'], size: number, mediaType?: string): void {
-    const entry: PreserveManifestEntry = { path, type, size };
+  private addEntry(path: string, type: SeedManifestEntry['type'], size: number, mediaType?: string): void {
+    const entry: SeedManifestEntry = { path, type, size };
     if (mediaType) {
       entry.mediaType = mediaType;
     }
@@ -507,13 +507,13 @@ export class PreserveWriter {
 }
 
 /**
- * Create a .preserve archive from a scene graph.
+ * Create a .seed archive from a scene graph.
  */
-export async function createPreserveArchive(
+export async function createSeedArchive(
   sceneGraph: SceneGraph,
   tokenRegistry: TokenRegistry | null = null,
-  options: PreserveWriteOptions = {}
+  options: SeedWriteOptions = {}
 ): Promise<Blob> {
-  const writer = new PreserveWriter(sceneGraph, tokenRegistry, options);
+  const writer = new SeedWriter(sceneGraph, tokenRegistry, options);
   return writer.write();
 }

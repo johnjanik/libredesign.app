@@ -1,45 +1,45 @@
 /**
- * Preserve Reader
+ * Seed Reader
  *
- * Reads .preserve archive files and imports them into DesignLibre.
+ * Reads .seed archive files and imports them into DesignLibre.
  */
 
 import JSZip from 'jszip';
 import type {
-  PreserveManifest,
-  PreserveDocument,
-  PreservePage,
-  PreserveTokens,
-  PreserveComponentRegistry,
-  PreserveComponent,
-  PreservePrototypes,
-  PreserveAssetManifest,
-  PreserveHistory,
-  PreserveArchive,
-  PreserveReadOptions,
-} from './preserve-types';
-import { PRESERVE_MIMETYPE } from './preserve-types';
+  SeedManifest,
+  SeedDocument,
+  SeedPage,
+  SeedTokens,
+  SeedComponentRegistry,
+  SeedComponent,
+  SeedPrototypes,
+  SeedAssetManifest,
+  SeedHistory,
+  SeedArchive,
+  SeedReadOptions,
+} from './seed-types';
+import { SEED_MIMETYPE } from './seed-types';
 
-const DEFAULT_OPTIONS: Required<PreserveReadOptions> = {
+const DEFAULT_OPTIONS: Required<SeedReadOptions> = {
   validateSchema: false,
   loadAssets: true,
 };
 
 /**
- * PreserveReader - Reads .preserve archives.
+ * SeedReader - Reads .seed archives.
  */
-export class PreserveReader {
+export class SeedReader {
   private zip: JSZip | null = null;
-  private options: Required<PreserveReadOptions>;
+  private options: Required<SeedReadOptions>;
 
-  constructor(options: PreserveReadOptions = {}) {
+  constructor(options: SeedReadOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
   }
 
   /**
-   * Read a .preserve archive from a File or Blob.
+   * Read a .seed archive from a File or Blob.
    */
-  async read(file: File | Blob): Promise<PreserveArchive> {
+  async read(file: File | Blob): Promise<SeedArchive> {
     // Load the ZIP archive
     this.zip = await JSZip.loadAsync(file);
 
@@ -73,7 +73,7 @@ export class PreserveReader {
     // Read thumbnail
     const thumbnail = await this.readThumbnail();
 
-    const archive: PreserveArchive = {
+    const archive: SeedArchive = {
       manifest,
       document,
       pages,
@@ -96,49 +96,49 @@ export class PreserveReader {
 
     const mimetypeFile = this.zip.file('mimetype');
     if (!mimetypeFile) {
-      throw new Error('Invalid .preserve file: missing mimetype');
+      throw new Error('Invalid .seed file: missing mimetype');
     }
 
     const mimetype = await mimetypeFile.async('string');
-    if (mimetype.trim() !== PRESERVE_MIMETYPE) {
-      throw new Error(`Invalid mimetype: expected ${PRESERVE_MIMETYPE}, got ${mimetype}`);
+    if (mimetype.trim() !== SEED_MIMETYPE) {
+      throw new Error(`Invalid mimetype: expected ${SEED_MIMETYPE}, got ${mimetype}`);
     }
   }
 
-  private async readManifest(): Promise<PreserveManifest> {
+  private async readManifest(): Promise<SeedManifest> {
     if (!this.zip) throw new Error('No archive loaded');
 
     const manifestFile = this.zip.file('META-INF/manifest.json');
     if (!manifestFile) {
-      throw new Error('Invalid .preserve file: missing manifest');
+      throw new Error('Invalid .seed file: missing manifest');
     }
 
     const json = await manifestFile.async('string');
-    return JSON.parse(json) as PreserveManifest;
+    return JSON.parse(json) as SeedManifest;
   }
 
-  private async readDocument(): Promise<PreserveDocument> {
+  private async readDocument(): Promise<SeedDocument> {
     if (!this.zip) throw new Error('No archive loaded');
 
     const docFile = this.zip.file('document.json');
     if (!docFile) {
-      throw new Error('Invalid .preserve file: missing document.json');
+      throw new Error('Invalid .seed file: missing document.json');
     }
 
     const json = await docFile.async('string');
-    return JSON.parse(json) as PreserveDocument;
+    return JSON.parse(json) as SeedDocument;
   }
 
-  private async readPages(document: PreserveDocument): Promise<Map<string, PreservePage>> {
+  private async readPages(document: SeedDocument): Promise<Map<string, SeedPage>> {
     if (!this.zip) throw new Error('No archive loaded');
 
-    const pages = new Map<string, PreservePage>();
+    const pages = new Map<string, SeedPage>();
 
     for (const pageRef of document.pages) {
       const pageFile = this.zip.file(pageRef.path);
       if (pageFile) {
         const json = await pageFile.async('string');
-        const page = JSON.parse(json) as PreservePage;
+        const page = JSON.parse(json) as SeedPage;
         pages.set(pageRef.id, page);
       }
     }
@@ -147,8 +147,8 @@ export class PreserveReader {
   }
 
   private async readComponents(): Promise<{
-    registry: PreserveComponentRegistry | undefined;
-    componentData: Map<string, PreserveComponent> | undefined;
+    registry: SeedComponentRegistry | undefined;
+    componentData: Map<string, SeedComponent> | undefined;
   }> {
     if (!this.zip) throw new Error('No archive loaded');
 
@@ -158,15 +158,15 @@ export class PreserveReader {
     }
 
     const registryJson = await registryFile.async('string');
-    const registry = JSON.parse(registryJson) as PreserveComponentRegistry;
+    const registry = JSON.parse(registryJson) as SeedComponentRegistry;
 
-    const componentData = new Map<string, PreserveComponent>();
+    const componentData = new Map<string, SeedComponent>();
 
     for (const entry of registry.components) {
       const componentFile = this.zip.file(entry.path);
       if (componentFile) {
         const json = await componentFile.async('string');
-        const component = JSON.parse(json) as PreserveComponent;
+        const component = JSON.parse(json) as SeedComponent;
         componentData.set(entry.id, component);
       }
     }
@@ -174,7 +174,7 @@ export class PreserveReader {
     return { registry, componentData };
   }
 
-  private async readTokens(): Promise<PreserveTokens | undefined> {
+  private async readTokens(): Promise<SeedTokens | undefined> {
     if (!this.zip) throw new Error('No archive loaded');
 
     const tokensFile = this.zip.file('tokens/tokens.json');
@@ -183,10 +183,10 @@ export class PreserveReader {
     }
 
     const json = await tokensFile.async('string');
-    return JSON.parse(json) as PreserveTokens;
+    return JSON.parse(json) as SeedTokens;
   }
 
-  private async readPrototypes(): Promise<PreservePrototypes | undefined> {
+  private async readPrototypes(): Promise<SeedPrototypes | undefined> {
     if (!this.zip) throw new Error('No archive loaded');
 
     const prototypesFile = this.zip.file('prototypes/flows.json');
@@ -195,11 +195,11 @@ export class PreserveReader {
     }
 
     const json = await prototypesFile.async('string');
-    return JSON.parse(json) as PreservePrototypes;
+    return JSON.parse(json) as SeedPrototypes;
   }
 
   private async readAssets(): Promise<{
-    manifest: PreserveAssetManifest | undefined;
+    manifest: SeedAssetManifest | undefined;
     assetData: Map<string, Blob> | undefined;
   }> {
     if (!this.zip) throw new Error('No archive loaded');
@@ -210,7 +210,7 @@ export class PreserveReader {
     }
 
     const manifestJson = await manifestFile.async('string');
-    const manifest = JSON.parse(manifestJson) as PreserveAssetManifest;
+    const manifest = JSON.parse(manifestJson) as SeedAssetManifest;
 
     if (!this.options.loadAssets) {
       return { manifest, assetData: undefined };
@@ -229,7 +229,7 @@ export class PreserveReader {
     return { manifest, assetData };
   }
 
-  private async readHistory(): Promise<PreserveHistory | undefined> {
+  private async readHistory(): Promise<SeedHistory | undefined> {
     if (!this.zip) throw new Error('No archive loaded');
 
     const historyFile = this.zip.file('history/changelog.json');
@@ -238,7 +238,7 @@ export class PreserveReader {
     }
 
     const json = await historyFile.async('string');
-    return JSON.parse(json) as PreserveHistory;
+    return JSON.parse(json) as SeedHistory;
   }
 
   private async readThumbnail(): Promise<Blob | undefined> {
@@ -291,27 +291,27 @@ export class PreserveReader {
 }
 
 /**
- * Read a .preserve archive.
+ * Read a .seed archive.
  */
-export async function readPreserveArchive(
+export async function readSeedArchive(
   file: File | Blob,
-  options: PreserveReadOptions = {}
-): Promise<PreserveArchive> {
-  const reader = new PreserveReader(options);
+  options: SeedReadOptions = {}
+): Promise<SeedArchive> {
+  const reader = new SeedReader(options);
   return reader.read(file);
 }
 
 /**
- * Quick preview of a .preserve archive (reads only metadata).
+ * Quick preview of a .seed archive (reads only metadata).
  */
-export async function previewPreserveArchive(file: File | Blob): Promise<{
+export async function previewSeedArchive(file: File | Blob): Promise<{
   name: string;
   pageCount: number;
   created: string;
   modified: string;
   thumbnail?: Blob;
 }> {
-  const reader = new PreserveReader({ loadAssets: false });
+  const reader = new SeedReader({ loadAssets: false });
   const archive = await reader.read(file);
 
   const result: {
