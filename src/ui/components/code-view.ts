@@ -12,6 +12,8 @@ import { createTypeScriptReactGenerator } from '@persistence/export/typescript-r
 import { createIOSCodeGenerator } from '@persistence/export/ios-code-generator';
 import { createAndroidCodeGenerator } from '@persistence/export/android-code-generator';
 import { copyToClipboard, showCopyFeedback } from '@devtools/code-export/clipboard';
+import { createSwiftUIImporter } from '@persistence/import/swiftui/swiftui-importer';
+import type { SwiftUIImportResult } from '@persistence/import/swiftui/types';
 
 /** Supported code languages */
 export type CodeLanguage = 'typescript' | 'swift' | 'kotlin';
@@ -79,13 +81,16 @@ export class CodeView {
   private container: HTMLElement;
   private element: HTMLElement;
   private codeElement: HTMLElement;
+  private textareaElement: HTMLTextAreaElement;
   private languageSelect: HTMLSelectElement;
   private highlightToggle: HTMLButtonElement;
+  private importButton: HTMLButtonElement;
   private currentLanguage: CodeLanguage;
   private syntaxHighlighting: boolean;
   private selectedNodeIds: NodeId[] = [];
   private codeCache: Map<CodeLanguage, string> = new Map();
   private unsubscribers: Array<() => void> = [];
+  private isImporting: boolean = false;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -102,12 +107,15 @@ export class CodeView {
 
     this.element = this.createView();
     this.codeElement = this.element.querySelector('.code-view-content')!;
+    this.textareaElement = this.element.querySelector('.code-view-textarea')!;
     this.languageSelect = this.element.querySelector('.code-view-language')!;
     this.highlightToggle = this.element.querySelector('.code-view-highlight-toggle')!;
+    this.importButton = this.element.querySelector('.code-view-import')!;
 
     this.container.appendChild(this.element);
     this.setupEventListeners();
     this.updateCode();
+    this.updateEditableState();
   }
 
   private createView(): HTMLElement {
@@ -126,13 +134,21 @@ export class CodeView {
             <path d="M8 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1A.5.5 0 0 1 8 1zM3.5 8a.5.5 0 0 1-.5-.5h-1a.5.5 0 0 1 0-1h1a.5.5 0 0 1 .5.5.5.5 0 0 1-.5.5zm9 0a.5.5 0 0 1-.5-.5.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1zm-9.743-3.95a.5.5 0 0 1 .707 0l.707.707a.5.5 0 1 1-.707.707l-.707-.707a.5.5 0 0 1 0-.707zm9.193.707a.5.5 0 0 1-.707-.707l.707-.707a.5.5 0 0 1 .707.707l-.707.707zM8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
           </svg>
         </button>
+        <button class="code-view-import" title="Import SwiftUI code as design layers" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0l4 4h-3v6h-2V4H4l4-4zm-8 10h16v6H0v-6zm2 2v2h12v-2H2z"/>
+          </svg>
+        </button>
         <button class="code-view-copy" title="Copy to clipboard">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4 4v-2.5c0-.83.67-1.5 1.5-1.5h7c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-2.5v2.5c0 .83-.67 1.5-1.5 1.5h-7c-.83 0-1.5-.67-1.5-1.5v-9c0-.83.67-1.5 1.5-1.5h2.5zm1 0h4c.83 0 1.5.67 1.5 1.5v5.5h2v-9h-7v2zm-2.5 1h7v9h-7v-9z"/>
           </svg>
         </button>
       </div>
-      <pre class="code-view-content"><code>Select an element to see generated code</code></pre>
+      <div class="code-view-body">
+        <pre class="code-view-content"><code>Select an element to see generated code</code></pre>
+        <textarea class="code-view-textarea" placeholder="Paste SwiftUI code here to render as design layers..." spellcheck="false"></textarea>
+      </div>
     `;
 
     // Set initial language selection
@@ -151,6 +167,20 @@ export class CodeView {
     this.languageSelect.addEventListener('change', () => {
       this.currentLanguage = this.languageSelect.value as CodeLanguage;
       this.updateCode();
+      this.updateEditableState();
+    });
+
+    // Textarea paste handler for SwiftUI import
+    this.textareaElement.addEventListener('paste', async (e) => {
+      await this.handlePaste(e);
+    });
+
+    // Import button click
+    this.importButton.addEventListener('click', async () => {
+      const code = this.textareaElement.value.trim();
+      if (code && this.looksLikeSwiftUI(code)) {
+        await this.importSwiftUICode(code);
+      }
     });
 
     // Syntax highlight toggle
@@ -418,6 +448,160 @@ export class CodeView {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ============================================================================
+  // SwiftUI Import
+  // ============================================================================
+
+  /**
+   * Update editable state based on current language
+   */
+  private updateEditableState(): void {
+    const isEditable = this.currentLanguage === 'swift';
+    this.element.classList.toggle('editable', isEditable);
+    this.importButton.style.display = isEditable ? 'flex' : 'none';
+
+    if (isEditable) {
+      // Show textarea, hide code display
+      this.codeElement.style.display = 'none';
+      this.textareaElement.style.display = 'block';
+      // Populate textarea with current generated code
+      const cached = this.codeCache.get('swift');
+      if (cached) {
+        this.textareaElement.value = cached;
+      }
+    } else {
+      // Show code display, hide textarea
+      this.codeElement.style.display = 'block';
+      this.textareaElement.style.display = 'none';
+    }
+  }
+
+  /**
+   * Handle paste event in the textarea
+   */
+  private async handlePaste(e: ClipboardEvent): Promise<void> {
+    if (this.currentLanguage !== 'swift' || this.isImporting) return;
+
+    const text = e.clipboardData?.getData('text');
+    if (!text) return;
+
+    // Check if it looks like SwiftUI code
+    if (this.looksLikeSwiftUI(text)) {
+      e.preventDefault();
+      this.textareaElement.value = text;
+      await this.importSwiftUICode(text);
+    }
+    // Otherwise, let the default paste behavior happen
+  }
+
+  /**
+   * Check if code looks like SwiftUI
+   */
+  private looksLikeSwiftUI(code: string): boolean {
+    return (
+      code.includes('import SwiftUI') ||
+      code.includes(': View') ||
+      code.includes('@ViewBuilder') ||
+      /\b(VStack|HStack|ZStack|Text|Image|Button|Rectangle|Circle|Ellipse|RoundedRectangle|Capsule|NavigationView|List|ForEach|ScrollView|Spacer|Divider)\s*[({]/.test(code)
+    );
+  }
+
+  /**
+   * Import SwiftUI code as design layers
+   */
+  private async importSwiftUICode(code: string): Promise<void> {
+    if (this.isImporting) return;
+    this.isImporting = true;
+
+    try {
+      const importer = createSwiftUIImporter(this.sceneGraph);
+
+      // Get viewport center for placement
+      const { x, y } = this.getViewportCenter();
+
+      const result = await importer.import(code, 'pasted-code.swift', {
+        x,
+        y,
+        preserveSourceMetadata: true,
+      });
+
+      // Select the newly created root node
+      this.runtime.emit('selection:set', { nodeIds: [result.rootId] });
+
+      // Show feedback
+      this.showImportFeedback(result);
+
+    } catch (error) {
+      this.showImportError(error);
+    } finally {
+      this.isImporting = false;
+    }
+  }
+
+  /**
+   * Get the center of the current viewport
+   */
+  private getViewportCenter(): { x: number; y: number } {
+    // Try to get viewport from canvas container
+    const canvasContainer = document.querySelector('.designlibre-canvas-container');
+    if (canvasContainer) {
+      const rect = canvasContainer.getBoundingClientRect();
+      // Return center in canvas coordinates (rough approximation)
+      return {
+        x: rect.width / 2 - 187.5, // Half of default iPhone width (375/2)
+        y: rect.height / 2 - 406, // Half of default iPhone height (812/2)
+      };
+    }
+    return { x: 100, y: 100 };
+  }
+
+  /**
+   * Show import success feedback
+   */
+  private showImportFeedback(result: SwiftUIImportResult): void {
+    const viewCount = result.viewsFound.length;
+    const msg = `Imported ${result.nodeCount} layer${result.nodeCount !== 1 ? 's' : ''} from ${viewCount} SwiftUI view${viewCount !== 1 ? 's' : ''}`;
+
+    this.showToast(msg, result.warnings.length > 0 ? 'warning' : 'success');
+
+    if (result.warnings.length > 0) {
+      console.warn('SwiftUI import warnings:', result.warnings);
+    }
+  }
+
+  /**
+   * Show import error feedback
+   */
+  private showImportError(error: unknown): void {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    this.showToast(`Import failed: ${message}`, 'error');
+    console.error('SwiftUI import error:', error);
+  }
+
+  /**
+   * Show a toast notification
+   */
+  private showToast(message: string, type: 'success' | 'warning' | 'error'): void {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `code-view-toast code-view-toast-${type}`;
+    toast.textContent = message;
+
+    // Add to document
+    document.body.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Remove after delay
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 
   /**
