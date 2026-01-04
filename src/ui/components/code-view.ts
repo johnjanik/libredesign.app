@@ -578,12 +578,20 @@ export class CodeView {
 
     try {
       const { x, y } = this.getViewportCenter();
+
+      // Get the currently active page/leaf to add the imported nodes to
+      const currentPageId = this.runtime.getCurrentPageId();
+      if (!currentPageId) {
+        throw new Error('No active page - please select a Leaf first');
+      }
+
       let result: ImportResult;
 
       switch (this.currentLanguage) {
         case 'swift': {
           const importer = createSwiftUIImporter(this.sceneGraph);
           result = await importer.import(code, 'pasted-code.swift', {
+            parentId: currentPageId,
             x, y,
             preserveSourceMetadata: true,
           });
@@ -592,6 +600,7 @@ export class CodeView {
         case 'typescript': {
           const importer = createReactImporter(this.sceneGraph);
           result = await importer.import(code, 'pasted-code.tsx', {
+            parentId: currentPageId as unknown as string,
             x, y,
             preserveSourceMetadata: true,
           });
@@ -600,6 +609,7 @@ export class CodeView {
         case 'kotlin': {
           const importer = createComposeImporter(this.sceneGraph);
           result = await importer.import(code, 'pasted-code.kt', {
+            parentId: currentPageId as unknown as string,
             x, y,
             preserveSourceMetadata: true,
           });
