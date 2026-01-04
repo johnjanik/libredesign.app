@@ -239,7 +239,6 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     const y = 'y' in node ? (node as { y: number }).y : 0;
     const width = 'width' in node ? (node as { width: number }).width : 0;
     const height = 'height' in node ? (node as { height: number }).height : 0;
-    console.log('[DEBUG layoutEngine onNodeCreated]', node.id, node.name, 'width:', width, 'height:', height);
 
     // Check for auto layout
     let autoLayout: AutoLayoutProps | undefined;
@@ -496,7 +495,6 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
       }
 
       const results = this.calculateContainerAutoLayout(nodeId);
-      console.log('[DEBUG processNode] Auto layout results for', nodeId, ':', results.map(r => ({ id: r.nodeId, x: r.x, y: r.y, w: r.width, h: r.height })));
       for (const result of results) {
         const childLayoutData = this.layoutData.get(result.nodeId);
         if (childLayoutData) {
@@ -538,7 +536,6 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
     for (const childId of childIds) {
       const childLayoutData = this.layoutData.get(childId);
       if (childLayoutData) {
-        console.log('[DEBUG buildAutoLayoutConfig] child', childId, 'width:', childLayoutData.width, 'height:', childLayoutData.height);
         children.push({
           nodeId: childId,
           width: childLayoutData.width,
@@ -548,8 +545,6 @@ export class LayoutEngine extends EventEmitter<LayoutEngineEvents> {
         });
       }
     }
-
-    console.log('[DEBUG buildAutoLayoutConfig] container', nodeId, 'width:', layoutData.width, 'height:', layoutData.height, 'mode:', autoLayout.mode);
 
     return {
       ...autoLayout,

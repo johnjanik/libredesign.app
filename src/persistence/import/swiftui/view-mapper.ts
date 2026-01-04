@@ -221,7 +221,6 @@ export class SwiftUIViewMapper {
     }
 
     // Build node options
-    console.log('[DEBUG nodeOptions] viewType:', view.viewType, 'props:', JSON.stringify(props));
     const nodeOptions: NodeBuildOptions = {
       name: this.getNodeName(view),
       x: x + ((props['x'] as number) ?? 0),
@@ -230,12 +229,10 @@ export class SwiftUIViewMapper {
       height: ((props['height'] as number) ?? this.getDefaultHeight(view.viewType)) * scale,
       ...mapping.defaultProps,
     };
-    console.log('[DEBUG nodeOptions] final:', view.viewType, 'width:', nodeOptions.width, 'height:', nodeOptions.height);
 
     // Add appearance properties
     if (props['fills']) {
       nodeOptions.fills = props['fills'] as SolidPaint[];
-      console.log('[DEBUG] Applying fills to', view.viewType, ':', JSON.stringify(props['fills']));
     }
     if (props['opacity'] !== undefined) {
       nodeOptions.opacity = props['opacity'] as number;
@@ -284,7 +281,6 @@ export class SwiftUIViewMapper {
     }
 
     // Create the node
-    console.log('[DEBUG createNode] type:', mapping.nodeType, 'fills:', JSON.stringify(nodeOptions.fills));
     const nodeId = this.sceneGraph.createNode(
       mapping.nodeType as NodeType,
       parentId,
@@ -356,15 +352,10 @@ export class SwiftUIViewMapper {
   ): Record<string, unknown> {
     const props: Record<string, unknown> = {};
 
-    console.log('[DEBUG extractProps] all modifiers:', modifiers.map(m => m.name));
-
     for (const modifier of modifiers) {
-      console.log('[DEBUG extractProps] processing modifier:', modifier.name, 'args:', modifier.arguments.length);
       switch (modifier.name) {
         case 'frame': {
-          console.log('[DEBUG frame] args:', JSON.stringify(modifier.arguments, null, 2));
           for (const arg of modifier.arguments) {
-            console.log('[DEBUG frame arg]', arg.label, arg.value.type, arg.value.value);
             if (arg.label === 'width' && typeof arg.value.value === 'number') {
               props['width'] = arg.value.value;
             }
@@ -394,28 +385,21 @@ export class SwiftUIViewMapper {
         case 'foregroundStyle':
         case 'tint':
         case 'fill': {
-          console.log('[DEBUG fill/bg] modifier:', modifier.name, 'arguments:', modifier.arguments.length);
           const colorArg = modifier.arguments[0]?.value;
-          console.log('[DEBUG fill/bg]', modifier.name, 'colorArg:', JSON.stringify(colorArg, null, 2));
           if (colorArg && colorArg.type === 'color') {
             if (colorArg.value) {
               // Color with resolved RGBA
               const paint = this.createSolidPaint(colorArg.value as RGBA);
               props['fills'] = [paint];
-              console.log('[DEBUG] Created paint:', JSON.stringify(paint));
             } else {
               // Asset color or unresolved - use placeholder magenta
               const placeholderPaint = this.createSolidPaint({ r: 1, g: 0, b: 1, a: 0.5 });
               props['fills'] = [placeholderPaint];
-              // Log for debugging
-              console.warn(`Unresolved color: ${colorArg.source?.originalExpression ?? 'unknown'}`);
             }
           } else {
-            console.log('[DEBUG] colorArg not a color type:', colorArg?.type, 'rawExpression:', colorArg?.rawExpression);
             // Use placeholder magenta for unparseable colors
             const placeholderPaint = this.createSolidPaint({ r: 1, g: 0, b: 1, a: 0.5 });
             props['fills'] = [placeholderPaint];
-            console.warn(`Could not parse color: ${colorArg?.rawExpression ?? 'unknown'}`);
           }
           break;
         }

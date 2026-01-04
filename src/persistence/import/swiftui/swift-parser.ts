@@ -215,11 +215,6 @@ export class SwiftParser {
     const modifiers = modifiersResult.modifiers;
     endPos = modifiersResult.end;
 
-    console.log('[DEBUG parsed view]', viewType, 'modifiers:', modifiers.map(m => ({
-      name: m.name,
-      args: m.arguments.map(a => ({ label: a.label, type: a.value.type, value: a.value.value }))
-    })));
-
     // Create source location
     const location = this.createLocation(offset + startPos, offset + endPos);
 
@@ -391,8 +386,6 @@ export class SwiftParser {
   ): void {
     if (!argsString) return;
 
-    console.log('[DEBUG parseModifierArgs] argsString:', argsString);
-
     // Handle different argument patterns
     // .frame(width: 100, height: 50)
     // .padding(16)
@@ -404,9 +397,7 @@ export class SwiftParser {
     // This prevents Color(hex: "...") from being parsed as named args
     const trimmed = argsString.trim();
     if (trimmed.startsWith('Color(') || trimmed.startsWith('UIColor(') || trimmed.startsWith('#colorLiteral(')) {
-      console.log('[DEBUG parseModifierArgs] detected color constructor, treating as single positional arg');
       const parsedValue = this.parseValueExpression(trimmed, offset);
-      console.log('[DEBUG parseModifierArgs] parsed color:', parsedValue.type, parsedValue.value);
       args.push({
         value: parsedValue,
         location: this.createLocation(offset, offset + argsString.length),
@@ -423,9 +414,7 @@ export class SwiftParser {
       hasNamed = true;
       const label = match[1]!;
       const valueStr = match[2]!.trim();
-      console.log('[DEBUG parseModifierArgs] named arg:', label, '=', valueStr);
       const parsedValue = this.parseValueExpression(valueStr, offset);
-      console.log('[DEBUG parseModifierArgs] parsed:', label, parsedValue.type, parsedValue.value);
 
       args.push({
         label,
@@ -436,9 +425,7 @@ export class SwiftParser {
 
     // If no named args, treat as positional
     if (!hasNamed && argsString.trim()) {
-      console.log('[DEBUG parseModifierArgs] positional arg:', argsString.trim());
       const parsedValue = this.parseValueExpression(argsString.trim(), offset);
-      console.log('[DEBUG parseModifierArgs] parsed positional:', parsedValue.type, parsedValue.value);
       args.push({
         value: parsedValue,
         location: this.createLocation(offset, offset + argsString.length),
