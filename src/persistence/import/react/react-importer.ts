@@ -325,6 +325,24 @@ export class ReactImporter {
       options['opacity'] = style.opacity;
     }
 
+    // Shadow (as drop shadow effect)
+    if (style['shadow'] && typeof style['shadow'] === 'object') {
+      const shadow = style['shadow'] as { blur: number; spread: number; opacity: number };
+      options['effects'] = [{
+        type: 'DROP_SHADOW',
+        visible: true,
+        color: { r: 0, g: 0, b: 0, a: shadow.opacity },
+        offset: { x: 0, y: 4 },
+        radius: shadow.blur,
+        spread: shadow.spread,
+      }];
+    }
+
+    // Clips content (overflow hidden)
+    if (style['overflow'] === 'hidden') {
+      options['clipsContent'] = true;
+    }
+
     // Handle text content for TEXT nodes
     if (mapping.nodeType === 'TEXT' && element.textContent) {
       options['characters'] = element.textContent;
@@ -334,28 +352,65 @@ export class ReactImporter {
   }
 
   /**
-   * Parse Tailwind CSS classes (basic support)
+   * Parse Tailwind CSS classes (comprehensive support)
    */
   private parseTailwindClasses(className: string, style: ParsedStyle): void {
     const classes = className.split(/\s+/);
 
     for (const cls of classes) {
+      // ========================================
       // Width
+      // ========================================
       if (cls.startsWith('w-')) {
         const value = cls.slice(2);
         if (value === 'full') style.width = '100%';
+        else if (value === 'screen') style.width = '100vw';
+        else if (value === 'auto') style.width = 'auto';
+        // Arbitrary value: w-[200px]
+        else if (value.startsWith('[') && value.endsWith(']')) {
+          style.width = this.parseArbitraryValue(value.slice(1, -1));
+        }
         else if (!isNaN(parseInt(value))) style.width = parseInt(value) * 4;
       }
 
+      // Max width
+      if (cls.startsWith('max-w-')) {
+        const value = cls.slice(6);
+        const maxWidths: Record<string, number> = {
+          'xs': 320, 'sm': 384, 'md': 448, 'lg': 512, 'xl': 576,
+          '2xl': 672, '3xl': 768, '4xl': 896, '5xl': 1024, '6xl': 1152, '7xl': 1280,
+        };
+        if (maxWidths[value]) style.width = maxWidths[value];
+        else if (value === 'full') style.width = '100%';
+      }
+
+      // ========================================
       // Height
+      // ========================================
       if (cls.startsWith('h-')) {
         const value = cls.slice(2);
         if (value === 'full') style.height = '100%';
+        else if (value === 'screen') style.height = '100vh';
+        else if (value === 'auto') style.height = 'auto';
+        // Arbitrary value: h-[200px]
+        else if (value.startsWith('[') && value.endsWith(']')) {
+          style.height = this.parseArbitraryValue(value.slice(1, -1));
+        }
         else if (!isNaN(parseInt(value))) style.height = parseInt(value) * 4;
       }
 
+      // Min height
+      if (cls.startsWith('min-h-')) {
+        const value = cls.slice(6);
+        if (value === 'screen') style.height = '100vh';
+        else if (value === 'full') style.height = '100%';
+      }
+
+      // ========================================
       // Padding
-      if (cls.startsWith('p-')) {
+      // ========================================
+      if (cls.startsWith('p-') && !cls.startsWith('px-') && !cls.startsWith('py-') &&
+          !cls.startsWith('pt-') && !cls.startsWith('pb-') && !cls.startsWith('pl-') && !cls.startsWith('pr-')) {
         const value = parseInt(cls.slice(2));
         if (!isNaN(value)) style.padding = value * 4;
       }
@@ -373,45 +428,222 @@ export class ReactImporter {
           style.paddingBottom = value * 4;
         }
       }
+      if (cls.startsWith('pt-')) {
+        const value = parseInt(cls.slice(3));
+        if (!isNaN(value)) style.paddingTop = value * 4;
+      }
+      if (cls.startsWith('pb-')) {
+        const value = parseInt(cls.slice(3));
+        if (!isNaN(value)) style.paddingBottom = value * 4;
+      }
+      if (cls.startsWith('pl-')) {
+        const value = parseInt(cls.slice(3));
+        if (!isNaN(value)) style.paddingLeft = value * 4;
+      }
+      if (cls.startsWith('pr-')) {
+        const value = parseInt(cls.slice(3));
+        if (!isNaN(value)) style.paddingRight = value * 4;
+      }
 
-      // Background color
+      // ========================================
+      // Background color (with arbitrary value support)
+      // ========================================
       if (cls.startsWith('bg-')) {
-        const color = this.tailwindColorToHex(cls.slice(3));
-        if (color) style.backgroundColor = color;
+        const value = cls.slice(3);
+        // Arbitrary hex: bg-[#0a0a0a]
+        if (value.startsWith('[#') && value.endsWith(']')) {
+          style.backgroundColor = value.slice(1, -1);
+        }
+        // Arbitrary rgb: bg-[rgb(10,10,10)]
+        else if (value.startsWith('[rgb') && value.endsWith(']')) {
+          style.backgroundColor = value.slice(1, -1);
+        }
+        // Named color
+        else {
+          const color = this.tailwindColorToHex(value);
+          if (color) style.backgroundColor = color;
+        }
       }
 
-      // Text color
-      if (cls.startsWith('text-') && !cls.startsWith('text-[')) {
-        const color = this.tailwindColorToHex(cls.slice(5));
-        if (color) style.color = color;
+      // ========================================
+      // Text color (with arbitrary value support)
+      // ========================================
+      if (cls.startsWith('text-')) {
+        const value = cls.slice(5);
+        // Arbitrary hex: text-[#888]
+        if (value.startsWith('[#') && value.endsWith(']')) {
+          style.color = value.slice(1, -1);
+        }
+        // Arbitrary rgb
+        else if (value.startsWith('[rgb') && value.endsWith(']')) {
+          style.color = value.slice(1, -1);
+        }
+        // Text size classes (not colors)
+        else if (['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl'].includes(value)) {
+          const sizes: Record<string, number> = {
+            'xs': 12, 'sm': 14, 'base': 16, 'lg': 18, 'xl': 20,
+            '2xl': 24, '3xl': 30, '4xl': 36, '5xl': 48,
+          };
+          const fontSize = sizes[value];
+          if (fontSize !== undefined) style.fontSize = fontSize;
+        }
+        // Named color
+        else {
+          const color = this.tailwindColorToHex(value);
+          if (color) style.color = color;
+        }
       }
 
+      // ========================================
+      // Border color (with arbitrary value support)
+      // ========================================
+      if (cls.startsWith('border-[#') && cls.endsWith(']')) {
+        style.borderColor = cls.slice(8, -1);
+        if (!style.borderWidth) style.borderWidth = 1;
+      }
+      // Border width
+      if (cls === 'border') {
+        style.borderWidth = 1;
+      }
+      if (cls === 'border-0') style.borderWidth = 0;
+      if (cls === 'border-2') style.borderWidth = 2;
+      if (cls === 'border-4') style.borderWidth = 4;
+      if (cls === 'border-8') style.borderWidth = 8;
+
+      // Border direction (sets border width, color applied separately)
+      if (cls === 'border-b' || cls === 'border-t' || cls === 'border-l' || cls === 'border-r') {
+        style.borderWidth = 1;
+      }
+
+      // Named border colors
+      if (cls.startsWith('border-') && !cls.startsWith('border-[')) {
+        const value = cls.slice(7);
+        const color = this.tailwindColorToHex(value);
+        if (color) {
+          style.borderColor = color;
+          if (!style.borderWidth) style.borderWidth = 1;
+        }
+      }
+
+      // ========================================
       // Border radius
+      // ========================================
       if (cls === 'rounded') style.borderRadius = 4;
+      if (cls === 'rounded-none') style.borderRadius = 0;
+      if (cls === 'rounded-sm') style.borderRadius = 2;
       if (cls === 'rounded-md') style.borderRadius = 6;
       if (cls === 'rounded-lg') style.borderRadius = 8;
       if (cls === 'rounded-xl') style.borderRadius = 12;
       if (cls === 'rounded-2xl') style.borderRadius = 16;
+      if (cls === 'rounded-3xl') style.borderRadius = 24;
       if (cls === 'rounded-full') style.borderRadius = 9999;
 
+      // ========================================
       // Flexbox
+      // ========================================
       if (cls === 'flex') style.display = 'flex';
+      if (cls === 'inline-flex') style.display = 'flex';
       if (cls === 'flex-col') style.flexDirection = 'column';
       if (cls === 'flex-row') style.flexDirection = 'row';
+      if (cls === 'flex-wrap') style['flexWrap'] = 'wrap';
       if (cls === 'items-center') style.alignItems = 'center';
       if (cls === 'items-start') style.alignItems = 'flex-start';
       if (cls === 'items-end') style.alignItems = 'flex-end';
+      if (cls === 'items-stretch') style.alignItems = 'stretch';
       if (cls === 'justify-center') style.justifyContent = 'center';
       if (cls === 'justify-between') style.justifyContent = 'space-between';
+      if (cls === 'justify-around') style.justifyContent = 'space-around';
+      if (cls === 'justify-evenly') style.justifyContent = 'space-evenly';
       if (cls === 'justify-start') style.justifyContent = 'flex-start';
       if (cls === 'justify-end') style.justifyContent = 'flex-end';
 
-      // Gap
+      // ========================================
+      // Gap and spacing
+      // ========================================
       if (cls.startsWith('gap-')) {
         const value = parseInt(cls.slice(4));
         if (!isNaN(value)) style.gap = value * 4;
       }
+      if (cls.startsWith('gap-x-')) {
+        const value = parseInt(cls.slice(6));
+        if (!isNaN(value)) style.gap = value * 4; // Horizontal gap
+      }
+      if (cls.startsWith('gap-y-')) {
+        const value = parseInt(cls.slice(6));
+        if (!isNaN(value)) style.gap = value * 4; // Vertical gap
+      }
+      // Space between children (treat as gap)
+      if (cls.startsWith('space-y-')) {
+        const value = parseInt(cls.slice(8));
+        if (!isNaN(value)) {
+          style.display = 'flex';
+          style.flexDirection = 'column';
+          style.gap = value * 4;
+        }
+      }
+      if (cls.startsWith('space-x-')) {
+        const value = parseInt(cls.slice(8));
+        if (!isNaN(value)) {
+          style.display = 'flex';
+          style.gap = value * 4;
+        }
+      }
+
+      // ========================================
+      // Opacity
+      // ========================================
+      if (cls.startsWith('opacity-')) {
+        const value = parseInt(cls.slice(8));
+        if (!isNaN(value)) style.opacity = value / 100;
+      }
+
+      // ========================================
+      // Overflow
+      // ========================================
+      if (cls === 'overflow-hidden') style['overflow'] = 'hidden';
+      if (cls === 'overflow-auto') style['overflow'] = 'auto';
+      if (cls === 'overflow-scroll') style['overflow'] = 'scroll';
+
+      // ========================================
+      // Shadow (map to effect)
+      // ========================================
+      if (cls === 'shadow-sm') style['shadow'] = { blur: 2, spread: 0, opacity: 0.05 };
+      if (cls === 'shadow') style['shadow'] = { blur: 4, spread: 0, opacity: 0.1 };
+      if (cls === 'shadow-md') style['shadow'] = { blur: 6, spread: 0, opacity: 0.1 };
+      if (cls === 'shadow-lg') style['shadow'] = { blur: 10, spread: 0, opacity: 0.1 };
+      if (cls === 'shadow-xl') style['shadow'] = { blur: 15, spread: 0, opacity: 0.1 };
+      if (cls === 'shadow-2xl') style['shadow'] = { blur: 25, spread: 0, opacity: 0.25 };
+      if (cls === 'shadow-none') style['shadow'] = null;
+
+      // ========================================
+      // Font weight
+      // ========================================
+      if (cls === 'font-thin') style.fontWeight = 100;
+      if (cls === 'font-extralight') style.fontWeight = 200;
+      if (cls === 'font-light') style.fontWeight = 300;
+      if (cls === 'font-normal') style.fontWeight = 400;
+      if (cls === 'font-medium') style.fontWeight = 500;
+      if (cls === 'font-semibold') style.fontWeight = 600;
+      if (cls === 'font-bold') style.fontWeight = 700;
+      if (cls === 'font-extrabold') style.fontWeight = 800;
+      if (cls === 'font-black') style.fontWeight = 900;
     }
+  }
+
+  /**
+   * Parse arbitrary value (e.g., "200px", "10rem", "50%")
+   */
+  private parseArbitraryValue(value: string): number | string {
+    if (value.endsWith('px')) {
+      return parseInt(value);
+    }
+    if (value.endsWith('rem')) {
+      return parseFloat(value) * 16;
+    }
+    if (value.endsWith('%')) {
+      return value;
+    }
+    return parseInt(value) || value;
   }
 
   /**
