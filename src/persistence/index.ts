@@ -21,6 +21,25 @@ export * from './export/css-generator';
 export * from './export/ios-code-generator';
 export * from './export/android-code-generator';
 
+// Export - HTML with Utility Classes
+export * from './export/utility-class-generator';
+export * from './export/html-exporter';
+
+// Export - React Components
+export * from './export/react-component-generator';
+
+// Export - Vue Components
+export * from './export/vue-component-generator';
+
+// Export - Svelte Components
+export * from './export/svelte-component-generator';
+
+// Export - Angular Components
+export * from './export/angular-component-generator';
+
+// Export - Design Tokens
+export * from './export/token-extractor';
+
 // Export - Platform Assets
 export * from './export/platform-asset-exporter';
 

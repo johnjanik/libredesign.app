@@ -170,6 +170,11 @@ export class CodeView {
   }
 
   private setupEventListeners(): void {
+    // Prevent wheel events from bubbling to canvas (which would zoom)
+    this.element.addEventListener('wheel', (e) => {
+      e.stopPropagation();
+    }, { passive: true });
+
     // Language change
     this.languageSelect.addEventListener('change', () => {
       this.currentLanguage = this.languageSelect.value as CodeLanguage;
@@ -205,7 +210,10 @@ export class CodeView {
     // Copy button
     const copyBtn = this.element.querySelector('.code-view-copy');
     copyBtn?.addEventListener('click', async () => {
-      const code = this.codeElement.textContent ?? '';
+      // Get code from textarea if visible, otherwise from code element
+      const code = this.textareaElement.style.display !== 'none'
+        ? this.textareaElement.value
+        : (this.codeElement.textContent ?? '');
       if (code && code !== 'Select an element to see generated code' && code !== 'No element selected') {
         const result = await copyToClipboard(code);
         showCopyFeedback(copyBtn as HTMLElement, result.success);
@@ -247,6 +255,7 @@ export class CodeView {
   private updateCode(): void {
     if (this.selectedNodeIds.length === 0) {
       this.codeElement.innerHTML = '<code>Select an element to see generated code</code>';
+      this.textareaElement.value = '';
       return;
     }
 
@@ -254,6 +263,7 @@ export class CodeView {
     const cached = this.codeCache.get(this.currentLanguage);
     if (cached) {
       this.codeElement.innerHTML = `<code>${this.escapeHtml(cached)}</code>`;
+      this.textareaElement.value = cached;
       this.applySyntaxHighlighting();
       return;
     }
@@ -264,6 +274,7 @@ export class CodeView {
 
     this.codeCache.set(this.currentLanguage, code);
     this.codeElement.innerHTML = `<code>${this.escapeHtml(code)}</code>`;
+    this.textareaElement.value = code;
     this.applySyntaxHighlighting();
   }
 

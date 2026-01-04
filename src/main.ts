@@ -49,10 +49,13 @@ export {
 // Silence unused import warning - re-exported items
 void getDefaultExportFormat;
 import './ui/styles/main.css';
+// UnoCSS - atomic utility classes
+import 'virtual:uno.css';
 
 // Re-export for external use
 export { _createCodePanel as createCodePanel, _createTokensPanel as createTokensPanel };
 export { createViewSwitcher } from '@ui/components/view-switcher';
+export { createPreviewPanel, DEVICE_PRESETS, type PreviewPanel, type DevicePreset } from '@ui/components/preview-panel';
 
 /**
  * Application configuration
@@ -146,14 +149,17 @@ async function initializeApp(config: AppConfig): Promise<void> {
   appContainer.appendChild(statusBar);
   container.appendChild(appContainer);
 
+  console.log('[DesignLibre] Creating runtime...');
   // Create runtime
   const runtime = createDesignLibreRuntime({
     autosaveInterval: config.autosave ? (config.autosaveInterval ?? 30000) : 0,
     debug: config.debug ?? false,
   });
 
+  console.log('[DesignLibre] Initializing runtime...');
   // Initialize runtime
   await runtime.initialize(canvasContainer);
+  console.log('[DesignLibre] Runtime initialized');
 
   // Create document
   runtime.createDocument(config.documentName ?? 'Untitled');
@@ -277,8 +283,11 @@ async function initializeApp(config: AppConfig): Promise<void> {
         autoConnect: true,
       });
 
-      // Connect to providers
-      await aiController.connect();
+      // Connect to providers with timeout to prevent hanging
+      const connectTimeout = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error('AI connection timeout')), 5000);
+      });
+      await Promise.race([aiController.connect(), connectTimeout]);
 
       if (config.debug) {
         console.log('AI system initialized', {
@@ -364,9 +373,13 @@ async function initializeApp(config: AppConfig): Promise<void> {
 }
 
 // Auto-initialize if #app exists
-document.addEventListener('DOMContentLoaded', () => {
+console.log('[DesignLibre] Script loaded');
+
+function onReady() {
+  console.log('[DesignLibre] DOM ready');
   // Initialize theme system first to prevent flash of wrong theme
   initializeTheme();
+  console.log('[DesignLibre] Theme initialized');
 
   // Initialize plugin system
   registerBuiltInPlugins();
@@ -403,7 +416,14 @@ document.addEventListener('DOMContentLoaded', () => {
       useNewUI,
     }).catch(console.error);
   }
-});
+}
+
+// Run immediately if DOM already loaded, otherwise wait
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', onReady);
+} else {
+  onReady();
+}
 
 // Export for programmatic use
 export { initializeApp, createDesignLibreRuntime };

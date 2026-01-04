@@ -211,10 +211,19 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.keyboardHandler = createKeyboardHandler();
       this.keyboardHandler.registerDefaultShortcuts();
 
-      // Prevent browser zoom on Ctrl+wheel (must be at document level with passive: false)
+      // Prevent browser zoom on Ctrl+wheel only on the canvas (not on preview/code panels)
       this.browserZoomHandler = (e: WheelEvent) => {
         if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
+          const target = e.target as HTMLElement;
+          // Allow browser zoom on panels (code view, preview, inspector, etc.)
+          const isOnPanel = target.closest('.preview-panel, .code-view, .view-switcher-pane, .inspector-panel, .left-sidebar') !== null;
+          if (isOnPanel) {
+            return; // Allow browser zoom
+          }
+          // Only prevent on canvas
+          if (target === this.canvas || target.closest('canvas') !== null) {
+            e.preventDefault();
+          }
         }
       };
       document.addEventListener('wheel', this.browserZoomHandler, { passive: false });
