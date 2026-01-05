@@ -19,6 +19,7 @@ import {
   type AndroidProjectImportOptions,
 } from '@persistence/import';
 import { ComponentLibraryPanel } from './component-library-panel';
+import { HistoryPanel } from './history-panel';
 
 /**
  * Leaf (page) definition
@@ -148,6 +149,9 @@ export class LeftSidebar {
 
   // Component library panel (lazy-initialized)
   private componentLibraryPanel: ComponentLibraryPanel | null = null;
+
+  // History panel (lazy-initialized)
+  private historyPanel: HistoryPanel | null = null;
 
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
@@ -399,8 +403,8 @@ export class LeftSidebar {
       // Components panel: library of draggable UI components
       this.element.appendChild(this.createComponentsSection());
     } else if (this.activeTab === 'history') {
-      // History panel: placeholder
-      this.element.appendChild(this.createPlaceholderSection('Version History', 'Version history coming soon'));
+      // History panel: version history with undo/redo
+      this.element.appendChild(this.createHistorySection());
     } else {
       // Layers/Assets panels: show leaves and layers
       this.element.appendChild(this.createLeavesSection());
@@ -420,37 +424,6 @@ export class LeftSidebar {
     }
   }
 
-  private createPlaceholderSection(title: string, message: string): HTMLElement {
-    const section = document.createElement('div');
-    section.style.cssText = `
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: var(--designlibre-text-secondary, #888);
-      text-align: center;
-    `;
-
-    const titleEl = document.createElement('div');
-    titleEl.textContent = title;
-    titleEl.style.cssText = `
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
-    section.appendChild(titleEl);
-
-    const messageEl = document.createElement('div');
-    messageEl.textContent = message;
-    messageEl.style.cssText = 'font-size: 12px;';
-    section.appendChild(messageEl);
-
-    return section;
-  }
-
   private createComponentsSection(): HTMLElement {
     // Lazy-initialize the component library panel
     if (!this.componentLibraryPanel) {
@@ -459,6 +432,14 @@ export class LeftSidebar {
       });
     }
     return this.componentLibraryPanel.createElement();
+  }
+
+  private createHistorySection(): HTMLElement {
+    // Lazy-initialize the history panel
+    if (!this.historyPanel) {
+      this.historyPanel = new HistoryPanel(this.runtime);
+    }
+    return this.historyPanel.create();
   }
 
   private createHeader(): HTMLElement {

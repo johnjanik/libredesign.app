@@ -648,6 +648,36 @@ export class Toolbar {
   private addActionButtons(): void {
     if (!this.element) return;
 
+    // Undo/Redo icons
+    const undoIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+    </svg>`;
+
+    const redoIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
+    </svg>`;
+
+    // Undo button
+    const undoBtn = this.createActionButton(undoIcon, 'Undo (Ctrl+Z)', () => {
+      this.runtime.undo();
+    });
+    undoBtn.id = 'toolbar-undo-btn';
+    this.element.appendChild(undoBtn);
+
+    // Redo button
+    const redoBtn = this.createActionButton(redoIcon, 'Redo (Ctrl+Shift+Z)', () => {
+      this.runtime.redo();
+    });
+    redoBtn.id = 'toolbar-redo-btn';
+    this.element.appendChild(redoBtn);
+
+    // Add separator before zoom controls
+    const separator2 = document.createElement('div');
+    separator2.className = 'designlibre-toolbar-separator';
+    separator2.style.cssText = this.getSeparatorStyles();
+    this.element.appendChild(separator2);
+
+    // Zoom icons
     const zoomInIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
@@ -680,6 +710,41 @@ export class Toolbar {
     this.element.appendChild(zoomOut);
     this.element.appendChild(zoomFit);
     this.element.appendChild(zoomIn);
+
+    // Update undo/redo button states
+    this.updateUndoRedoButtons();
+
+    // Listen for history changes
+    this.runtime.on('history:changed', () => {
+      this.updateUndoRedoButtons();
+    });
+  }
+
+  /**
+   * Update undo/redo button states based on history availability
+   */
+  private updateUndoRedoButtons(): void {
+    const undoBtn = document.getElementById('toolbar-undo-btn') as HTMLButtonElement | null;
+    const redoBtn = document.getElementById('toolbar-redo-btn') as HTMLButtonElement | null;
+
+    const canUndo = this.runtime.canUndo();
+    const canRedo = this.runtime.canRedo();
+    const undoDesc = this.runtime.getUndoDescription();
+    const redoDesc = this.runtime.getRedoDescription();
+
+    if (undoBtn) {
+      undoBtn.disabled = !canUndo;
+      undoBtn.style.opacity = canUndo ? '1' : '0.3';
+      undoBtn.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+      undoBtn.title = undoDesc ? `Undo: ${undoDesc} (Ctrl+Z)` : 'Undo (Ctrl+Z)';
+    }
+
+    if (redoBtn) {
+      redoBtn.disabled = !canRedo;
+      redoBtn.style.opacity = canRedo ? '1' : '0.3';
+      redoBtn.style.cursor = canRedo ? 'pointer' : 'not-allowed';
+      redoBtn.title = redoDesc ? `Redo: ${redoDesc} (Ctrl+Shift+Z)` : 'Redo (Ctrl+Shift+Z)';
+    }
   }
 
   private createActionButton(

@@ -57,6 +57,19 @@ import {
   VariableManager,
   createVariableManager,
 } from '@prototype/variable-manager';
+import {
+  StateRestorationService,
+  createStateRestorationService,
+} from '@core/history/state-restoration';
+import {
+  CheckpointManager,
+  createCheckpointManager,
+} from '@core/history/checkpoint-manager';
+import {
+  HistoryPersistenceService,
+  createHistoryPersistenceService,
+} from '@persistence/history-persistence';
+import type { Checkpoint, StateSnapshot } from '@core/types/history';
 
 /**
  * Runtime events
@@ -68,6 +81,7 @@ export type RuntimeEvents = {
   'document:saved': { documentId: NodeId };
   'tool:changed': { tool: string };
   'selection:changed': { nodeIds: NodeId[] };
+  'history:changed': { canUndo: boolean; canRedo: boolean; undoDescription: string | null; redoDescription: string | null };
   'error': { error: Error };
   [key: string]: unknown;
 };
@@ -126,6 +140,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private libraryRegistry: LibraryComponentRegistry;
   private interactionManager: InteractionManager;
   private variableManager: VariableManager;
+  private stateRestoration: StateRestorationService;
+  private checkpointManager: CheckpointManager;
+  private historyPersistence: HistoryPersistenceService;
 
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
@@ -201,6 +218,16 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.undoManager = createUndoManager({ maxHistory: 100 });
     this.styleManager = createStyleManager();
 
+    // Forward undo manager events
+    this.undoManager.on('stateChanged', () => {
+      this.emit('history:changed', {
+        canUndo: this.undoManager.canUndo(),
+        canRedo: this.undoManager.canRedo(),
+        undoDescription: this.undoManager.getUndoDescription(),
+        redoDescription: this.undoManager.getRedoDescription(),
+      });
+    });
+
     // Initialize library component registry with core components
     this.libraryRegistry = createLibraryComponentRegistry();
     this.libraryRegistry.registerAll(getAllLibraryComponents());
@@ -210,6 +237,15 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Initialize variable manager for prototype variables
     this.variableManager = createVariableManager();
+
+    // Initialize state restoration and checkpoint services
+    this.stateRestoration = createStateRestorationService(
+      this.sceneGraph,
+      this.selectionManager,
+      { snapshotInterval: 10 }
+    );
+    this.checkpointManager = createCheckpointManager(this.stateRestoration);
+    this.historyPersistence = createHistoryPersistenceService();
 
     // Initialize persistence
     this.serializer = createDocumentSerializer();
@@ -457,6 +493,142 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   canRedo(): boolean {
     return this.undoManager.canRedo();
+  }
+
+  /**
+   * Get description of the next undo operation.
+   */
+  getUndoDescription(): string | null {
+    return this.undoManager.getUndoDescription();
+  }
+
+  /**
+   * Get description of the next redo operation.
+   */
+  getRedoDescription(): string | null {
+    return this.undoManager.getRedoDescription();
+  }
+
+  /**
+   * Get the undo history (most recent first).
+   */
+  getUndoHistory(): readonly import('@operations/undo-manager').OperationGroup[] {
+    return this.undoManager.getUndoHistory();
+  }
+
+  /**
+   * Get the redo history (most recent first).
+   */
+  getRedoHistory(): readonly import('@operations/undo-manager').OperationGroup[] {
+    return this.undoManager.getRedoHistory();
+  }
+
+  // =========================================================================
+  // Checkpoints
+  // =========================================================================
+
+  /**
+   * Create a named checkpoint at the current state.
+   */
+  createCheckpoint(name: string, description?: string): Checkpoint {
+    return this.checkpointManager.createCheckpoint(name, description);
+  }
+
+  /**
+   * Delete a checkpoint.
+   */
+  deleteCheckpoint(id: string): boolean {
+    return this.checkpointManager.deleteCheckpoint(id);
+  }
+
+  /**
+   * Rename a checkpoint.
+   */
+  renameCheckpoint(id: string, newName: string): boolean {
+    return this.checkpointManager.renameCheckpoint(id, newName);
+  }
+
+  /**
+   * Get all checkpoints.
+   */
+  getCheckpoints(): Checkpoint[] {
+    return this.checkpointManager.getCheckpoints();
+  }
+
+  /**
+   * Restore state to a checkpoint.
+   */
+  restoreCheckpoint(id: string): boolean {
+    return this.checkpointManager.restoreCheckpoint(id);
+  }
+
+  /**
+   * Get the checkpoint manager for advanced operations.
+   */
+  getCheckpointManager(): CheckpointManager {
+    return this.checkpointManager;
+  }
+
+  // =========================================================================
+  // History Persistence
+  // =========================================================================
+
+  /**
+   * Save current history to IndexedDB.
+   */
+  async saveHistory(documentId: string): Promise<void> {
+    const checkpoints = this.checkpointManager.getCheckpoints();
+    await this.historyPersistence.saveHistory(
+      documentId,
+      this.undoManager.getUndoHistory(),
+      this.undoManager.getRedoHistory(),
+      checkpoints
+    );
+
+    // Save checkpoint snapshots
+    for (const checkpoint of checkpoints) {
+      const snapshot = this.stateRestoration.getSnapshot(checkpoint.id);
+      if (snapshot) {
+        await this.historyPersistence.saveSnapshot(documentId, checkpoint.id, snapshot);
+      }
+    }
+  }
+
+  /**
+   * Load history from IndexedDB.
+   */
+  async loadHistory(documentId: string): Promise<boolean> {
+    const history = await this.historyPersistence.loadHistory(documentId);
+    if (!history) return false;
+
+    // Load snapshots
+    const snapshots = await this.historyPersistence.loadSnapshots(documentId);
+
+    // Import checkpoints with snapshots
+    this.checkpointManager.importCheckpoints(history.checkpoints, snapshots);
+
+    return true;
+  }
+
+  /**
+   * Clear saved history for a document.
+   */
+  async clearSavedHistory(documentId: string): Promise<void> {
+    await this.historyPersistence.clearHistory(documentId);
+  }
+
+  /**
+   * Capture a state snapshot manually.
+   */
+  captureSnapshot(): StateSnapshot {
+    return this.stateRestoration.captureSnapshot();
+  }
+
+  /**
+   * Restore a state snapshot.
+   */
+  restoreSnapshot(snapshot: StateSnapshot): void {
+    this.stateRestoration.restoreSnapshot(snapshot);
   }
 
   // =========================================================================
