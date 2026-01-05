@@ -285,18 +285,8 @@ export class LeftSidebar {
     // When embedded (width: 0), fill parent and allow flex grow
     const isEmbedded = this.options.width === 0;
 
-    this.element.style.cssText = `
-      width: ${widthStyle};
-      height: 100%;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border-right: ${isEmbedded ? 'none' : '1px solid var(--designlibre-border, #3d3d3d)'};
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transition: width 0.2s ease;
-      flex: ${isEmbedded ? '1' : '0 0 auto'};
-      min-height: 0;
-    `;
+    this.element.className = `designlibre-left-sidebar h-full bg-surface flex flex-col overflow-hidden transition-all min-h-0 ${isEmbedded ? 'flex-1 border-r-0' : 'flex-shrink-0 border-r border-border'}`;
+    this.element.style.width = widthStyle;
   }
 
   private render(): void {
@@ -982,21 +972,9 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-file-menu';
-    menu.style.cssText = `
-      position: fixed;
-      left: ${rect.left}px;
-      top: ${rect.bottom + 4}px;
-      min-width: 220px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-    `;
+    menu.className = 'fixed min-w-55 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
 
     const menuItems = [
       { label: 'New File', shortcut: 'Ctrl+N', action: () => this.createNewFile() },
@@ -1014,17 +992,11 @@ export class LeftSidebar {
     for (const item of menuItems) {
       if (item.separator) {
         const sep = document.createElement('div');
-        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
+        sep.className = 'h-px bg-border my-1';
         menu.appendChild(sep);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.style.cssText = `
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 12px;
-          border-radius: 4px;
-          cursor: pointer;
-        `;
+        menuItem.className = 'flex justify-between py-2 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
 
         const label = document.createElement('span');
         label.textContent = item.label ?? '';
@@ -1033,16 +1005,10 @@ export class LeftSidebar {
         if (item.shortcut) {
           const shortcut = document.createElement('span');
           shortcut.textContent = item.shortcut;
-          shortcut.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+          shortcut.className = 'text-[11px] text-content-muted';
           menuItem.appendChild(shortcut);
         }
 
-        menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.background = '#2d2d2d';
-        });
-        menuItem.addEventListener('mouseleave', () => {
-          menuItem.style.background = 'transparent';
-        });
         menuItem.addEventListener('click', () => {
           menu.remove();
           item.action?.();
@@ -1081,21 +1047,9 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-templates-menu';
-    menu.style.cssText = `
-      position: fixed;
-      left: ${rect.right + 4}px;
-      top: ${rect.top}px;
-      min-width: 260px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-    `;
+    menu.className = 'fixed min-w-65 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
+    menu.style.left = `${rect.right + 4}px`;
+    menu.style.top = `${rect.top}px`;
 
     const templateItems = [
       {
@@ -1118,39 +1072,26 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
     header.textContent = 'Download Template';
     menu.appendChild(header);
 
     for (const item of templateItems) {
       const menuItem = document.createElement('div');
-      menuItem.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 10px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-      `;
+      menuItem.className = 'flex flex-col gap-0.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.style.fontWeight = '500';
+      label.className = 'font-medium';
       menuItem.appendChild(label);
 
       if (item.description) {
         const desc = document.createElement('span');
         desc.textContent = item.description;
-        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+        desc.className = 'text-[11px] text-content-muted';
         menuItem.appendChild(desc);
       }
 
-      menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.background = '#2d2d2d';
-      });
-      menuItem.addEventListener('mouseleave', () => {
-        menuItem.style.background = 'transparent';
-      });
       menuItem.addEventListener('click', () => {
         item.action();
       });
@@ -1186,21 +1127,9 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-export-menu';
-    menu.style.cssText = `
-      position: fixed;
-      left: ${rect.right + 4}px;
-      top: ${rect.top}px;
-      min-width: 280px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-    `;
+    menu.className = 'fixed min-w-70 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
+    menu.style.left = `${rect.right + 4}px`;
+    menu.style.top = `${rect.top}px`;
 
     const exportItems = [
       {
@@ -1222,39 +1151,26 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
     header.textContent = 'Export as Project';
     menu.appendChild(header);
 
     for (const item of exportItems) {
       const menuItem = document.createElement('div');
-      menuItem.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: 10px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-      `;
+      menuItem.className = 'flex flex-col gap-0.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.style.fontWeight = '500';
+      label.className = 'font-medium';
       menuItem.appendChild(label);
 
       if (item.description) {
         const desc = document.createElement('span');
         desc.textContent = item.description;
-        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+        desc.className = 'text-[11px] text-content-muted';
         menuItem.appendChild(desc);
       }
 
-      menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.background = '#2d2d2d';
-      });
-      menuItem.addEventListener('mouseleave', () => {
-        menuItem.style.background = 'transparent';
-      });
       menuItem.addEventListener('click', () => {
         menu.remove();
         item.action();
@@ -1291,21 +1207,9 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-import-menu';
-    menu.style.cssText = `
-      position: fixed;
-      left: ${rect.right + 4}px;
-      top: ${rect.top}px;
-      min-width: 300px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-    `;
+    menu.className = 'fixed min-w-75 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
+    menu.style.left = `${rect.right + 4}px`;
+    menu.style.top = `${rect.top}px`;
 
     const importItems = [
       {
@@ -1324,55 +1228,42 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
+    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
     header.textContent = 'Import from Project';
     menu.appendChild(header);
 
     // Info text
     const infoText = document.createElement('div');
-    infoText.style.cssText = 'padding: 4px 12px 8px; font-size: 11px; color: #888; line-height: 1.4;';
+    infoText.className = 'px-3 pb-2 text-[11px] text-content-secondary leading-snug';
     infoText.textContent = 'Import UI elements from mobile projects. Designers can edit visual properties while code logic stays read-only.';
     menu.appendChild(infoText);
 
     for (const item of importItems) {
       const menuItem = document.createElement('div');
-      menuItem.style.cssText = `
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 10px 12px;
-        border-radius: 4px;
-        cursor: pointer;
-      `;
+      menuItem.className = 'flex items-start gap-2.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
 
       // Icon container
       const iconContainer = document.createElement('div');
-      iconContainer.style.cssText = 'flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;';
+      iconContainer.className = 'flex-shrink-0 w-6 h-6 flex items-center justify-center';
       iconContainer.innerHTML = item.icon;
       menuItem.appendChild(iconContainer);
 
       // Text container
       const textContainer = document.createElement('div');
-      textContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+      textContainer.className = 'flex flex-col gap-0.5';
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.style.fontWeight = '500';
+      label.className = 'font-medium';
       textContainer.appendChild(label);
 
       const desc = document.createElement('span');
       desc.textContent = item.description;
-      desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+      desc.className = 'text-[11px] text-content-muted';
       textContainer.appendChild(desc);
 
       menuItem.appendChild(textContainer);
 
-      menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.background = '#2d2d2d';
-      });
-      menuItem.addEventListener('mouseleave', () => {
-        menuItem.style.background = 'transparent';
-      });
       menuItem.addEventListener('click', () => {
         menu.remove();
         item.action();
@@ -1383,12 +1274,12 @@ export class LeftSidebar {
 
     // Separator
     const sep = document.createElement('div');
-    sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 8px 0;';
+    sep.className = 'h-px bg-border my-2';
     menu.appendChild(sep);
 
     // Feature note
     const note = document.createElement('div');
-    note.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #666; line-height: 1.4;';
+    note.className = 'py-2 px-3 text-[10px] text-content-muted leading-snug';
     note.innerHTML = '<strong>Live Sync:</strong> Changes sync bidirectionally. Code-controlled properties (state, bindings) are locked.';
     menu.appendChild(note);
 
@@ -1553,47 +1444,26 @@ export class LeftSidebar {
       // Create overlay
       const overlay = document.createElement('div');
       overlay.id = 'import-options-dialog-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.6);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000000;
-      `;
+      overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-1000000';
 
       const dialog = document.createElement('div');
-      dialog.style.cssText = `
-        background: #1e1e1e;
-        border: 1px solid #3d3d3d;
-        border-radius: 8px;
-        padding: 24px;
-        min-width: 400px;
-        max-width: 500px;
-        color: #e4e4e4;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        font-size: 13px;
-      `;
+      dialog.className = 'bg-surface border border-border rounded-lg p-6 min-w-100 max-w-125 text-content text-[13px]';
 
       // Title
       const title = document.createElement('h2');
-      title.style.cssText = 'margin: 0 0 8px 0; font-size: 18px; font-weight: 600;';
+      title.className = 'm-0 mb-2 text-lg font-semibold';
       title.textContent = projectType === 'xcode' ? 'Import Xcode Project' : 'Import Android Project';
       dialog.appendChild(title);
 
       // Project name
       const projectInfo = document.createElement('div');
-      projectInfo.style.cssText = 'margin-bottom: 20px; color: #888;';
+      projectInfo.className = 'mb-5 text-content-secondary';
       projectInfo.textContent = `Project: ${projectName}`;
       dialog.appendChild(projectInfo);
 
       // Options container
       const optionsContainer = document.createElement('div');
-      optionsContainer.style.cssText = 'display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;';
+      optionsContainer.className = 'flex flex-col gap-3 mb-6';
 
       // Scale option
       const scaleRow = this.createOptionRow('Scale Factor', 'Number multiplier for sizes', 'number', '1');
@@ -1619,19 +1489,11 @@ export class LeftSidebar {
 
       // Buttons
       const buttonRow = document.createElement('div');
-      buttonRow.style.cssText = 'display: flex; justify-content: flex-end; gap: 12px;';
+      buttonRow.className = 'flex justify-end gap-3';
 
       const cancelBtn = document.createElement('button');
       cancelBtn.textContent = 'Cancel';
-      cancelBtn.style.cssText = `
-        padding: 8px 16px;
-        background: transparent;
-        border: 1px solid #3d3d3d;
-        border-radius: 4px;
-        color: #e4e4e4;
-        cursor: pointer;
-        font-size: 13px;
-      `;
+      cancelBtn.className = 'py-2 px-4 bg-transparent border border-border rounded text-content text-[13px] cursor-pointer hover:bg-surface-secondary transition-colors';
       cancelBtn.addEventListener('click', () => {
         overlay.remove();
         resolve(null);
@@ -1640,16 +1502,7 @@ export class LeftSidebar {
 
       const importBtn = document.createElement('button');
       importBtn.textContent = 'Import';
-      importBtn.style.cssText = `
-        padding: 8px 20px;
-        background: #4dabff;
-        border: none;
-        border-radius: 4px;
-        color: #000;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 500;
-      `;
+      importBtn.className = 'py-2 px-5 bg-accent border-none rounded text-black text-[13px] font-medium cursor-pointer hover:bg-accent-hover transition-colors';
       importBtn.addEventListener('click', () => {
         const options: XcodeProjectImportOptions | AndroidProjectImportOptions = {
           scale: parseFloat((scaleRow.input as HTMLInputElement).value) || 1,
@@ -1697,19 +1550,19 @@ export class LeftSidebar {
     defaultValue: string
   ): { container: HTMLElement; input: HTMLElement } {
     const container = document.createElement('div');
-    container.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 16px;';
+    container.className = 'flex items-center justify-between gap-4';
 
     const labelContainer = document.createElement('div');
-    labelContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+    labelContainer.className = 'flex flex-col gap-0.5';
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
-    labelEl.style.fontWeight = '500';
+    labelEl.className = 'font-medium';
     labelContainer.appendChild(labelEl);
 
     const descEl = document.createElement('span');
     descEl.textContent = description;
-    descEl.style.cssText = 'font-size: 11px; color: #6a6a6a;';
+    descEl.className = 'text-[11px] text-content-muted';
     labelContainer.appendChild(descEl);
 
     container.appendChild(labelContainer);
@@ -1720,7 +1573,7 @@ export class LeftSidebar {
       input = document.createElement('input');
       input.type = 'checkbox';
       input.checked = defaultValue === 'true';
-      input.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+      input.className = 'w-4.5 h-4.5 cursor-pointer';
     } else {
       input = document.createElement('input');
       input.type = 'number';
@@ -1728,16 +1581,7 @@ export class LeftSidebar {
       input.min = '0.1';
       input.max = '10';
       input.step = '0.1';
-      input.style.cssText = `
-        width: 60px;
-        padding: 4px 8px;
-        background: #2d2d2d;
-        border: 1px solid #3d3d3d;
-        border-radius: 4px;
-        color: #e4e4e4;
-        font-size: 13px;
-        text-align: center;
-      `;
+      input.className = 'w-15 py-1 px-2 bg-surface-secondary border border-border rounded text-content text-[13px] text-center';
     }
 
     container.appendChild(input);
@@ -1751,56 +1595,24 @@ export class LeftSidebar {
   private showImportProgressDialog(projectType: string): HTMLElement {
     const overlay = document.createElement('div');
     overlay.id = 'import-progress-dialog';
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000000;
-    `;
+    overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-1000000';
 
     const dialog = document.createElement('div');
-    dialog.style.cssText = `
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 8px;
-      padding: 32px 48px;
-      text-align: center;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    `;
+    dialog.className = 'bg-surface border border-border rounded-lg py-8 px-12 text-center text-content';
 
     // Spinner
     const spinner = document.createElement('div');
-    spinner.style.cssText = `
-      width: 40px;
-      height: 40px;
-      margin: 0 auto 16px;
-      border: 3px solid #3d3d3d;
-      border-top-color: #4dabff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    `;
+    spinner.className = 'w-10 h-10 mx-auto mb-4 border-3 border-border border-t-accent rounded-full animate-spin';
     dialog.appendChild(spinner);
-
-    // Add keyframes
-    const style = document.createElement('style');
-    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
-    document.head.appendChild(style);
 
     // Text
     const text = document.createElement('div');
-    text.style.fontSize = '14px';
+    text.className = 'text-sm';
     text.textContent = `Importing ${projectType} project...`;
     dialog.appendChild(text);
 
     const subtext = document.createElement('div');
-    subtext.style.cssText = 'font-size: 12px; color: #888; margin-top: 8px;';
+    subtext.className = 'text-xs text-content-secondary mt-2';
     subtext.textContent = 'Parsing source files and creating nodes';
     dialog.appendChild(subtext);
 
@@ -2003,21 +1815,9 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-file-options-menu';
-    menu.style.cssText = `
-      position: fixed;
-      left: ${rect.left}px;
-      top: ${rect.bottom + 4}px;
-      min-width: 180px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-      z-index: 999999;
-    `;
+    menu.className = 'fixed min-w-45 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
+    menu.style.left = `${rect.left}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
 
     const menuItems = [
       { label: 'Rename', action: () => {} },
@@ -2032,23 +1832,13 @@ export class LeftSidebar {
     for (const item of menuItems) {
       if (item.separator) {
         const sep = document.createElement('div');
-        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
+        sep.className = 'h-px bg-border my-1';
         menu.appendChild(sep);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.style.cssText = `
-          padding: 8px 12px;
-          border-radius: 4px;
-          cursor: pointer;
-        `;
+        menuItem.className = 'py-2 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
         menuItem.textContent = item.label ?? '';
 
-        menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.background = '#2d2d2d';
-        });
-        menuItem.addEventListener('mouseleave', () => {
-          menuItem.style.background = 'transparent';
-        });
         menuItem.addEventListener('click', () => {
           menu.remove();
           item.action?.();

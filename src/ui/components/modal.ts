@@ -105,11 +105,12 @@ export class Modal {
 
     // Remove from DOM
     if (this.overlayElement) {
-      // Animate out
-      this.overlayElement.style.opacity = '0';
+      // Animate out via classes
+      this.overlayElement.classList.remove('opacity-100');
+      this.overlayElement.classList.add('opacity-0');
       if (this.element) {
-        this.element.style.transform = 'scale(0.95)';
-        this.element.style.opacity = '0';
+        this.element.classList.remove('scale-100', 'opacity-100');
+        this.element.classList.add('scale-95', 'opacity-0');
       }
 
       setTimeout(() => {
@@ -156,18 +157,7 @@ export class Modal {
   private render(): void {
     // Create overlay
     this.overlayElement = document.createElement('div');
-    this.overlayElement.className = 'designlibre-modal-overlay';
-    this.overlayElement.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    `;
+    this.overlayElement.className = 'designlibre-modal-overlay fixed inset-0 bg-black/60 flex items-center justify-center z-10000 opacity-0 transition-opacity';
 
     if (this.options.closeOnOverlay) {
       this.overlayElement.addEventListener('click', (e) => {
@@ -179,49 +169,25 @@ export class Modal {
 
     // Create modal
     const size = SIZES[this.options.size] ?? SIZES['medium']!;
+    const isFullscreen = this.options.size === 'fullscreen';
 
     this.element = document.createElement('div');
-    this.element.className = `designlibre-modal ${this.options.className}`;
+    this.element.className = `designlibre-modal ${this.options.className} max-w-[calc(100vw-32px)] bg-surface border border-border ${isFullscreen ? 'rounded-none' : 'rounded-xl'} shadow-2xl flex flex-col overflow-hidden scale-95 opacity-0 transition-all`;
     this.element.setAttribute('role', 'dialog');
     this.element.setAttribute('aria-modal', 'true');
     this.element.setAttribute('aria-labelledby', 'modal-title');
     this.element.setAttribute('tabindex', '-1');
-    this.element.style.cssText = `
-      width: ${size.width};
-      max-width: calc(100vw - 32px);
-      max-height: ${size.maxHeight};
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: ${this.options.size === 'fullscreen' ? '0' : '12px'};
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      transform: scale(0.95);
-      opacity: 0;
-      transition: transform 0.15s ease, opacity 0.15s ease;
-    `;
+    this.element.style.width = size.width;
+    this.element.style.maxHeight = size.maxHeight;
 
     // Header
     const header = document.createElement('header');
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-      flex-shrink: 0;
-    `;
+    header.className = 'flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0';
 
     const title = document.createElement('h2');
     title.id = 'modal-title';
     title.textContent = this.options.title;
-    title.style.cssText = `
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
+    title.className = 'm-0 text-base font-semibold text-content';
     header.appendChild(title);
 
     if (this.options.showCloseButton) {
@@ -229,24 +195,7 @@ export class Modal {
       closeBtn.innerHTML = ICONS.close;
       closeBtn.title = 'Close (Escape)';
       closeBtn.setAttribute('aria-label', 'Close modal');
-      closeBtn.style.cssText = `
-        display: flex;
-        padding: 4px;
-        border: none;
-        background: transparent;
-        color: var(--designlibre-text-secondary, #888);
-        cursor: pointer;
-        border-radius: 4px;
-        transition: all 0.15s;
-      `;
-      closeBtn.addEventListener('mouseenter', () => {
-        closeBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        closeBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-      });
-      closeBtn.addEventListener('mouseleave', () => {
-        closeBtn.style.backgroundColor = 'transparent';
-        closeBtn.style.color = 'var(--designlibre-text-secondary, #888)';
-      });
+      closeBtn.className = 'flex p-1 border-none bg-transparent text-content-secondary cursor-pointer rounded transition-all hover:bg-surface-secondary hover:text-content';
       closeBtn.addEventListener('click', () => this.close());
       header.appendChild(closeBtn);
     }
@@ -255,12 +204,7 @@ export class Modal {
 
     // Content container
     this.contentContainer = document.createElement('div');
-    this.contentContainer.className = 'modal-content';
-    this.contentContainer.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-    `;
+    this.contentContainer.className = 'modal-content flex-1 overflow-y-auto p-5';
     this.element.appendChild(this.contentContainer);
 
     this.overlayElement.appendChild(this.element);
@@ -269,11 +213,12 @@ export class Modal {
     // Animate in
     requestAnimationFrame(() => {
       if (this.overlayElement) {
-        this.overlayElement.style.opacity = '1';
+        this.overlayElement.classList.remove('opacity-0');
+        this.overlayElement.classList.add('opacity-100');
       }
       if (this.element) {
-        this.element.style.transform = 'scale(1)';
-        this.element.style.opacity = '1';
+        this.element.classList.remove('scale-95', 'opacity-0');
+        this.element.classList.add('scale-100', 'opacity-100');
       }
     });
   }
@@ -315,14 +260,7 @@ export class Modal {
     if (!this.element) return;
 
     const footer = document.createElement('footer');
-    footer.style.cssText = `
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 16px 20px;
-      border-top: 1px solid var(--designlibre-border, #3d3d3d);
-      flex-shrink: 0;
-    `;
+    footer.className = 'flex justify-end gap-2 px-5 py-4 border-t border-border flex-shrink-0';
 
     for (const btn of buttons) {
       const button = document.createElement('button');
@@ -331,33 +269,13 @@ export class Modal {
       const isPrimary = btn.variant === 'primary';
       const isDanger = btn.variant === 'danger';
 
-      button.style.cssText = `
-        padding: 8px 16px;
-        border: 1px solid ${isDanger ? 'var(--designlibre-error, #ff6b6b)' : isPrimary ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
-        border-radius: 6px;
-        background: ${isPrimary ? 'var(--designlibre-accent, #0d99ff)' : isDanger ? 'var(--designlibre-error, #ff6b6b)' : 'transparent'};
-        color: ${isPrimary || isDanger ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-      `;
-
-      button.addEventListener('mouseenter', () => {
-        if (!isPrimary && !isDanger) {
-          button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        } else {
-          button.style.filter = 'brightness(1.1)';
-        }
-      });
-
-      button.addEventListener('mouseleave', () => {
-        if (!isPrimary && !isDanger) {
-          button.style.backgroundColor = 'transparent';
-        } else {
-          button.style.filter = '';
-        }
-      });
+      if (isPrimary) {
+        button.className = 'px-4 py-2 border border-accent rounded-md bg-accent text-white text-[13px] font-medium cursor-pointer transition-all hover:brightness-110';
+      } else if (isDanger) {
+        button.className = 'px-4 py-2 border border-red-500 rounded-md bg-red-500 text-white text-[13px] font-medium cursor-pointer transition-all hover:brightness-110';
+      } else {
+        button.className = 'px-4 py-2 border border-border rounded-md bg-transparent text-content text-[13px] font-medium cursor-pointer transition-all hover:bg-surface-secondary';
+      }
 
       button.addEventListener('click', btn.onClick);
       footer.appendChild(button);
@@ -417,12 +335,7 @@ export function confirm(
 
     const content = document.createElement('p');
     content.textContent = message;
-    content.style.cssText = `
-      margin: 0;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 14px;
-      line-height: 1.5;
-    `;
+    content.className = 'm-0 text-content text-sm leading-normal';
     modal.setContent(content);
 
     modal.addFooter([
@@ -463,12 +376,7 @@ export function alert(
 
     const content = document.createElement('p');
     content.textContent = message;
-    content.style.cssText = `
-      margin: 0;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 14px;
-      line-height: 1.5;
-    `;
+    content.className = 'm-0 text-content text-sm leading-normal';
     modal.setContent(content);
 
     modal.addFooter([

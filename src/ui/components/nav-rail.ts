@@ -156,16 +156,18 @@ export class NavRail {
   }
 
   private setup(): void {
+    const isVertical = this.options.position === 'left' || this.options.position === 'right';
+    const borderSide = this.options.position === 'left' ? 'right' : this.options.position === 'right' ? 'left' : this.options.position === 'top' ? 'bottom' : 'top';
+
     this.element = document.createElement('nav');
-    this.element.className = 'designlibre-nav-rail';
+    this.element.className = `designlibre-nav-rail flex bg-surface-tertiary flex-shrink-0 z-100 ${isVertical ? 'flex-col' : 'flex-row'} border-${borderSide} border-border`;
     this.element.setAttribute('role', 'navigation');
     this.element.setAttribute('aria-label', 'Main navigation');
-    this.element.style.cssText = this.getRailStyles();
+    this.element.style[isVertical ? 'width' : 'height'] = `${this.options.size}px`;
 
     // Toggle section (sidebar toggle)
     const toggleSection = document.createElement('div');
-    toggleSection.className = 'nav-rail-toggle';
-    toggleSection.style.cssText = this.getSectionStyles();
+    toggleSection.className = `nav-rail-toggle flex ${isVertical ? 'flex-col' : 'flex-row'} p-2 gap-1`;
     toggleSection.appendChild(
       this.createButton({
         id: 'sidebar-toggle',
@@ -178,8 +180,7 @@ export class NavRail {
 
     // Top section (main navigation)
     const topSection = document.createElement('div');
-    topSection.className = 'nav-rail-top';
-    topSection.style.cssText = this.getSectionStyles();
+    topSection.className = `nav-rail-top flex ${isVertical ? 'flex-col' : 'flex-row'} p-2 gap-1`;
 
     const mainActions: NavRailAction[] = [
       {
@@ -235,14 +236,12 @@ export class NavRail {
 
     // Spacer
     const spacer = document.createElement('div');
-    spacer.className = 'nav-rail-spacer';
-    spacer.style.cssText = 'flex: 1;';
+    spacer.className = 'nav-rail-spacer flex-1';
     this.element.appendChild(spacer);
 
     // Bottom section (system actions)
     const bottomSection = document.createElement('div');
-    bottomSection.className = 'nav-rail-bottom';
-    bottomSection.style.cssText = this.getSectionStyles();
+    bottomSection.className = `nav-rail-bottom flex ${isVertical ? 'flex-col' : 'flex-row'} p-2 gap-1`;
 
     // Trunk selector (if workspace manager provided)
     if (this.options.workspaceManager) {
@@ -280,35 +279,6 @@ export class NavRail {
 
     // Update active states
     this.updateActiveStates();
-  }
-
-  private getRailStyles(): string {
-    const isVertical =
-      this.options.position === 'left' || this.options.position === 'right';
-
-    const base = `
-      display: flex;
-      background: var(--designlibre-bg-tertiary, #161616);
-      border-${this.options.position === 'left' ? 'right' : this.options.position === 'right' ? 'left' : this.options.position === 'top' ? 'bottom' : 'top'}: 1px solid var(--designlibre-border, #2d2d2d);
-      flex-direction: ${isVertical ? 'column' : 'row'};
-      ${isVertical ? `width: ${this.options.size}px;` : `height: ${this.options.size}px;`}
-      flex-shrink: 0;
-      z-index: 100;
-    `;
-
-    return base;
-  }
-
-  private getSectionStyles(): string {
-    const isVertical =
-      this.options.position === 'left' || this.options.position === 'right';
-
-    return `
-      display: flex;
-      flex-direction: ${isVertical ? 'column' : 'row'};
-      padding: 8px;
-      gap: 4px;
-    `;
   }
 
   private setupGlobalClickHandler(): void {

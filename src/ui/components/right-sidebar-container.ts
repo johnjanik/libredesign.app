@@ -68,24 +68,11 @@ export class RightSidebarContainer {
   private setup(): void {
     // Create container element
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-right-sidebar-container';
-    this.element.style.cssText = `
-      display: flex;
-      flex-direction: row;
-      height: 100%;
-      flex-shrink: 0;
-      position: relative;
-    `;
+    this.element.className = 'designlibre-right-sidebar-container flex flex-row h-full flex-shrink-0 relative';
 
     // Create inspector panel wrapper
     const inspectorWrapper = document.createElement('div');
-    inspectorWrapper.className = 'designlibre-inspector-wrapper';
-    inspectorWrapper.style.cssText = `
-      display: flex;
-      flex-direction: row;
-      height: 100%;
-      position: relative;
-    `;
+    inspectorWrapper.className = 'designlibre-inspector-wrapper flex flex-row h-full relative';
 
     // Create inspector panel
     this.inspectorPanel = createInspectorPanel(this.runtime, inspectorWrapper, {
@@ -102,25 +89,12 @@ export class RightSidebarContainer {
     // Create AI panel if controller is available
     if (this.aiController) {
       const aiPanelWrapper = document.createElement('div');
-      aiPanelWrapper.className = 'designlibre-ai-panel-wrapper';
-      aiPanelWrapper.style.cssText = `
-        display: ${this.aiPanelVisible ? 'flex' : 'none'};
-        flex-direction: column;
-        height: 100%;
-        width: ${this.options.aiPanelWidth}px;
-        border-left: 1px solid var(--designlibre-border, #3d3d3d);
-        position: relative;
-      `;
+      aiPanelWrapper.className = `designlibre-ai-panel-wrapper ${this.aiPanelVisible ? 'flex' : 'hidden'} flex-col h-full border-l border-border relative`;
+      aiPanelWrapper.style.width = `${this.options.aiPanelWidth}px`;
 
       // Create AI panel content area
       const aiPanelContent = document.createElement('div');
-      aiPanelContent.className = 'designlibre-ai-panel-content';
-      aiPanelContent.style.cssText = `
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      `;
+      aiPanelContent.className = 'designlibre-ai-panel-content flex-1 flex flex-col overflow-hidden';
 
       this.aiPanel = createAIPanel(this.aiController, aiPanelContent, {
         position: 'right',
@@ -142,43 +116,24 @@ export class RightSidebarContainer {
 
   private createAIToggleButton(): HTMLElement {
     const button = document.createElement('button');
-    button.className = 'designlibre-ai-toggle-btn';
+    button.className = `designlibre-ai-toggle-btn absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 border-none bg-accent text-white cursor-pointer ${this.aiPanelVisible ? 'hidden' : 'flex'} items-center justify-center rounded-l-lg shadow-lg z-101 transition-colors hover:bg-purple-700`;
     button.title = 'Open AI Assistant';
     button.innerHTML = ICONS.ai;
-    button.style.cssText = `
-      position: absolute;
-      right: 0;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 40px;
-      height: 40px;
-      border: none;
-      background: var(--designlibre-accent, #a855f7);
-      color: white;
-      cursor: pointer;
-      display: ${this.aiPanelVisible ? 'none' : 'flex'};
-      align-items: center;
-      justify-content: center;
-      border-radius: 8px 0 0 8px;
-      box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
-      z-index: 101;
-      transition: background-color 0.15s;
-    `;
 
     button.addEventListener('click', () => this.showAIPanel());
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = '#9333ea';
-    });
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'var(--designlibre-accent, #a855f7)';
-    });
 
     return button;
   }
 
   private updateAIToggleButtonVisibility(): void {
     if (this.aiToggleButton) {
-      this.aiToggleButton.style.display = this.aiPanelVisible ? 'none' : 'flex';
+      if (this.aiPanelVisible) {
+        this.aiToggleButton.classList.add('hidden');
+        this.aiToggleButton.classList.remove('flex');
+      } else {
+        this.aiToggleButton.classList.remove('hidden');
+        this.aiToggleButton.classList.add('flex');
+      }
     }
   }
 
@@ -191,7 +146,8 @@ export class RightSidebarContainer {
     this.aiPanelVisible = true;
     const aiPanelWrapper = this.element?.querySelector('.designlibre-ai-panel-wrapper') as HTMLElement;
     if (aiPanelWrapper) {
-      aiPanelWrapper.style.display = 'flex';
+      aiPanelWrapper.classList.remove('hidden');
+      aiPanelWrapper.classList.add('flex');
     }
     this.updateAIToggleButtonVisibility();
   }
@@ -203,7 +159,8 @@ export class RightSidebarContainer {
     this.aiPanelVisible = false;
     const aiPanelWrapper = this.element?.querySelector('.designlibre-ai-panel-wrapper') as HTMLElement;
     if (aiPanelWrapper) {
-      aiPanelWrapper.style.display = 'none';
+      aiPanelWrapper.classList.add('hidden');
+      aiPanelWrapper.classList.remove('flex');
     }
     this.updateAIToggleButtonVisibility();
   }

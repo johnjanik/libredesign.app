@@ -53,7 +53,8 @@ export class HelpPopup {
     document.removeEventListener('keydown', this.handleKeyDown);
 
     if (this.overlay) {
-      this.overlay.style.opacity = '0';
+      this.overlay.classList.remove('opacity-100');
+      this.overlay.classList.add('opacity-0');
       setTimeout(() => {
         this.overlay?.remove();
         this.overlay = null;
@@ -68,18 +69,7 @@ export class HelpPopup {
 
     // Create overlay
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-help-overlay';
-    this.overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    `;
+    this.overlay.className = 'designlibre-help-overlay fixed inset-0 bg-black/70 flex items-center justify-center z-10000 opacity-0 transition-opacity';
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.close();
@@ -88,147 +78,65 @@ export class HelpPopup {
 
     // Create modal
     this.modal = document.createElement('div');
-    this.modal.className = 'designlibre-help-modal';
-    this.modal.style.cssText = `
-      width: 360px;
-      max-width: calc(100vw - 48px);
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 16px;
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-      overflow: hidden;
-      text-align: center;
-    `;
+    this.modal.className = 'designlibre-help-modal w-90 max-w-[calc(100vw-48px)] bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden text-center';
 
     // Header with close button
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: flex-end;
-      padding: 12px 16px 0;
-    `;
+    header.className = 'flex justify-end px-4 pt-3';
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`;
     closeBtn.title = 'Close (Escape)';
-    closeBtn.style.cssText = `
-      display: flex;
-      padding: 6px;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-secondary, #888);
-      cursor: pointer;
-      border-radius: 4px;
-      transition: color 0.15s;
-    `;
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-    });
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.color = 'var(--designlibre-text-secondary, #888)';
-    });
+    closeBtn.className = 'flex p-1.5 border-none bg-transparent text-content-secondary cursor-pointer rounded transition-colors hover:text-content';
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
     this.modal.appendChild(header);
 
     // Logo container - shows one quadrant of the 2x2 grid
     const logoContainer = document.createElement('div');
-    logoContainer.style.cssText = `
-      width: 120px;
-      height: 120px;
-      margin: 8px auto 20px;
-      border-radius: 16px;
-      background-image: url('/images/designlibre-logos.png');
-      background-size: 200% 200%;
-      background-position: ${quadrant.x}% ${quadrant.y}%;
-    `;
+    logoContainer.className = 'w-30 h-30 mx-auto mt-2 mb-5 rounded-2xl bg-cover';
+    logoContainer.style.backgroundImage = "url('/images/designlibre-logos.png')";
+    logoContainer.style.backgroundSize = '200% 200%';
+    logoContainer.style.backgroundPosition = `${quadrant.x}% ${quadrant.y}%`;
     this.modal.appendChild(logoContainer);
 
     // App name
     const appName = document.createElement('h1');
     appName.textContent = 'DesignLibre';
-    appName.style.cssText = `
-      margin: 0 0 8px;
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      letter-spacing: -0.5px;
-    `;
+    appName.className = 'm-0 mb-2 text-[28px] font-bold text-content tracking-tight';
     this.modal.appendChild(appName);
 
     // Version
     const version = document.createElement('div');
     version.textContent = 'Version 0.1.0';
-    version.style.cssText = `
-      font-size: 12px;
-      color: var(--designlibre-text-muted, #6a6a6a);
-      margin-bottom: 24px;
-    `;
+    version.className = 'text-xs text-content-muted mb-6';
     this.modal.appendChild(version);
 
     // Divider
     const divider = document.createElement('div');
-    divider.style.cssText = `
-      height: 1px;
-      background: var(--designlibre-border, #3d3d3d);
-      margin: 0 24px;
-    `;
+    divider.className = 'h-px bg-border mx-6';
     this.modal.appendChild(divider);
 
     // Help section
     const helpSection = document.createElement('div');
-    helpSection.style.cssText = `
-      padding: 24px;
-    `;
+    helpSection.className = 'p-6';
 
     const helpTitle = document.createElement('div');
     helpTitle.textContent = 'Official Help Site';
-    helpTitle.style.cssText = `
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      margin-bottom: 8px;
-    `;
+    helpTitle.className = 'text-sm font-medium text-content mb-2';
     helpSection.appendChild(helpTitle);
 
     const helpDesc = document.createElement('div');
     helpDesc.textContent = 'Documentation, tutorials, and community resources';
-    helpDesc.style.cssText = `
-      font-size: 13px;
-      color: var(--designlibre-text-secondary, #888);
-      margin-bottom: 16px;
-    `;
+    helpDesc.className = 'text-[13px] text-content-secondary mb-4';
     helpSection.appendChild(helpDesc);
 
     const visitBtn = document.createElement('button');
     visitBtn.textContent = 'Visit';
-    visitBtn.style.cssText = `
-      padding: 10px 32px;
-      background: var(--designlibre-accent, #4dabff);
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      color: white;
-      cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-    `;
-    visitBtn.addEventListener('mouseenter', () => {
-      visitBtn.style.background = 'var(--designlibre-accent-hover, #3d9aee)';
-    });
-    visitBtn.addEventListener('mouseleave', () => {
-      visitBtn.style.background = 'var(--designlibre-accent, #4dabff)';
-    });
-    visitBtn.addEventListener('mousedown', () => {
-      visitBtn.style.transform = 'scale(0.98)';
-    });
-    visitBtn.addEventListener('mouseup', () => {
-      visitBtn.style.transform = 'scale(1)';
-    });
+    visitBtn.className = 'px-8 py-2.5 bg-accent border-none rounded-lg text-sm font-medium text-white cursor-pointer transition-all hover:bg-accent-hover active:scale-98';
     visitBtn.addEventListener('click', () => {
-      // TBD - will be replaced with actual help site URL
       window.open('https://designlibre.app/help', '_blank');
     });
     helpSection.appendChild(visitBtn);
@@ -237,21 +145,12 @@ export class HelpPopup {
 
     // Divider
     const divider2 = document.createElement('div');
-    divider2.style.cssText = `
-      height: 1px;
-      background: var(--designlibre-border, #3d3d3d);
-      margin: 0 24px;
-    `;
+    divider2.className = 'h-px bg-border mx-6';
     this.modal.appendChild(divider2);
 
     // Additional links
     const linksSection = document.createElement('div');
-    linksSection.style.cssText = `
-      padding: 16px 24px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    `;
+    linksSection.className = 'px-6 pt-4 pb-6 flex flex-col gap-3';
 
     const links = [
       { label: 'Keyboard Shortcuts', action: () => this.openShortcuts() },
@@ -262,24 +161,7 @@ export class HelpPopup {
     for (const link of links) {
       const linkBtn = document.createElement('button');
       linkBtn.textContent = link.label;
-      linkBtn.style.cssText = `
-        padding: 8px 16px;
-        background: transparent;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        border-radius: 6px;
-        font-size: 13px;
-        color: var(--designlibre-text-primary, #e4e4e4);
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-      `;
-      linkBtn.addEventListener('mouseenter', () => {
-        linkBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        linkBtn.style.borderColor = 'var(--designlibre-border-light, #4d4d4d)';
-      });
-      linkBtn.addEventListener('mouseleave', () => {
-        linkBtn.style.background = 'transparent';
-        linkBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-      });
+      linkBtn.className = 'px-4 py-2 bg-transparent border border-border rounded-md text-[13px] text-content cursor-pointer transition-colors hover:bg-surface-secondary hover:border-border-hover';
       linkBtn.addEventListener('click', () => {
         if (link.url) {
           window.open(link.url, '_blank');
@@ -295,12 +177,7 @@ export class HelpPopup {
 
     // Footer
     const footer = document.createElement('div');
-    footer.style.cssText = `
-      padding: 16px 24px;
-      background: var(--designlibre-bg-secondary, #252525);
-      font-size: 11px;
-      color: var(--designlibre-text-muted, #6a6a6a);
-    `;
+    footer.className = 'px-6 py-4 bg-surface-secondary text-[11px] text-content-muted';
     footer.innerHTML = 'Open-source design tool for everyone<br>Made with care';
     this.modal.appendChild(footer);
 
@@ -310,7 +187,8 @@ export class HelpPopup {
     // Animate in
     requestAnimationFrame(() => {
       if (this.overlay) {
-        this.overlay.style.opacity = '1';
+        this.overlay.classList.remove('opacity-0');
+        this.overlay.classList.add('opacity-100');
       }
     });
 

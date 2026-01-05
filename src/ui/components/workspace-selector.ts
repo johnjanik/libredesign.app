@@ -75,11 +75,7 @@ export class WorkspaceSelector {
 
   private setup(): void {
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-workspace-selector';
-    this.element.style.cssText = `
-      position: relative;
-      padding: 8px 12px;
-    `;
+    this.element.className = 'designlibre-workspace-selector relative px-3 py-2';
 
     this.render();
     this.container.appendChild(this.element);
@@ -116,58 +112,25 @@ export class WorkspaceSelector {
 
     // Selector button
     const button = document.createElement('button');
-    button.className = 'workspace-selector-button';
-    button.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      background: var(--designlibre-bg-tertiary, #161616);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      cursor: pointer;
-      font-size: 13px;
-      text-align: left;
-      transition: border-color 0.15s;
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      button.style.borderColor = 'var(--designlibre-border-hover, #555)';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!this.isOpen) {
-        button.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-      }
-    });
-
-    button.addEventListener('click', () => {
-      this.toggleDropdown();
-    });
+    button.className = 'workspace-selector-button flex items-center gap-2 w-full px-3 py-2 border border-border rounded-md bg-surface-tertiary text-content cursor-pointer text-[13px] text-left transition-colors hover:border-border-hover';
+    button.addEventListener('click', () => this.toggleDropdown());
 
     // Icon
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.workspace;
-    icon.style.cssText = 'display: flex; color: var(--designlibre-text-secondary, #888);';
+    icon.className = 'flex text-content-secondary';
     button.appendChild(icon);
 
     // Name
     const name = document.createElement('span');
     name.textContent = currentTrunk?.name ?? 'Select Workspace';
-    name.style.cssText = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    name.className = 'flex-1 overflow-hidden text-ellipsis whitespace-nowrap';
     button.appendChild(name);
 
     // Chevron
     const chevron = document.createElement('span');
     chevron.innerHTML = ICONS.chevron;
-    chevron.style.cssText = `
-      display: flex;
-      color: var(--designlibre-text-secondary, #888);
-      transition: transform 0.15s;
-      ${this.isOpen ? 'transform: rotate(180deg);' : ''}
-    `;
+    chevron.className = `flex text-content-secondary transition-transform ${this.isOpen ? 'rotate-180' : ''}`;
     button.appendChild(chevron);
 
     this.element.appendChild(button);
@@ -182,21 +145,7 @@ export class WorkspaceSelector {
     if (!this.element) return;
 
     this.dropdownElement = document.createElement('div');
-    this.dropdownElement.className = 'workspace-selector-dropdown';
-    this.dropdownElement.style.cssText = `
-      position: absolute;
-      top: 100%;
-      left: 12px;
-      right: 12px;
-      margin-top: 4px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 1000;
-      max-height: 320px;
-      overflow-y: auto;
-    `;
+    this.dropdownElement.className = 'workspace-selector-dropdown absolute top-full left-3 right-3 mt-1 bg-surface border border-border rounded-lg shadow-lg z-1000 max-h-80 overflow-y-auto';
 
     const trunks = this.workspaceManager.getTrunks();
     const currentTrunk = this.workspaceManager.getCurrentTrunk();
@@ -205,14 +154,7 @@ export class WorkspaceSelector {
     if (trunks.length > 0) {
       const label = document.createElement('div');
       label.textContent = 'Workspaces';
-      label.style.cssText = `
-        padding: 8px 12px 4px;
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--designlibre-text-muted, #666);
-      `;
+      label.className = 'px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted';
       this.dropdownElement.appendChild(label);
 
       for (const trunk of trunks) {
@@ -222,11 +164,7 @@ export class WorkspaceSelector {
 
       // Divider
       const divider = document.createElement('div');
-      divider.style.cssText = `
-        height: 1px;
-        background: var(--designlibre-border, #3d3d3d);
-        margin: 4px 0;
-      `;
+      divider.className = 'h-px bg-border my-1';
       this.dropdownElement.appendChild(divider);
     }
 
@@ -250,55 +188,27 @@ export class WorkspaceSelector {
 
   private createTrunkItem(trunk: Trunk, isActive: boolean): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'workspace-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      cursor: pointer;
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    item.className = `workspace-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-[13px] text-left transition-colors ${isActive ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
 
-    item.addEventListener('mouseenter', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
-
-    item.addEventListener('click', () => {
-      this.selectWorkspace(trunk.id);
-    });
+    item.addEventListener('click', () => this.selectWorkspace(trunk.id));
 
     // Icon (cloud if synced)
     const icon = document.createElement('span');
     icon.innerHTML = trunk.settings.syncEnabled ? ICONS.cloud : ICONS.workspace;
-    icon.style.cssText = 'display: flex;';
+    icon.className = 'flex';
     item.appendChild(icon);
 
     // Name
     const name = document.createElement('span');
     name.textContent = trunk.name;
-    name.style.cssText = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    name.className = 'flex-1 overflow-hidden text-ellipsis whitespace-nowrap';
     item.appendChild(name);
 
     // Check if active
     if (isActive) {
       const check = document.createElement('span');
       check.innerHTML = ICONS.check;
-      check.style.cssText = 'display: flex;';
+      check.className = 'flex';
       item.appendChild(check);
     }
 
@@ -311,35 +221,13 @@ export class WorkspaceSelector {
     onClick: () => void
   ): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'workspace-action-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      cursor: pointer;
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
-
-    item.addEventListener('mouseenter', () => {
-      item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
-
-    item.addEventListener('mouseleave', () => {
-      item.style.backgroundColor = 'transparent';
-    });
+    item.className = 'workspace-action-item flex items-center gap-2 w-full px-3 py-2 border-none bg-transparent text-content cursor-pointer text-[13px] text-left transition-colors hover:bg-surface-secondary';
 
     item.addEventListener('click', onClick);
 
     const iconEl = document.createElement('span');
     iconEl.innerHTML = icon;
-    iconEl.style.cssText = 'display: flex; color: var(--designlibre-text-secondary, #888);';
+    iconEl.className = 'flex text-content-secondary';
     item.appendChild(iconEl);
 
     const labelEl = document.createElement('span');
