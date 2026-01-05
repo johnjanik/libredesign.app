@@ -337,46 +337,16 @@ export class NavRail {
 
   private createTrunkButton(): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.className = 'nav-rail-trunk-wrapper';
-    wrapper.style.cssText = 'position: relative;';
+    wrapper.className = 'nav-rail-trunk-wrapper relative';
 
     const button = document.createElement('button');
-    button.className = 'nav-rail-button nav-rail-trunk-button';
+    button.className = 'nav-rail-button nav-rail-trunk-button w-8 h-8 border-none rounded-md bg-transparent cursor-pointer flex items-center justify-center text-content-secondary hover:bg-surface-secondary hover:text-content transition-all relative';
     button.dataset['actionId'] = 'trunk';
     button.innerHTML = ICONS.trunk;
     button.title = 'Open or create workspace';
     button.setAttribute('aria-label', 'Open or create workspace');
     button.setAttribute('aria-haspopup', 'true');
     button.setAttribute('aria-expanded', 'false');
-
-    button.style.cssText = `
-      width: 32px;
-      height: 32px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #888);
-      transition: all 0.15s ease;
-      position: relative;
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      if (!this.trunkDropdownOpen) {
-        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-      }
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!this.trunkDropdownOpen) {
-        button.style.backgroundColor = 'transparent';
-        button.style.color = 'var(--designlibre-text-secondary, #888)';
-      }
-    });
 
     button.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -409,26 +379,14 @@ export class NavRail {
     const button = this.buttons.get('trunk');
     if (button) {
       button.setAttribute('aria-expanded', 'true');
-      button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-      button.style.color = 'var(--designlibre-accent, #0d99ff)';
+      button.classList.add('bg-accent-light', 'text-accent');
+      button.classList.remove('bg-transparent', 'text-content-secondary');
     }
 
     // Create dropdown
     this.trunkDropdown = document.createElement('div');
-    this.trunkDropdown.className = 'nav-rail-trunk-dropdown';
-    this.trunkDropdown.style.cssText = `
-      position: fixed;
-      left: ${this.options.size + 8}px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      min-width: 240px;
-      max-height: 320px;
-      overflow-y: auto;
-      z-index: 1000;
-      padding: 4px 0;
-    `;
+    this.trunkDropdown.className = 'nav-rail-trunk-dropdown fixed bg-surface border border-border rounded-lg shadow-lg min-w-60 max-h-80 overflow-y-auto z-1000 py-1';
+    this.trunkDropdown.style.left = `${this.options.size + 8}px`;
 
     // Position near the trunk button
     const buttonRect = button?.getBoundingClientRect();
@@ -447,16 +405,7 @@ export class NavRail {
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      padding: 8px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--designlibre-text-secondary, #888);
-      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
-      margin-bottom: 4px;
-    `;
+    header.className = 'px-3 py-2 text-xs font-semibold uppercase tracking-wide text-content-secondary border-b border-border mb-1';
     header.textContent = 'Workspaces';
     this.trunkDropdown.appendChild(header);
 
@@ -471,49 +420,20 @@ export class NavRail {
       }
     } else {
       const empty = document.createElement('div');
-      empty.style.cssText = `
-        padding: 16px 12px;
-        text-align: center;
-        color: var(--designlibre-text-secondary, #888);
-        font-size: 13px;
-      `;
+      empty.className = 'px-3 py-4 text-center text-content-secondary text-sm';
       empty.textContent = 'No workspaces yet';
       this.trunkDropdown.appendChild(empty);
     }
 
     // Divider
     const divider = document.createElement('div');
-    divider.style.cssText = `
-      height: 1px;
-      background: var(--designlibre-border, #2d2d2d);
-      margin: 4px 0;
-    `;
+    divider.className = 'h-px bg-border my-1';
     this.trunkDropdown.appendChild(divider);
 
     // Create new trunk button
     const createBtn = document.createElement('button');
-    createBtn.className = 'trunk-menu-item trunk-menu-create';
-    createBtn.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      color: var(--designlibre-accent, #0d99ff);
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    createBtn.className = 'trunk-menu-item trunk-menu-create flex items-center gap-2 w-full px-3 py-2 border-none bg-transparent cursor-pointer text-accent text-sm text-left hover:bg-surface-secondary transition-colors';
     createBtn.innerHTML = `${ICONS.plus}<span>Create new workspace</span>`;
-    createBtn.addEventListener('mouseenter', () => {
-      createBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
-    createBtn.addEventListener('mouseleave', () => {
-      createBtn.style.backgroundColor = 'transparent';
-    });
     createBtn.addEventListener('click', () => {
       this.closeTrunkDropdown();
       this.promptCreateTrunk();
@@ -525,67 +445,27 @@ export class NavRail {
 
   private createTrunkMenuItem(trunk: Trunk, isActive: boolean): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'trunk-menu-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      cursor: pointer;
-      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    item.className = isActive
+      ? 'trunk-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-accent-light text-accent'
+      : 'trunk-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-transparent text-content hover:bg-surface-secondary';
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.trunk;
-    icon.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      opacity: 0.7;
-    `;
+    icon.className = 'flex items-center justify-center w-5 h-5 opacity-70';
 
     const label = document.createElement('span');
     label.textContent = trunk.name;
-    label.style.cssText = `
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    `;
+    label.className = 'flex-1 truncate';
 
     const projectCount = document.createElement('span');
     projectCount.textContent = `${trunk.trees.length}`;
     projectCount.title = `${trunk.trees.length} project${trunk.trees.length !== 1 ? 's' : ''}`;
-    projectCount.style.cssText = `
-      font-size: 11px;
-      color: var(--designlibre-text-secondary, #888);
-      background: var(--designlibre-bg-tertiary, #161616);
-      padding: 2px 6px;
-      border-radius: 4px;
-    `;
+    projectCount.className = 'text-xs text-content-secondary bg-surface-tertiary px-1.5 py-0.5 rounded';
 
     item.appendChild(icon);
     item.appendChild(label);
     item.appendChild(projectCount);
 
-    item.addEventListener('mouseenter', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-    item.addEventListener('mouseleave', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
     item.addEventListener('click', () => {
       this.closeTrunkDropdown();
       this.options.workspaceManager?.setCurrentWorkspace(trunk.id);
@@ -599,8 +479,8 @@ export class NavRail {
     const button = this.buttons.get('trunk');
     if (button) {
       button.setAttribute('aria-expanded', 'false');
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #888)';
+      button.classList.remove('bg-accent-light', 'text-accent');
+      button.classList.add('bg-transparent', 'text-content-secondary');
     }
 
     if (this.trunkDropdown) {
@@ -644,46 +524,16 @@ export class NavRail {
 
   private createProjectButton(): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.className = 'nav-rail-project-wrapper';
-    wrapper.style.cssText = 'position: relative;';
+    wrapper.className = 'nav-rail-project-wrapper relative';
 
     const button = document.createElement('button');
-    button.className = 'nav-rail-button nav-rail-project-button';
+    button.className = 'nav-rail-button nav-rail-project-button w-8 h-8 border-none rounded-md bg-transparent cursor-pointer flex items-center justify-center text-content-secondary hover:bg-surface-secondary hover:text-content transition-all relative';
     button.dataset['actionId'] = 'project';
     button.innerHTML = ICONS.project;
     button.title = 'Select project and branch';
     button.setAttribute('aria-label', 'Select project and branch');
     button.setAttribute('aria-haspopup', 'true');
     button.setAttribute('aria-expanded', 'false');
-
-    button.style.cssText = `
-      width: 32px;
-      height: 32px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #888);
-      transition: all 0.15s ease;
-      position: relative;
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      if (!this.projectDropdownOpen) {
-        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-      }
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!this.projectDropdownOpen) {
-        button.style.backgroundColor = 'transparent';
-        button.style.color = 'var(--designlibre-text-secondary, #888)';
-      }
-    });
 
     button.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -716,26 +566,14 @@ export class NavRail {
     const button = this.buttons.get('project');
     if (button) {
       button.setAttribute('aria-expanded', 'true');
-      button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-      button.style.color = 'var(--designlibre-accent, #0d99ff)';
+      button.classList.add('bg-accent-light', 'text-accent');
+      button.classList.remove('bg-transparent', 'text-content-secondary');
     }
 
     // Create dropdown
     this.projectDropdown = document.createElement('div');
-    this.projectDropdown.className = 'nav-rail-project-dropdown';
-    this.projectDropdown.style.cssText = `
-      position: fixed;
-      left: ${this.options.size + 8}px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      min-width: 260px;
-      max-height: 400px;
-      overflow-y: auto;
-      z-index: 1000;
-      padding: 4px 0;
-    `;
+    this.projectDropdown.className = 'nav-rail-project-dropdown fixed bg-surface border border-border rounded-lg shadow-lg min-w-65 max-h-100 overflow-y-auto z-1000 py-1';
+    this.projectDropdown.style.left = `${this.options.size + 8}px`;
 
     // Position near the project button
     const buttonRect = button?.getBoundingClientRect();
@@ -757,16 +595,7 @@ export class NavRail {
 
     // Projects section
     const projectHeader = document.createElement('div');
-    projectHeader.style.cssText = `
-      padding: 8px 12px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--designlibre-text-secondary, #888);
-      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
-      margin-bottom: 4px;
-    `;
+    projectHeader.className = 'px-3 py-2 text-xs font-semibold uppercase tracking-wide text-content-secondary border-b border-border mb-1';
     projectHeader.textContent = 'Projects';
     this.projectDropdown.appendChild(projectHeader);
 
@@ -781,40 +610,15 @@ export class NavRail {
       }
     } else {
       const empty = document.createElement('div');
-      empty.style.cssText = `
-        padding: 12px;
-        text-align: center;
-        color: var(--designlibre-text-secondary, #888);
-        font-size: 13px;
-      `;
+      empty.className = 'px-3 py-3 text-center text-content-secondary text-sm';
       empty.textContent = 'No projects yet';
       this.projectDropdown.appendChild(empty);
     }
 
     // Create project button
     const createProjectBtn = document.createElement('button');
-    createProjectBtn.className = 'project-menu-item project-menu-create';
-    createProjectBtn.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      color: var(--designlibre-accent, #0d99ff);
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    createProjectBtn.className = 'project-menu-item project-menu-create flex items-center gap-2 w-full px-3 py-2 border-none bg-transparent cursor-pointer text-accent text-sm text-left hover:bg-surface-secondary transition-colors';
     createProjectBtn.innerHTML = `${ICONS.plus}<span>Create new project</span>`;
-    createProjectBtn.addEventListener('mouseenter', () => {
-      createProjectBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
-    createProjectBtn.addEventListener('mouseleave', () => {
-      createProjectBtn.style.backgroundColor = 'transparent';
-    });
     createProjectBtn.addEventListener('click', () => {
       this.closeProjectDropdown();
       this.promptCreateProject();
@@ -824,24 +628,11 @@ export class NavRail {
     // Branches section (if project selected)
     if (currentTree) {
       const branchDivider = document.createElement('div');
-      branchDivider.style.cssText = `
-        height: 1px;
-        background: var(--designlibre-border, #2d2d2d);
-        margin: 8px 0;
-      `;
+      branchDivider.className = 'h-px bg-border my-2';
       this.projectDropdown.appendChild(branchDivider);
 
       const branchHeader = document.createElement('div');
-      branchHeader.style.cssText = `
-        padding: 8px 12px;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--designlibre-text-secondary, #888);
-        border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
-        margin-bottom: 4px;
-      `;
+      branchHeader.className = 'px-3 py-2 text-xs font-semibold uppercase tracking-wide text-content-secondary border-b border-border mb-1';
       branchHeader.textContent = 'Branches';
       this.projectDropdown.appendChild(branchHeader);
 
@@ -855,28 +646,8 @@ export class NavRail {
 
       // Create branch button
       const createBranchBtn = document.createElement('button');
-      createBranchBtn.className = 'branch-menu-item branch-menu-create';
-      createBranchBtn.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        width: 100%;
-        padding: 8px 12px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        color: var(--designlibre-accent, #0d99ff);
-        font-size: 13px;
-        text-align: left;
-        transition: background-color 0.15s;
-      `;
+      createBranchBtn.className = 'branch-menu-item branch-menu-create flex items-center gap-2 w-full px-3 py-2 border-none bg-transparent cursor-pointer text-accent text-sm text-left hover:bg-surface-secondary transition-colors';
       createBranchBtn.innerHTML = `${ICONS.plus}<span>Create new branch</span>`;
-      createBranchBtn.addEventListener('mouseenter', () => {
-        createBranchBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      });
-      createBranchBtn.addEventListener('mouseleave', () => {
-        createBranchBtn.style.backgroundColor = 'transparent';
-      });
       createBranchBtn.addEventListener('click', () => {
         this.closeProjectDropdown();
         this.promptCreateBranch();
@@ -889,55 +660,21 @@ export class NavRail {
 
   private createProjectMenuItem(name: string, id: string, isActive: boolean): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'project-menu-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      cursor: pointer;
-      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    item.className = isActive
+      ? 'project-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-accent-light text-accent'
+      : 'project-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-transparent text-content hover:bg-surface-secondary';
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.project;
-    icon.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      opacity: 0.7;
-    `;
+    icon.className = 'flex items-center justify-center w-5 h-5 opacity-70';
 
     const label = document.createElement('span');
     label.textContent = name;
-    label.style.cssText = `
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    `;
+    label.className = 'flex-1 truncate';
 
     item.appendChild(icon);
     item.appendChild(label);
 
-    item.addEventListener('mouseenter', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-    item.addEventListener('mouseleave', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
     item.addEventListener('click', () => {
       this.closeProjectDropdown();
       this.options.workspaceManager?.openProject(id);
@@ -948,55 +685,21 @@ export class NavRail {
 
   private createBranchMenuItem(name: string, id: string, isActive: boolean): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'branch-menu-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      cursor: pointer;
-      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      font-size: 13px;
-      text-align: left;
-      transition: background-color 0.15s;
-    `;
+    item.className = isActive
+      ? 'branch-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-accent-light text-accent'
+      : 'branch-menu-item flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-sm text-left transition-colors bg-transparent text-content hover:bg-surface-secondary';
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.branch;
-    icon.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      opacity: 0.7;
-    `;
+    icon.className = 'flex items-center justify-center w-5 h-5 opacity-70';
 
     const label = document.createElement('span');
     label.textContent = name;
-    label.style.cssText = `
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    `;
+    label.className = 'flex-1 truncate';
 
     item.appendChild(icon);
     item.appendChild(label);
 
-    item.addEventListener('mouseenter', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-    item.addEventListener('mouseleave', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
     item.addEventListener('click', () => {
       this.closeProjectDropdown();
       this.options.workspaceManager?.switchBranch(id);
@@ -1010,8 +713,8 @@ export class NavRail {
     const button = this.buttons.get('project');
     if (button) {
       button.setAttribute('aria-expanded', 'false');
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #888)';
+      button.classList.remove('bg-accent-light', 'text-accent');
+      button.classList.add('bg-transparent', 'text-content-secondary');
     }
 
     if (this.projectDropdown) {
@@ -1040,7 +743,7 @@ export class NavRail {
 
   private createButton(action: NavRailAction): HTMLButtonElement {
     const button = document.createElement('button');
-    button.className = 'nav-rail-button';
+    button.className = 'nav-rail-button w-8 h-8 border-none rounded-md bg-transparent cursor-pointer flex items-center justify-center text-content-secondary hover:bg-surface-secondary hover:text-content transition-all relative';
     button.dataset['actionId'] = action.id;
     button.innerHTML = action.icon;
 
@@ -1049,36 +752,6 @@ export class NavRail {
       : action.tooltip;
     button.title = tooltipText;
     button.setAttribute('aria-label', tooltipText);
-
-    button.style.cssText = `
-      width: 32px;
-      height: 32px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #888);
-      transition: all 0.15s ease;
-      position: relative;
-    `;
-
-    // Hover effects
-    button.addEventListener('mouseenter', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-        button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-      }
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'transparent';
-        button.style.color = 'var(--designlibre-text-secondary, #888)';
-      }
-    });
 
     // Click handler
     button.addEventListener('click', () => {
@@ -1099,13 +772,11 @@ export class NavRail {
 
       const isActive = id === this.activePanel;
       if (isActive) {
-        button.classList.add('active');
-        button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-        button.style.color = 'var(--designlibre-accent, #0d99ff)';
+        button.classList.add('active', 'bg-accent-light', 'text-accent');
+        button.classList.remove('bg-transparent', 'text-content-secondary');
       } else {
-        button.classList.remove('active');
-        button.style.backgroundColor = 'transparent';
-        button.style.color = 'var(--designlibre-text-secondary, #888)';
+        button.classList.remove('active', 'bg-accent-light', 'text-accent');
+        button.classList.add('bg-transparent', 'text-content-secondary');
       }
     }
 
