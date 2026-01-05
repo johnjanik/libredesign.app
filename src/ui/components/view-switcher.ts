@@ -7,9 +7,10 @@
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import { createCodeView, type CodeView, type CodeLanguage } from './code-view';
+import { createPreviewPanel, type PreviewPanel } from './preview-panel';
 
 /** View mode */
-export type ViewMode = 'design' | 'code' | 'split';
+export type ViewMode = 'design' | 'code' | 'split' | 'preview' | 'design-preview';
 
 /** View switcher options */
 export interface ViewSwitcherOptions {
@@ -34,9 +35,12 @@ export class ViewSwitcher {
   private element: HTMLElement;
   private designContainer: HTMLElement;
   private codeContainer: HTMLElement;
+  private previewContainer: HTMLElement;
   private divider: HTMLElement;
+  private divider2: HTMLElement;
   private toolbar: HTMLElement;
   private codeView: CodeView | null = null;
+  private previewPanel: PreviewPanel | null = null;
   private currentMode: ViewMode;
   private splitRatio: number;
   private minPanelWidth: number;
@@ -61,7 +65,9 @@ export class ViewSwitcher {
     this.element = this.createViewStructure();
     this.designContainer = this.element.querySelector('.view-switcher-design')!;
     this.codeContainer = this.element.querySelector('.view-switcher-code')!;
+    this.previewContainer = this.element.querySelector('.view-switcher-preview')!;
     this.divider = this.element.querySelector('.view-switcher-divider')!;
+    this.divider2 = this.element.querySelector('.view-switcher-divider-2')!;
     this.toolbar = this.element.querySelector('.view-switcher-toolbar')!;
 
     // Insert view structure into container
@@ -73,6 +79,11 @@ export class ViewSwitcher {
     // Create code view
     this.codeView = createCodeView(this.runtime, this.codeContainer, {
       defaultLanguage,
+    });
+
+    // Create preview panel
+    this.previewPanel = createPreviewPanel(this.runtime, this.previewContainer, {
+      autoRefresh: true,
     });
 
     // Setup event listeners
@@ -101,11 +112,26 @@ export class ViewSwitcher {
             </svg>
             <span>Code</span>
           </button>
-          <button class="view-switcher-tab" data-mode="split" title="Split view (Cmd+3)">
+          <button class="view-switcher-tab" data-mode="preview" title="Preview view (Cmd+3)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8zm7-5.9A5.9 5.9 0 1 0 8 13.9 5.9 5.9 0 0 0 8 2.1z"/>
+              <path d="M6.5 5.5l4 2.5-4 2.5V5.5z"/>
+            </svg>
+            <span>Preview</span>
+          </button>
+          <button class="view-switcher-tab" data-mode="split" title="Design + Code split (Cmd+4)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 2h5v12H2V2zm1 1v10h3V3H3zm5-1h6v12H8V2zm1 1v10h4V3H9z"/>
             </svg>
             <span>Split</span>
+          </button>
+          <button class="view-switcher-tab" data-mode="design-preview" title="Design + Preview split (Cmd+5)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 2h5v12H2V2zm1 1v10h3V3H3z"/>
+              <circle cx="11.5" cy="8" r="3.5"/>
+              <path d="M10 6.5l2.5 1.5-2.5 1.5V6.5z" fill="white"/>
+            </svg>
+            <span>Design+Preview</span>
           </button>
         </div>
       </div>
@@ -115,6 +141,10 @@ export class ViewSwitcher {
           <div class="view-switcher-divider-handle"></div>
         </div>
         <div class="view-switcher-code"></div>
+        <div class="view-switcher-divider-2" title="Drag to resize, double-click to reset">
+          <div class="view-switcher-divider-handle"></div>
+        </div>
+        <div class="view-switcher-preview"></div>
       </div>
     `;
 
@@ -141,12 +171,18 @@ export class ViewSwitcher {
     });
 
     // Divider drag
-    this.divider.addEventListener('mousedown', this.startDrag.bind(this));
+    this.divider.addEventListener('mousedown', (e) => this.startDrag(e, 'first'));
+    this.divider2.addEventListener('mousedown', (e) => this.startDrag(e, 'second'));
     document.addEventListener('mousemove', this.onDrag.bind(this));
     document.addEventListener('mouseup', this.endDrag.bind(this));
 
     // Double-click divider to reset
     this.divider.addEventListener('dblclick', () => {
+      this.splitRatio = 0.5;
+      this.saveSplitRatio();
+      this.applyMode();
+    });
+    this.divider2.addEventListener('dblclick', () => {
       this.splitRatio = 0.5;
       this.saveSplitRatio();
       this.applyMode();
@@ -166,7 +202,7 @@ export class ViewSwitcher {
   }
 
   private handleKeyboard(e: KeyboardEvent): void {
-    // Cmd/Ctrl + 1/2/3 for view switching
+    // Cmd/Ctrl + 1/2/3/4/5 for view switching
     if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
       if (e.key === '1') {
         e.preventDefault();
@@ -176,13 +212,19 @@ export class ViewSwitcher {
         this.setMode('code');
       } else if (e.key === '3') {
         e.preventDefault();
+        this.setMode('preview');
+      } else if (e.key === '4') {
+        e.preventDefault();
         this.setMode('split');
+      } else if (e.key === '5') {
+        e.preventDefault();
+        this.setMode('design-preview');
       }
     }
   }
 
-  private startDrag(e: MouseEvent): void {
-    if (this.currentMode !== 'split') return;
+  private startDrag(e: MouseEvent, _divider: 'first' | 'second'): void {
+    if (this.currentMode !== 'split' && this.currentMode !== 'design-preview') return;
     e.preventDefault();
     this.isDragging = true;
     this.element.classList.add('dragging');
@@ -227,20 +269,32 @@ export class ViewSwitcher {
     // Update element class
     this.element.setAttribute('data-mode', this.currentMode);
 
+    // Hide all containers and dividers by default
+    this.designContainer.style.display = 'none';
+    this.codeContainer.style.display = 'none';
+    this.previewContainer.style.display = 'none';
+    this.divider.style.display = 'none';
+    this.divider2.style.display = 'none';
+
     // Apply layout based on mode
     switch (this.currentMode) {
       case 'design':
         this.designContainer.style.display = 'flex';
         this.designContainer.style.width = '100%';
-        this.codeContainer.style.display = 'none';
-        this.divider.style.display = 'none';
         break;
 
       case 'code':
-        this.designContainer.style.display = 'none';
         this.codeContainer.style.display = 'flex';
         this.codeContainer.style.width = '100%';
-        this.divider.style.display = 'none';
+        break;
+
+      case 'preview':
+        this.previewContainer.style.display = 'flex';
+        this.previewContainer.style.width = '100%';
+        // Trigger refresh on preview panel
+        if (this.previewPanel) {
+          this.previewPanel.refresh();
+        }
         break;
 
       case 'split':
@@ -249,10 +303,27 @@ export class ViewSwitcher {
         this.divider.style.display = 'flex';
 
         // Apply split ratio
-        const designWidth = `${this.splitRatio * 100}%`;
-        const codeWidth = `${(1 - this.splitRatio) * 100}%`;
-        this.designContainer.style.width = `calc(${designWidth} - 4px)`;
-        this.codeContainer.style.width = `calc(${codeWidth} - 4px)`;
+        const designWidthSplit = `${this.splitRatio * 100}%`;
+        const codeWidthSplit = `${(1 - this.splitRatio) * 100}%`;
+        this.designContainer.style.width = `calc(${designWidthSplit} - 4px)`;
+        this.codeContainer.style.width = `calc(${codeWidthSplit} - 4px)`;
+        break;
+
+      case 'design-preview':
+        this.designContainer.style.display = 'flex';
+        this.previewContainer.style.display = 'flex';
+        this.divider2.style.display = 'flex';
+
+        // Apply split ratio
+        const designWidthPreview = `${this.splitRatio * 100}%`;
+        const previewWidth = `${(1 - this.splitRatio) * 100}%`;
+        this.designContainer.style.width = `calc(${designWidthPreview} - 4px)`;
+        this.previewContainer.style.width = `calc(${previewWidth} - 4px)`;
+
+        // Trigger refresh on preview panel
+        if (this.previewPanel) {
+          this.previewPanel.refresh();
+        }
         break;
     }
 
@@ -264,7 +335,7 @@ export class ViewSwitcher {
   private loadMode(defaultMode: ViewMode): ViewMode {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_MODE);
-      if (stored && ['design', 'code', 'split'].includes(stored)) {
+      if (stored && ['design', 'code', 'split', 'preview', 'design-preview'].includes(stored)) {
         return stored as ViewMode;
       }
     } catch {
@@ -349,6 +420,13 @@ export class ViewSwitcher {
   }
 
   /**
+   * Get the preview panel instance.
+   */
+  getPreviewPanel(): PreviewPanel | null {
+    return this.previewPanel;
+  }
+
+  /**
    * Get the design container element.
    */
   getDesignContainer(): HTMLElement {
@@ -366,6 +444,11 @@ export class ViewSwitcher {
     if (this.codeView) {
       this.codeView.dispose();
       this.codeView = null;
+    }
+
+    if (this.previewPanel) {
+      this.previewPanel.dispose();
+      this.previewPanel = null;
     }
 
     // Move design content back

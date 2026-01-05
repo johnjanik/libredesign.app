@@ -1,7 +1,12 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import UnoCSS from 'unocss/vite';
 
 export default defineConfig({
+  plugins: [
+    UnoCSS(),
+  ],
+
   root: '.',
   publicDir: 'public',
 
@@ -36,6 +41,7 @@ export default defineConfig({
       '@prototype': resolve(__dirname, 'src/prototype'),
       '@ai': resolve(__dirname, 'src/ai'),
       '@templates': resolve(__dirname, 'src/templates'),
+      '@tokens': resolve(__dirname, 'src/tokens'),
     },
   },
 

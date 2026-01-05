@@ -12,6 +12,8 @@ import type { SolidPaint } from '@core/types/paint';
 import type { ColorStyle, StyleId } from '@core/types/style';
 import { rgbaToHex } from '@core/types/color';
 import { copyToClipboard, showCopyFeedback } from '@devtools/code-export/clipboard';
+import { nodeToUtilityClasses, type UtilityClassOptions } from '@persistence/export/utility-class-generator';
+import { createTokenExtractor, type TokenOutputFormat, type ExtractedTokens } from '@persistence/export/token-extractor';
 
 /** Inspector panel options */
 export interface InspectorPanelOptions {
@@ -1316,6 +1318,12 @@ export class InspectorPanel {
 
     this.renderNodeHeader(node);
 
+    // Utility Classes section (new)
+    this.renderUtilityClassesSection(node);
+
+    // Export Tokens section
+    this.renderExportTokensSection();
+
     // CSS Code section
     const cssSection = this.createSection('CSS');
     const cssCode = this.generateCSS(node);
@@ -1377,6 +1385,478 @@ export class InspectorPanel {
     }
     exportSection.appendChild(exportButtons);
     this.contentElement.appendChild(exportSection);
+  }
+
+  /**
+   * Render utility classes section in Inspect panel.
+   * Shows Tailwind-compatible utility classes for the selected node.
+   */
+  private renderUtilityClassesSection(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const section = this.createSection('Utility Classes');
+
+    // Generate utility classes
+    const options: UtilityClassOptions = {
+      includePosition: false, // Position typically not in utility classes
+      includeDimensions: true,
+      useArbitraryValues: true,
+      classPrefix: '',
+    };
+    const classes = nodeToUtilityClasses(node, options);
+    const classString = classes.join(' ');
+
+    // Class string display with copy button
+    if (classes.length > 0) {
+      const classStringContainer = document.createElement('div');
+      classStringContainer.style.cssText = `
+        position: relative;
+        margin-bottom: 12px;
+      `;
+
+      const classStringDisplay = document.createElement('div');
+      classStringDisplay.style.cssText = `
+        padding: 10px 12px;
+        padding-right: 70px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border-radius: 6px;
+        font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+        line-height: 1.6;
+        color: var(--designlibre-text-primary, #e4e4e4);
+        word-break: break-word;
+        cursor: text;
+        user-select: all;
+      `;
+      classStringDisplay.textContent = classString;
+      classStringContainer.appendChild(classStringDisplay);
+
+      // Copy button
+      const copyAllBtn = document.createElement('button');
+      copyAllBtn.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 10px;
+        background: var(--designlibre-bg-tertiary, #252525);
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        color: var(--designlibre-text-secondary, #a0a0a0);
+        font-size: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      `;
+      copyAllBtn.textContent = 'Copy';
+      copyAllBtn.addEventListener('click', async () => {
+        const result = await copyToClipboard(classString);
+        showCopyFeedback(copyAllBtn, result.success);
+      });
+      copyAllBtn.addEventListener('mouseenter', () => {
+        copyAllBtn.style.background = 'var(--designlibre-accent, #4dabff)';
+        copyAllBtn.style.color = 'white';
+        copyAllBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      });
+      copyAllBtn.addEventListener('mouseleave', () => {
+        copyAllBtn.style.background = 'var(--designlibre-bg-tertiary, #252525)';
+        copyAllBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+        copyAllBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      });
+      classStringContainer.appendChild(copyAllBtn);
+
+      section.appendChild(classStringContainer);
+
+      // Individual class chips
+      const chipsContainer = document.createElement('div');
+      chipsContainer.style.cssText = `
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      `;
+
+      // Group classes by category for better organization
+      const categoryColors: Record<string, string> = {
+        layout: '#8b5cf6',     // purple - flex, grid, gap
+        spacing: '#06b6d4',    // cyan - p, m, w, h
+        color: '#f59e0b',      // amber - bg, text, border colors
+        typography: '#10b981', // emerald - font, text
+        effects: '#ec4899',    // pink - shadow, opacity, blur
+        border: '#6366f1',     // indigo - rounded, border
+      };
+
+      for (const cls of classes) {
+        const chip = document.createElement('button');
+
+        // Determine category for color coding
+        let category = 'effects';
+        if (cls.startsWith('flex') || cls.startsWith('grid') || cls.startsWith('gap') || cls.startsWith('items-') || cls.startsWith('justify-')) {
+          category = 'layout';
+        } else if (cls.startsWith('p-') || cls.startsWith('px-') || cls.startsWith('py-') || cls.startsWith('pt-') || cls.startsWith('pb-') || cls.startsWith('pl-') || cls.startsWith('pr-') || cls.startsWith('m-') || cls.startsWith('w-') || cls.startsWith('h-') || cls.startsWith('min-') || cls.startsWith('max-')) {
+          category = 'spacing';
+        } else if (cls.startsWith('bg-') || cls.startsWith('text-[#') || cls.startsWith('border-[#')) {
+          category = 'color';
+        } else if (cls.startsWith('font-') || cls.startsWith('text-') || cls.startsWith('leading-') || cls.startsWith('tracking-')) {
+          category = 'typography';
+        } else if (cls.startsWith('rounded') || cls.startsWith('border')) {
+          category = 'border';
+        }
+
+        const chipColor = categoryColors[category] ?? '#6b7280';
+
+        chip.style.cssText = `
+          padding: 3px 8px;
+          background: ${chipColor}20;
+          border: 1px solid ${chipColor}40;
+          border-radius: 4px;
+          color: ${chipColor};
+          font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
+          font-size: 10px;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        `;
+        chip.textContent = cls;
+        chip.title = `Click to copy: ${cls}`;
+
+        chip.addEventListener('click', async () => {
+          const result = await copyToClipboard(cls);
+          showCopyFeedback(chip, result.success);
+        });
+        chip.addEventListener('mouseenter', () => {
+          chip.style.background = `${chipColor}40`;
+          chip.style.borderColor = chipColor;
+        });
+        chip.addEventListener('mouseleave', () => {
+          chip.style.background = `${chipColor}20`;
+          chip.style.borderColor = `${chipColor}40`;
+        });
+
+        chipsContainer.appendChild(chip);
+      }
+
+      section.appendChild(chipsContainer);
+
+      // Category legend
+      const legend = document.createElement('div');
+      legend.style.cssText = `
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--designlibre-border, #3d3d3d);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 9px;
+        color: var(--designlibre-text-muted, #6a6a6a);
+      `;
+
+      const legendItems = [
+        { label: 'Layout', color: categoryColors['layout'] },
+        { label: 'Spacing', color: categoryColors['spacing'] },
+        { label: 'Color', color: categoryColors['color'] },
+        { label: 'Typography', color: categoryColors['typography'] },
+        { label: 'Border', color: categoryColors['border'] },
+        { label: 'Effects', color: categoryColors['effects'] },
+      ];
+
+      for (const item of legendItems) {
+        const legendItem = document.createElement('span');
+        legendItem.style.cssText = `display: flex; align-items: center; gap: 4px;`;
+
+        const dot = document.createElement('span');
+        dot.style.cssText = `width: 8px; height: 8px; border-radius: 2px; background: ${item.color};`;
+        legendItem.appendChild(dot);
+
+        const label = document.createElement('span');
+        label.textContent = item.label;
+        legendItem.appendChild(label);
+
+        legend.appendChild(legendItem);
+      }
+
+      section.appendChild(legend);
+    } else {
+      // No utility classes generated
+      const noClasses = document.createElement('div');
+      noClasses.style.cssText = `
+        padding: 16px;
+        text-align: center;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border-radius: 6px;
+      `;
+      noClasses.textContent = 'No utility classes for this element';
+      section.appendChild(noClasses);
+    }
+
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render export tokens section in Inspect panel.
+   * Allows extracting design tokens and exporting in various formats.
+   */
+  private renderExportTokensSection(): void {
+    if (!this.contentElement) return;
+
+    const section = this.createSection('Design Tokens');
+
+    // Description
+    const description = document.createElement('div');
+    description.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    `;
+    description.textContent = 'Extract design tokens from your design and export as configuration files.';
+    section.appendChild(description);
+
+    // Format selector
+    const formatRow = document.createElement('div');
+    formatRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    `;
+
+    const formatLabel = document.createElement('span');
+    formatLabel.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+    formatLabel.textContent = 'Format:';
+    formatRow.appendChild(formatLabel);
+
+    const formatSelect = document.createElement('select');
+    formatSelect.style.cssText = `
+      flex: 1;
+      height: 28px;
+      padding: 0 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      cursor: pointer;
+    `;
+
+    const formats: { value: TokenOutputFormat; label: string; ext: string }[] = [
+      { value: 'css', label: 'CSS Custom Properties', ext: '.css' },
+      { value: 'scss', label: 'SCSS Variables', ext: '.scss' },
+      { value: 'tailwind', label: 'Tailwind Config', ext: '.js' },
+      { value: 'unocss', label: 'UnoCSS Config', ext: '.ts' },
+      { value: 'dtcg', label: 'Design Tokens (DTCG)', ext: '.json' },
+    ];
+
+    for (const format of formats) {
+      const option = document.createElement('option');
+      option.value = format.value;
+      option.textContent = `${format.label} (${format.ext})`;
+      formatSelect.appendChild(option);
+    }
+    formatRow.appendChild(formatSelect);
+    section.appendChild(formatRow);
+
+    // Scope selector
+    const scopeRow = document.createElement('div');
+    scopeRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    `;
+
+    const scopeLabel = document.createElement('span');
+    scopeLabel.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+    scopeLabel.textContent = 'Scope:';
+    scopeRow.appendChild(scopeLabel);
+
+    const scopeSelect = document.createElement('select');
+    scopeSelect.style.cssText = formatSelect.style.cssText;
+
+    const scopes = [
+      { value: 'selected', label: 'Selected Element' },
+      { value: 'page', label: 'Current Page' },
+      { value: 'all', label: 'Entire Document' },
+    ];
+
+    for (const scope of scopes) {
+      const option = document.createElement('option');
+      option.value = scope.value;
+      option.textContent = scope.label;
+      scopeSelect.appendChild(option);
+    }
+    scopeRow.appendChild(scopeSelect);
+    section.appendChild(scopeRow);
+
+    // Action buttons
+    const buttonRow = document.createElement('div');
+    buttonRow.style.cssText = `display: flex; gap: 8px;`;
+
+    // Copy to clipboard button
+    const copyBtn = document.createElement('button');
+    copyBtn.style.cssText = `
+      flex: 1;
+      padding: 10px 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    `;
+    copyBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      <span>Copy</span>
+    `;
+    copyBtn.addEventListener('click', async () => {
+      const result = this.extractTokens(
+        formatSelect.value as TokenOutputFormat,
+        scopeSelect.value as 'selected' | 'page' | 'all'
+      );
+      if (result) {
+        const copyResult = await copyToClipboard(result.output);
+        showCopyFeedback(copyBtn, copyResult.success);
+      }
+    });
+    copyBtn.addEventListener('mouseenter', () => {
+      copyBtn.style.background = 'var(--designlibre-accent, #4dabff)';
+      copyBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+    });
+    copyBtn.addEventListener('mouseleave', () => {
+      copyBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      copyBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+    });
+    buttonRow.appendChild(copyBtn);
+
+    // Download button
+    const downloadBtn = document.createElement('button');
+    downloadBtn.style.cssText = copyBtn.style.cssText;
+    downloadBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      <span>Download</span>
+    `;
+    downloadBtn.addEventListener('click', () => {
+      const result = this.extractTokens(
+        formatSelect.value as TokenOutputFormat,
+        scopeSelect.value as 'selected' | 'page' | 'all'
+      );
+      if (result) {
+        this.downloadFile(result.output, result.fileName);
+        showCopyFeedback(downloadBtn, true);
+      }
+    });
+    downloadBtn.addEventListener('mouseenter', () => {
+      downloadBtn.style.background = 'var(--designlibre-accent, #4dabff)';
+      downloadBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+    });
+    downloadBtn.addEventListener('mouseleave', () => {
+      downloadBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      downloadBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+    });
+    buttonRow.appendChild(downloadBtn);
+
+    section.appendChild(buttonRow);
+
+    // Token summary (will update when extracted)
+    const summaryContainer = document.createElement('div');
+    summaryContainer.className = 'token-summary';
+    summaryContainer.style.cssText = `
+      margin-top: 12px;
+      padding: 10px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+
+    // Show a preview of what will be extracted
+    const previewResult = this.extractTokens('css', 'selected');
+    if (previewResult) {
+      const { tokens } = previewResult;
+      const counts = [
+        tokens.colors.length > 0 ? `${tokens.colors.length} colors` : null,
+        tokens.spacing.length > 0 ? `${tokens.spacing.length} spacing` : null,
+        tokens.typography.length > 0 ? `${tokens.typography.length} typography` : null,
+        tokens.shadows.length > 0 ? `${tokens.shadows.length} shadows` : null,
+        tokens.radii.length > 0 ? `${tokens.radii.length} radii` : null,
+      ].filter(Boolean);
+
+      if (counts.length > 0) {
+        summaryContainer.innerHTML = `
+          <div style="font-weight: 500; color: var(--designlibre-text-primary, #e4e4e4); margin-bottom: 4px;">
+            Tokens found:
+          </div>
+          <div>${counts.join(' • ')}</div>
+        `;
+      } else {
+        summaryContainer.textContent = 'No tokens found in selection. Try selecting more elements or changing scope.';
+      }
+    } else {
+      summaryContainer.textContent = 'Select elements to extract design tokens.';
+    }
+    section.appendChild(summaryContainer);
+
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Extract tokens from the design based on scope.
+   */
+  private extractTokens(
+    format: TokenOutputFormat,
+    scope: 'selected' | 'page' | 'all'
+  ): { output: string; fileName: string; tokens: ExtractedTokens } | null {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const extractor = createTokenExtractor(sceneGraph, {
+      scope,
+      deduplicate: true,
+      generateNames: true,
+    });
+
+    let nodeIds: NodeId[] | undefined;
+    if (scope === 'selected' && this.selectedNodeIds.length > 0) {
+      nodeIds = this.selectedNodeIds;
+    }
+
+    const result = extractor.extractAndExport(format, nodeIds);
+    return {
+      output: result.output,
+      fileName: result.fileName,
+      tokens: result.tokens,
+    };
+  }
+
+  /**
+   * Download a file with the given content.
+   */
+  private downloadFile(content: string, fileName: string): void {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   private generateCSS(node: NodeData): string {
