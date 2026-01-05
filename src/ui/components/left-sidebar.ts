@@ -21,6 +21,7 @@ import {
 import { ComponentLibraryPanel } from './component-library-panel';
 import { HistoryPanel } from './history-panel';
 import { AssetsPanel } from './assets-panel';
+import { MenuBar } from './menu-bar';
 
 /**
  * Leaf (page) definition
@@ -157,6 +158,9 @@ export class LeftSidebar {
   // Assets panel (lazy-initialized)
   private assetsPanel: AssetsPanel | null = null;
 
+  // Menu bar (lazy-initialized)
+  private menuBar: MenuBar | null = null;
+
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
 
@@ -177,6 +181,14 @@ export class LeftSidebar {
   }
 
   private setup(): void {
+    // Suppress unused method warnings - these are kept for future menu integration
+    void this._showTemplatesMenu;
+    void this._showExportMenu;
+    void this._showImportMenu;
+    void this._createNewFile;
+    void this._saveAsSeed;
+    void this._openSeedFile;
+
     this.element = document.createElement('div');
     this.element.className = 'designlibre-left-sidebar';
     this.updateStyles();
@@ -1620,105 +1632,41 @@ export class LeftSidebar {
   }
 
   private showFileMenu(anchor: HTMLElement): void {
-    // Remove existing menu if present
-    const existingMenu = document.getElementById('designlibre-file-menu');
-    if (existingMenu) {
-      existingMenu.remove();
+    // Close existing menu bar if present
+    if (this.menuBar) {
+      this.menuBar.close();
+      this.menuBar = null;
       return;
     }
 
+    // Create a container positioned below the anchor
     const rect = anchor.getBoundingClientRect();
-    const menu = document.createElement('div');
-    menu.id = 'designlibre-file-menu';
-    menu.style.cssText = `
+    const menuContainer = document.createElement('div');
+    menuContainer.id = 'designlibre-file-menu';
+    menuContainer.style.cssText = `
       position: fixed;
       left: ${rect.left}px;
       top: ${rect.bottom + 4}px;
-      min-width: 220px;
-      background: #1e1e1e;
-      border: 1px solid #3d3d3d;
-      border-radius: 6px;
-      padding: 4px;
-      color: #e4e4e4;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 999999;
     `;
+    document.body.appendChild(menuContainer);
 
-    const menuItems = [
-      { label: 'New File', shortcut: 'Ctrl+N', action: () => this.createNewFile() },
-      { label: 'Open .seed...', shortcut: 'Ctrl+O', action: () => this.openSeedFile() },
-      { separator: true },
-      { label: 'Save', shortcut: 'Ctrl+S', action: () => this.runtime.saveDocument() },
-      { label: 'Save as .seed...', shortcut: 'Ctrl+Shift+S', action: () => this.saveAsSeed() },
-      { separator: true },
-      { label: 'Templates', submenu: true, action: () => this.showTemplatesMenu(anchor) },
-      { separator: true },
-      { label: 'Import Project...', submenu: true, action: () => this.showImportMenu(anchor) },
-      { label: 'Export Project...', submenu: true, action: () => this.showExportMenu(anchor) },
-    ];
-
-    for (const item of menuItems) {
-      if (item.separator) {
-        const sep = document.createElement('div');
-        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
-        menu.appendChild(sep);
-      } else {
-        const menuItem = document.createElement('div');
-        menuItem.style.cssText = `
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 12px;
-          border-radius: 4px;
-          cursor: pointer;
-        `;
-
-        const label = document.createElement('span');
-        label.textContent = item.label ?? '';
-        menuItem.appendChild(label);
-
-        if (item.shortcut) {
-          const shortcut = document.createElement('span');
-          shortcut.textContent = item.shortcut;
-          shortcut.style.cssText = 'font-size: 11px; color: #6a6a6a;';
-          menuItem.appendChild(shortcut);
-        }
-
-        menuItem.addEventListener('mouseenter', () => {
-          menuItem.style.background = '#2d2d2d';
-        });
-        menuItem.addEventListener('mouseleave', () => {
-          menuItem.style.background = 'transparent';
-        });
-        menuItem.addEventListener('click', () => {
-          menu.remove();
-          item.action?.();
-        });
-
-        menu.appendChild(menuItem);
-      }
-    }
-
-    document.body.appendChild(menu);
-
-    // Close when clicking outside
-    const closeMenu = (e: MouseEvent) => {
-      if (!menu.contains(e.target as Node) && !anchor.contains(e.target as Node)) {
-        menu.remove();
-        document.removeEventListener('mousedown', closeMenu);
-      }
-    };
-    // Delay adding the listener to avoid immediate close
-    requestAnimationFrame(() => {
-      document.addEventListener('mousedown', closeMenu);
+    // Create and show the menu bar
+    this.menuBar = new MenuBar({
+      runtime: this.runtime,
+      container: menuContainer,
+      onClose: () => {
+        menuContainer.remove();
+        this.menuBar = null;
+      },
     });
+    this.menuBar.show();
   }
 
   /**
    * Show templates submenu.
    */
-  private showTemplatesMenu(anchor: HTMLElement): void {
+  private _showTemplatesMenu(anchor: HTMLElement): void {
     // Remove existing menu if present
     const existingMenu = document.getElementById('designlibre-templates-menu');
     if (existingMenu) {
@@ -1823,7 +1771,7 @@ export class LeftSidebar {
   /**
    * Show export project menu.
    */
-  private showExportMenu(anchor: HTMLElement): void {
+  private _showExportMenu(anchor: HTMLElement): void {
     // Remove existing menu if present
     const existingMenu = document.getElementById('designlibre-export-menu');
     if (existingMenu) {
@@ -1928,7 +1876,7 @@ export class LeftSidebar {
   /**
    * Show import project menu.
    */
-  private showImportMenu(anchor: HTMLElement): void {
+  private _showImportMenu(anchor: HTMLElement): void {
     // Remove existing menu if present
     const existingMenu = document.getElementById('designlibre-import-menu');
     if (existingMenu) {
@@ -2572,7 +2520,7 @@ export class LeftSidebar {
   /**
    * Create a new empty document.
    */
-  private createNewFile(): void {
+  private _createNewFile(): void {
     // Clear selection first
     const selectionManager = this.runtime.getSelectionManager();
     if (selectionManager) {
@@ -2595,7 +2543,7 @@ export class LeftSidebar {
   /**
    * Save the current document as a .seed file.
    */
-  private async saveAsSeed(): Promise<void> {
+  private async _saveAsSeed(): Promise<void> {
     try {
       const filename = `${this.documentName.replace(/[^a-zA-Z0-9-_ ]/g, '')}.seed`;
       await this.runtime.saveAsSeed(filename);
@@ -2608,7 +2556,7 @@ export class LeftSidebar {
   /**
    * Open a .seed file.
    */
-  private openSeedFile(): void {
+  private _openSeedFile(): void {
     // Create a hidden file input to trigger file selection
     const fileInput = document.createElement('input');
     fileInput.type = 'file';

@@ -4,7 +4,7 @@
 
 import type { NodeId, NodeType, PropertyPath } from '@core/types/common';
 import type { Matrix2x3, Rect } from '@core/types/geometry';
-import { identity, multiply, compose, transformPoint } from '@core/math/matrix';
+import { identity, multiply, compose, transformPoint, invert } from '@core/math/matrix';
 import { EventEmitter } from '@core/events/event-emitter';
 import type { NodeData } from '../nodes/base-node';
 import {
@@ -474,7 +474,7 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
   }
 
   /**
-   * Move a node to a new parent.
+   * Move a node to a new parent, preserving its world position.
    */
   moveNode(nodeId: NodeId, newParentId: NodeId, position: number = -1): void {
     const node = this.registry.getNode(nodeId);
@@ -483,11 +483,104 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
     }
 
     const oldParentId = node.parentId;
+
+    // Skip coordinate adjustment if parent isn't changing
+    if (oldParentId === newParentId) {
+      const actualPosition = position < 0
+        ? this.registry.getChildIds(newParentId).length
+        : position;
+      moveNode(this.registry, nodeId, newParentId, actualPosition);
+      this.emit('node:parentChanged', { nodeId, oldParentId, newParentId });
+      return;
+    }
+
+    // Calculate current world position of the node
+    // We need the world position of the node's origin (its x, y in world space)
+    const nodeWithPos = node as { x?: number; y?: number; rotation?: number };
+    if (nodeWithPos.x === undefined || nodeWithPos.y === undefined) {
+      // Node doesn't have position, just move it
+      const actualPosition = position < 0
+        ? this.registry.getChildIds(newParentId).length
+        : position;
+      moveNode(this.registry, nodeId, newParentId, actualPosition);
+      this.emit('node:parentChanged', { nodeId, oldParentId, newParentId });
+      return;
+    }
+
+    // Get parent's world transform (not including this node)
+    // The parent chain transform positions this node
+    let oldParentWorldTransform = identity();
+    if (oldParentId) {
+      const ancestors = this.registry.getAncestors(nodeId);
+      // ancestors[0] is immediate parent, last is root
+      for (let i = ancestors.length - 1; i >= 0; i--) {
+        const ancestor = ancestors[i];
+        if (ancestor && 'x' in ancestor && 'y' in ancestor) {
+          const a = ancestor as { x: number; y: number; rotation?: number };
+          const rotation = a.rotation ? (a.rotation * Math.PI) / 180 : 0;
+          const localTransform = compose(a.x, a.y, rotation, 1, 1);
+          oldParentWorldTransform = multiply(oldParentWorldTransform, localTransform);
+        }
+      }
+    }
+
+    // Current world position of this node's origin
+    const worldPos = transformPoint(oldParentWorldTransform, { x: nodeWithPos.x, y: nodeWithPos.y });
+
+    // Perform the actual move
     const actualPosition = position < 0
       ? this.registry.getChildIds(newParentId).length
       : position;
-
     moveNode(this.registry, nodeId, newParentId, actualPosition);
+
+    // Calculate new parent's world transform
+    let newParentWorldTransform = identity();
+    const newParent = this.registry.getNode(newParentId);
+    if (newParent) {
+      // Get new parent's ancestors + new parent itself
+      const newAncestors = this.registry.getAncestors(newParentId);
+      // Apply ancestors (root to parent of newParent)
+      for (let i = newAncestors.length - 1; i >= 0; i--) {
+        const ancestor = newAncestors[i];
+        if (ancestor && 'x' in ancestor && 'y' in ancestor) {
+          const a = ancestor as { x: number; y: number; rotation?: number };
+          const rotation = a.rotation ? (a.rotation * Math.PI) / 180 : 0;
+          const localTransform = compose(a.x, a.y, rotation, 1, 1);
+          newParentWorldTransform = multiply(newParentWorldTransform, localTransform);
+        }
+      }
+      // Apply new parent's transform
+      if ('x' in newParent && 'y' in newParent) {
+        const np = newParent as { x: number; y: number; rotation?: number };
+        const rotation = np.rotation ? (np.rotation * Math.PI) / 180 : 0;
+        const localTransform = compose(np.x, np.y, rotation, 1, 1);
+        newParentWorldTransform = multiply(newParentWorldTransform, localTransform);
+      }
+    }
+
+    // Calculate new local position: we need localPos such that
+    // transformPoint(newParentWorldTransform, localPos) = worldPos
+    // Use inverse transform for proper handling of rotation/scale
+    const inverseParentTransform = invert(newParentWorldTransform);
+
+    let newLocalX: number;
+    let newLocalY: number;
+
+    if (inverseParentTransform) {
+      // Apply inverse transform to get local position
+      const localPos = transformPoint(inverseParentTransform, worldPos);
+      newLocalX = localPos.x;
+      newLocalY = localPos.y;
+    } else {
+      // Fallback: extract translation (matrix format is [a, b, c, d, tx, ty])
+      const parentWorldX = newParentWorldTransform[4];
+      const parentWorldY = newParentWorldTransform[5];
+      newLocalX = worldPos.x - parentWorldX;
+      newLocalY = worldPos.y - parentWorldY;
+    }
+
+    // Update the node's position
+    this.updateNode(nodeId, { x: newLocalX, y: newLocalY } as Partial<NodeData>);
 
     this.emit('node:parentChanged', {
       nodeId,

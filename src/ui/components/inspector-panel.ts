@@ -350,13 +350,601 @@ export class InspectorPanel {
   private renderEmptyState(): void {
     if (!this.contentElement) return;
 
+    // Show different empty states based on active tab
+    switch (this.activeTab) {
+      case 'design':
+        this.renderDesignEmptyState();
+        break;
+      case 'prototype':
+        this.renderPrototypeEmptyState();
+        break;
+      case 'inspect':
+        this.renderInspectEmptyState();
+        break;
+    }
+  }
+
+  /**
+   * Render Design tab empty state with color picker.
+   */
+  private renderDesignEmptyState(): void {
+    if (!this.contentElement) return;
+
+    // Color Picker section
+    const colorSection = this.createSection('Color');
+
+    // Get current fill color from runtime
+    const lastFill = this.runtime.getLastUsedFillColor();
+    const initRgb: [number, number, number] = [
+      Math.round(lastFill.r * 255),
+      Math.round(lastFill.g * 255),
+      Math.round(lastFill.b * 255),
+    ];
+
+    // Current color state (HSV) - initialize from runtime
+    const rgbToHsvInit = (r: number, g: number, b: number): [number, number, number] => {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      const s = max === 0 ? 0 : d / max;
+      const v = max;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+      return [h, s, v];
+    };
+    const [initH, initS, initV] = rgbToHsvInit(initRgb[0], initRgb[1], initRgb[2]);
+    let currentHue = initH;
+    let currentSat = initS;
+    let currentVal = initV;
+
+    // Helper functions for color conversion
+    const hsvToRgb = (h: number, s: number, v: number): [number, number, number] => {
+      const c = v * s;
+      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+      const m = v - c;
+      let r = 0, g = 0, b = 0;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255),
+      ];
+    };
+
+    const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      const s = max === 0 ? 0 : d / max;
+      const v = max;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+      return [h, s, v];
+    };
+
+    const rgbToHex = (r: number, g: number, b: number): string => {
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    };
+
+    const hexToRgb = (hex: string): [number, number, number] | null => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return null;
+      return [parseInt(result[1]!, 16), parseInt(result[2]!, 16), parseInt(result[3]!, 16)];
+    };
+
+    // Saturation-Value plane container
+    const svContainer = document.createElement('div');
+    svContainer.style.cssText = `
+      position: relative;
+      width: 100%;
+      height: 150px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      cursor: crosshair;
+      overflow: hidden;
+    `;
+
+    // SV plane canvas
+    const svCanvas = document.createElement('canvas');
+    svCanvas.width = 256;
+    svCanvas.height = 150;
+    svCanvas.style.cssText = `
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+    `;
+
+    // SV cursor
+    const svCursor = document.createElement('div');
+    svCursor.style.cssText = `
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.3);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    `;
+
+    svContainer.appendChild(svCanvas);
+    svContainer.appendChild(svCursor);
+
+    // Draw SV plane
+    const drawSVPlane = () => {
+      const ctx = svCanvas.getContext('2d')!;
+      const width = svCanvas.width;
+      const height = svCanvas.height;
+
+      // Base hue color
+      const [hr, hg, hb] = hsvToRgb(currentHue, 1, 1);
+
+      // Create horizontal gradient (white to hue color)
+      const gradH = ctx.createLinearGradient(0, 0, width, 0);
+      gradH.addColorStop(0, 'white');
+      gradH.addColorStop(1, `rgb(${hr},${hg},${hb})`);
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0, 0, width, height);
+
+      // Create vertical gradient (transparent to black)
+      const gradV = ctx.createLinearGradient(0, 0, 0, height);
+      gradV.addColorStop(0, 'rgba(0,0,0,0)');
+      gradV.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = gradV;
+      ctx.fillRect(0, 0, width, height);
+    };
+
+    // Update SV cursor position
+    const updateSVCursor = () => {
+      svCursor.style.left = `${currentSat * 100}%`;
+      svCursor.style.top = `${(1 - currentVal) * 100}%`;
+    };
+
+    // Hue slider container
+    const hueContainer = document.createElement('div');
+    hueContainer.style.cssText = `
+      position: relative;
+      width: 100%;
+      height: 14px;
+      border-radius: 7px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      background: linear-gradient(to right,
+        hsl(0, 100%, 50%),
+        hsl(60, 100%, 50%),
+        hsl(120, 100%, 50%),
+        hsl(180, 100%, 50%),
+        hsl(240, 100%, 50%),
+        hsl(300, 100%, 50%),
+        hsl(360, 100%, 50%)
+      );
+    `;
+
+    // Hue cursor
+    const hueCursor = document.createElement('div');
+    hueCursor.style.cssText = `
+      position: absolute;
+      width: 6px;
+      height: 18px;
+      background: white;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+      pointer-events: none;
+      transform: translate(-50%, -2px);
+      top: 0;
+    `;
+    hueContainer.appendChild(hueCursor);
+
+    // Update hue cursor position
+    const updateHueCursor = () => {
+      hueCursor.style.left = `${(currentHue / 360) * 100}%`;
+    };
+
+    // Update all displays and set runtime fill color
+    const updateDisplays = () => {
+      const [r, g, b] = hsvToRgb(currentHue, currentSat, currentVal);
+      const hex = rgbToHex(r, g, b);
+      hexInput.value = hex;
+      (rInput.querySelector('input') as HTMLInputElement).value = r.toString();
+      (gInput.querySelector('input') as HTMLInputElement).value = g.toString();
+      (bInput.querySelector('input') as HTMLInputElement).value = b.toString();
+      previewSwatch.style.background = hex;
+      // Update runtime fill color so new shapes use this color
+      this.runtime.setLastUsedFillColor({ r: r / 255, g: g / 255, b: b / 255, a: 1 });
+    };
+
+    // SV plane interaction
+    let svDragging = false;
+    const handleSVInteraction = (e: MouseEvent | TouchEvent) => {
+      const rect = svContainer.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
+      currentSat = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      currentVal = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+      updateSVCursor();
+      updateDisplays();
+    };
+
+    svContainer.addEventListener('mousedown', (e) => {
+      svDragging = true;
+      handleSVInteraction(e);
+    });
+    svContainer.addEventListener('touchstart', (e) => {
+      svDragging = true;
+      handleSVInteraction(e);
+      e.preventDefault();
+    });
+
+    // Hue slider interaction
+    let hueDragging = false;
+    const handleHueInteraction = (e: MouseEvent | TouchEvent) => {
+      const rect = hueContainer.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+      currentHue = Math.max(0, Math.min(360, ((clientX - rect.left) / rect.width) * 360));
+      updateHueCursor();
+      drawSVPlane();
+      updateDisplays();
+    };
+
+    hueContainer.addEventListener('mousedown', (e) => {
+      hueDragging = true;
+      handleHueInteraction(e);
+    });
+    hueContainer.addEventListener('touchstart', (e) => {
+      hueDragging = true;
+      handleHueInteraction(e);
+      e.preventDefault();
+    });
+
+    // Global mouse/touch move and up
+    const handleGlobalMove = (e: MouseEvent | TouchEvent) => {
+      if (svDragging) handleSVInteraction(e);
+      if (hueDragging) handleHueInteraction(e);
+    };
+    const handleGlobalUp = () => {
+      svDragging = false;
+      hueDragging = false;
+    };
+
+    document.addEventListener('mousemove', handleGlobalMove);
+    document.addEventListener('mouseup', handleGlobalUp);
+    document.addEventListener('touchmove', handleGlobalMove);
+    document.addEventListener('touchend', handleGlobalUp);
+
+    // Preview swatch and hex input row
+    const inputRow = document.createElement('div');
+    inputRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    `;
+
+    // Preview swatch
+    const previewSwatch = document.createElement('div');
+    const [initR, initG, initB] = hsvToRgb(currentHue, currentSat, currentVal);
+    previewSwatch.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: ${rgbToHex(initR, initG, initB)};
+      flex-shrink: 0;
+    `;
+
+    // Hex input
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.value = rgbToHex(initR, initG, initB);
+    hexInput.placeholder = '#000000';
+    hexInput.style.cssText = `
+      flex: 1;
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-family: monospace;
+      font-size: 13px;
+    `;
+
+    hexInput.addEventListener('blur', () => {
+      let val = hexInput.value.trim();
+      if (!val.startsWith('#')) val = '#' + val;
+      const rgb = hexToRgb(val);
+      if (rgb) {
+        hexInput.value = val.toUpperCase();
+        const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+        currentHue = h;
+        currentSat = s;
+        currentVal = v;
+        drawSVPlane();
+        updateSVCursor();
+        updateHueCursor();
+        updateDisplays();
+      } else {
+        updateDisplays();
+      }
+    });
+
+    // Copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = 'Copy';
+    copyBtn.style.cssText = `
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
+    copyBtn.addEventListener('mouseenter', () => {
+      copyBtn.style.background = 'var(--designlibre-bg-tertiary, #3d3d3d)';
+    });
+    copyBtn.addEventListener('mouseleave', () => {
+      copyBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    copyBtn.addEventListener('click', () => {
+      copyToClipboard(hexInput.value);
+      this.showToast(`Copied ${hexInput.value}`);
+    });
+
+    inputRow.appendChild(previewSwatch);
+    inputRow.appendChild(hexInput);
+    inputRow.appendChild(copyBtn);
+
+    // RGB display
+    const formatRow = document.createElement('div');
+    formatRow.style.cssText = `
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    `;
+
+    const createValueInput = (label: string, value: string): HTMLElement => {
+      const wrapper = document.createElement('div');
+      const labelEl = document.createElement('div');
+      labelEl.textContent = label;
+      labelEl.style.cssText = `
+        font-size: 10px;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        margin-bottom: 4px;
+      `;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = value;
+      input.readOnly = true;
+      input.style.cssText = `
+        width: 100%;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+        font-family: monospace;
+        font-size: 11px;
+        box-sizing: border-box;
+      `;
+      wrapper.appendChild(labelEl);
+      wrapper.appendChild(input);
+      return wrapper;
+    };
+
+    const rInput = createValueInput('R', initR.toString());
+    const gInput = createValueInput('G', initG.toString());
+    const bInput = createValueInput('B', initB.toString());
+    formatRow.appendChild(rInput);
+    formatRow.appendChild(gInput);
+    formatRow.appendChild(bInput);
+
+    // Add all elements to section
+    colorSection.appendChild(svContainer);
+    colorSection.appendChild(hueContainer);
+    colorSection.appendChild(inputRow);
+    colorSection.appendChild(formatRow);
+    this.contentElement.appendChild(colorSection);
+
+    // Initial draw
+    drawSVPlane();
+    updateSVCursor();
+    updateHueCursor();
+
+    // Document Color Styles section (if any exist)
+    const styleManager = this.runtime.getStyleManager();
+    const colorStyles = styleManager.getColorStyles();
+
+    if (colorStyles.length > 0) {
+      const stylesSection = this.createSection('Document Colors');
+      const stylesGrid = document.createElement('div');
+      stylesGrid.style.cssText = `
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      `;
+
+      for (const style of colorStyles) {
+        const swatch = this.createColorSwatch(style.color, style.name, () => {
+          const r = Math.round(style.color.r * 255);
+          const g = Math.round(style.color.g * 255);
+          const b = Math.round(style.color.b * 255);
+          const [h, s, v] = rgbToHsv(r, g, b);
+          currentHue = h;
+          currentSat = s;
+          currentVal = v;
+          drawSVPlane();
+          updateSVCursor();
+          updateHueCursor();
+          updateDisplays();
+        });
+        stylesGrid.appendChild(swatch);
+      }
+
+      stylesSection.appendChild(stylesGrid);
+      this.contentElement.appendChild(stylesSection);
+    }
+
+    // Quick tip
+    const tip = document.createElement('div');
+    tip.style.cssText = `
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      line-height: 1.4;
+    `;
+    tip.textContent = 'Select an element to edit its fill and stroke colors.';
+    this.contentElement.appendChild(tip);
+  }
+
+  /**
+   * Create a color swatch element.
+   */
+  private createColorSwatch(
+    color: RGBA,
+    tooltip: string,
+    onClick: () => void
+  ): HTMLElement {
+    const swatch = document.createElement('button');
+    const hex = rgbaToHex(color);
+    swatch.style.cssText = `
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: ${hex};
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s, box-shadow 0.1s;
+    `;
+    swatch.title = `${tooltip}\n${hex}`;
+
+    swatch.addEventListener('mouseenter', () => {
+      swatch.style.transform = 'scale(1.1)';
+      swatch.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      swatch.style.zIndex = '10';
+    });
+    swatch.addEventListener('mouseleave', () => {
+      swatch.style.transform = 'scale(1)';
+      swatch.style.boxShadow = 'none';
+      swatch.style.zIndex = '0';
+    });
+    swatch.addEventListener('click', onClick);
+
+    return swatch;
+  }
+
+  /**
+   * Show a temporary toast notification.
+   */
+  private showToast(message: string, duration: number = 1500): void {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      z-index: 10000;
+      animation: fadeInUp 0.2s ease-out;
+    `;
+    toast.textContent = message;
+
+    // Add animation keyframes if not already present
+    if (!document.getElementById('designlibre-toast-styles')) {
+      const style = document.createElement('style');
+      style.id = 'designlibre-toast-styles';
+      style.textContent = `
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes fadeOutDown {
+          from { opacity: 1; transform: translateX(-50%) translateY(0); }
+          to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.animation = 'fadeOutDown 0.2s ease-out forwards';
+      setTimeout(() => toast.remove(), 200);
+    }, duration);
+  }
+
+  /**
+   * Render Prototype tab empty state.
+   */
+  private renderPrototypeEmptyState(): void {
+    if (!this.contentElement) return;
+
     const empty = document.createElement('div');
     empty.style.cssText = `
       color: var(--designlibre-text-secondary, #a0a0a0);
       text-align: center;
       padding: 40px 20px;
     `;
-    empty.textContent = 'Select an element to inspect';
+    empty.innerHTML = `
+      <div style="font-size: 24px; margin-bottom: 12px;">🔗</div>
+      <div style="font-weight: 500; margin-bottom: 8px;">No element selected</div>
+      <div style="font-size: 11px; color: var(--designlibre-text-muted, #6a6a6a);">
+        Select a frame or element to add prototype interactions
+      </div>
+    `;
+    this.contentElement.appendChild(empty);
+  }
+
+  /**
+   * Render Inspect tab empty state.
+   */
+  private renderInspectEmptyState(): void {
+    if (!this.contentElement) return;
+
+    const empty = document.createElement('div');
+    empty.style.cssText = `
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      text-align: center;
+      padding: 40px 20px;
+    `;
+    empty.innerHTML = `
+      <div style="font-size: 24px; margin-bottom: 12px;">🔍</div>
+      <div style="font-weight: 500; margin-bottom: 8px;">No element selected</div>
+      <div style="font-size: 11px; color: var(--designlibre-text-muted, #6a6a6a);">
+        Select an element to view code and export options
+      </div>
+    `;
     this.contentElement.appendChild(empty);
   }
 
