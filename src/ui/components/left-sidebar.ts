@@ -316,27 +316,10 @@ export class LeftSidebar {
 
     // Just show expand button
     const expandBtn = document.createElement('button');
-    expandBtn.className = 'designlibre-sidebar-expand-btn';
+    expandBtn.className = 'designlibre-sidebar-expand-btn w-full h-12 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary hover:bg-surface-secondary transition-colors';
     expandBtn.innerHTML = ICONS.expand;
     expandBtn.title = 'Expand sidebar';
-    expandBtn.style.cssText = `
-      width: 100%;
-      height: 48px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-    `;
     expandBtn.addEventListener('click', () => this.toggleCollapse());
-    expandBtn.addEventListener('mouseenter', () => {
-      expandBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
-    expandBtn.addEventListener('mouseleave', () => {
-      expandBtn.style.backgroundColor = 'transparent';
-    });
 
     this.element.appendChild(expandBtn);
   }
@@ -366,11 +349,7 @@ export class LeftSidebar {
 
       // Separator
       const separator = document.createElement('div');
-      separator.style.cssText = `
-        height: 1px;
-        background: var(--designlibre-border, #3d3d3d);
-        margin: 0;
-      `;
+      separator.className = 'h-px bg-border';
       this.element.appendChild(separator);
 
       // Layers section
@@ -381,30 +360,16 @@ export class LeftSidebar {
 
   private createPlaceholderSection(title: string, message: string): HTMLElement {
     const section = document.createElement('div');
-    section.style.cssText = `
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: var(--designlibre-text-secondary, #888);
-      text-align: center;
-    `;
+    section.className = 'flex-1 flex flex-col items-center justify-center p-6 text-content-secondary text-center';
 
     const titleEl = document.createElement('div');
     titleEl.textContent = title;
-    titleEl.style.cssText = `
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
+    titleEl.className = 'text-sm font-semibold mb-2 text-content';
     section.appendChild(titleEl);
 
     const messageEl = document.createElement('div');
     messageEl.textContent = message;
-    messageEl.style.cssText = 'font-size: 12px;';
+    messageEl.className = 'text-xs';
     section.appendChild(messageEl);
 
     return section;
@@ -412,37 +377,25 @@ export class LeftSidebar {
 
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'designlibre-sidebar-header';
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 48px;
-      padding: 0 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    header.className = 'designlibre-sidebar-header flex items-center justify-between h-12 px-3 border-b border-border';
 
     // File Menu button
     const menuBtn = document.createElement('button');
-    menuBtn.className = 'designlibre-sidebar-menu-btn';
+    menuBtn.className = `designlibre-sidebar-menu-btn ${this.iconButtonClass}`;
     menuBtn.innerHTML = ICONS.menu;
     menuBtn.title = 'File Menu';
-    menuBtn.style.cssText = this.getIconButtonStyles();
     menuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
       this.showFileMenu(menuBtn);
     });
-    this.addHoverEffect(menuBtn);
 
     // Minimize button
     const minimizeBtn = document.createElement('button');
-    minimizeBtn.className = 'designlibre-sidebar-minimize-btn';
+    minimizeBtn.className = `designlibre-sidebar-minimize-btn ${this.iconButtonClass}`;
     minimizeBtn.innerHTML = ICONS.minimize;
     minimizeBtn.title = 'Minimize sidebar';
-    minimizeBtn.style.cssText = this.getIconButtonStyles();
     minimizeBtn.addEventListener('click', () => this.toggleCollapse());
-    this.addHoverEffect(minimizeBtn);
 
     header.appendChild(menuBtn);
     header.appendChild(minimizeBtn);
@@ -452,38 +405,14 @@ export class LeftSidebar {
 
   private createFileNameSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-filename';
-    section.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    section.className = 'designlibre-sidebar-filename flex items-center gap-2 p-3 border-b border-border';
 
     // Editable filename input
     const input = document.createElement('input');
     input.type = 'text';
     input.value = this.documentName;
-    input.className = 'designlibre-filename-input';
-    input.style.cssText = `
-      flex: 1;
-      background: transparent;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      padding: 6px 8px;
-      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
-      font-weight: 500;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      outline: none;
-    `;
-    input.addEventListener('focus', () => {
-      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
-      input.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
+    input.className = 'designlibre-filename-input flex-1 bg-transparent border border-transparent rounded py-1.5 px-2 text-sm font-medium text-content outline-none focus:border-accent focus:bg-surface-secondary';
     input.addEventListener('blur', () => {
-      input.style.borderColor = 'transparent';
-      input.style.backgroundColor = 'transparent';
       this.documentName = input.value || 'Untitled';
     });
     input.addEventListener('keydown', (e) => {
@@ -494,27 +423,14 @@ export class LeftSidebar {
 
     // Dropdown button for file options
     const dropdownBtn = document.createElement('button');
-    dropdownBtn.className = 'designlibre-filename-dropdown';
+    dropdownBtn.className = `designlibre-filename-dropdown w-6 h-6 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded hover:bg-surface-secondary hover:text-content transition-colors`;
     dropdownBtn.innerHTML = ICONS.dropdown;
     dropdownBtn.title = 'File options';
-    dropdownBtn.style.cssText = `
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      border-radius: 4px;
-    `;
     dropdownBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
       this.showFileOptionsMenu(dropdownBtn);
     });
-    this.addHoverEffect(dropdownBtn);
 
     section.appendChild(input);
     section.appendChild(dropdownBtn);
@@ -524,49 +440,21 @@ export class LeftSidebar {
 
   private createLeavesSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-leaves';
-    section.style.cssText = `
-      padding: 8px 0;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    section.className = 'designlibre-sidebar-leaves py-2 border-b border-border';
 
     // Header with "Leaves" and + button
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 4px 12px;
-      margin-bottom: 4px;
-    `;
+    header.className = 'flex items-center justify-between px-3 py-1 mb-1';
 
     const label = document.createElement('span');
     label.textContent = 'Leaves';
-    label.style.cssText = `
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      letter-spacing: 0.5px;
-    `;
+    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
 
     const addBtn = document.createElement('button');
     addBtn.innerHTML = ICONS.plus;
     addBtn.title = 'Add new leaf';
-    addBtn.style.cssText = `
-      width: 20px;
-      height: 20px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      border-radius: 4px;
-    `;
+    addBtn.className = this.smallIconButtonClass;
     addBtn.addEventListener('click', () => this.addLeaf());
-    this.addHoverEffect(addBtn);
 
     header.appendChild(label);
     header.appendChild(addBtn);
@@ -587,32 +475,17 @@ export class LeftSidebar {
   }
 
   private createLeafItem(leaf: Leaf): HTMLElement {
+    const isActive = leaf.id === this.activeLeafId;
     const item = document.createElement('div');
-    item.className = 'designlibre-leaf-item';
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      cursor: pointer;
-      background: ${leaf.id === this.activeLeafId ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${leaf.id === this.activeLeafId ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      transition: background 0.15s;
-    `;
+    item.className = `designlibre-leaf-item group flex items-center gap-2 py-1.5 px-3 cursor-pointer transition-colors ${isActive ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.leaf;
-    icon.style.cssText = `display: flex; opacity: 0.6;`;
+    icon.className = 'flex opacity-60';
 
     const name = document.createElement('span');
     name.textContent = leaf.name;
-    name.style.cssText = `
-      flex: 1;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    `;
+    name.className = 'flex-1 text-[13px] whitespace-nowrap overflow-hidden text-ellipsis';
 
     // Get visibility from the PAGE node if available
     let isVisible = true;
@@ -626,25 +499,11 @@ export class LeftSidebar {
       }
     }
 
-    // Visibility toggle button
+    // Visibility toggle button - shows on hover via group-hover
     const visibilityBtn = document.createElement('button');
     visibilityBtn.innerHTML = isVisible ? ICONS.eye : ICONS.eyeOff;
     visibilityBtn.title = isVisible ? 'Hide leaf' : 'Show leaf';
-    visibilityBtn.style.cssText = `
-      width: 20px;
-      height: 20px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-muted, #6a6a6a);
-      border-radius: 2px;
-      opacity: 0;
-      transition: opacity 0.15s;
-      flex-shrink: 0;
-    `;
+    visibilityBtn.className = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
 
     // Toggle visibility on click
     visibilityBtn.addEventListener('click', (e) => {
@@ -697,62 +556,26 @@ export class LeftSidebar {
       }
     });
 
-    item.addEventListener('mouseenter', () => {
-      visibilityBtn.style.opacity = '1';
-      if (leaf.id !== this.activeLeafId) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      visibilityBtn.style.opacity = '0';
-      if (leaf.id !== this.activeLeafId) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
-
     return item;
   }
 
   private createLibrarySection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-library';
-    section.style.cssText = `
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `;
+    section.className = 'designlibre-sidebar-library flex-1 flex flex-col overflow-hidden';
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-    `;
+    header.className = 'flex items-center justify-between py-2 px-3';
 
     const label = document.createElement('span');
     label.textContent = 'Templates';
-    label.style.cssText = `
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      letter-spacing: 0.5px;
-    `;
+    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
     header.appendChild(label);
     section.appendChild(header);
 
     // Templates list
     const list = document.createElement('div');
-    list.className = 'designlibre-library-list';
-    list.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 8px;
-    `;
+    list.className = 'designlibre-library-list flex-1 overflow-y-auto px-2';
 
     // iOS 26 Template
     const iOSTemplate = this.createTemplateItem(
@@ -778,15 +601,10 @@ export class LeftSidebar {
 
     // Placeholder for more templates
     const moreTemplates = document.createElement('div');
-    moreTemplates.style.cssText = `
-      padding: 16px 8px;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      color: var(--designlibre-text-muted, #6a6a6a);
-      text-align: center;
-    `;
+    moreTemplates.className = 'py-4 px-2 text-xs text-content-muted text-center';
     moreTemplates.innerHTML = `
-      <div style="margin-bottom: 8px;">More templates coming soon</div>
-      <div style="font-size: 11px; opacity: 0.7;">Drag templates to Assets to use them in your project</div>
+      <div class="mb-2">More templates coming soon</div>
+      <div class="text-[11px] opacity-70">Drag templates to Assets to use them in your project</div>
     `;
     list.appendChild(moreTemplates);
 
@@ -802,143 +620,71 @@ export class LeftSidebar {
     onDownload: () => Promise<void>
   ): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'designlibre-template-item';
-    item.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 12px;
-      margin-bottom: 8px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s;
-    `;
+    item.className = 'designlibre-template-item flex flex-col gap-1 p-3 mb-2 bg-surface-secondary rounded-lg cursor-pointer transition-colors hover:bg-surface-tertiary';
 
     // Platform badge
     const badge = document.createElement('span');
     badge.textContent = platform;
-    badge.style.cssText = `
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--designlibre-accent, #4dabff);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    `;
+    badge.className = 'text-[10px] font-semibold text-accent uppercase tracking-wide';
     item.appendChild(badge);
 
     // Name
     const nameEl = document.createElement('span');
     nameEl.textContent = name;
-    nameEl.style.cssText = `
-      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
-      font-weight: 500;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
+    nameEl.className = 'text-sm font-medium text-content';
     item.appendChild(nameEl);
 
     // Description
     const descEl = document.createElement('span');
     descEl.textContent = description;
-    descEl.style.cssText = `
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      line-height: 1.4;
-    `;
+    descEl.className = 'text-xs text-content-secondary leading-snug';
     item.appendChild(descEl);
 
     // Download button
     const downloadBtn = document.createElement('button');
     downloadBtn.textContent = 'Download .seed';
-    downloadBtn.style.cssText = `
-      margin-top: 8px;
-      padding: 6px 12px;
-      background: var(--designlibre-accent, #4dabff);
-      border: none;
-      border-radius: 4px;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      font-weight: 500;
-      color: white;
-      cursor: pointer;
-      transition: background 0.15s;
-    `;
+    downloadBtn.className = 'mt-2 py-1.5 px-3 bg-accent border-none rounded text-xs font-medium text-white cursor-pointer transition-colors hover:bg-accent-hover';
     downloadBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       downloadBtn.textContent = 'Downloading...';
-      downloadBtn.style.opacity = '0.7';
+      downloadBtn.classList.add('opacity-70');
       try {
         await onDownload();
         downloadBtn.textContent = 'Downloaded!';
         setTimeout(() => {
           downloadBtn.textContent = 'Download .seed';
-          downloadBtn.style.opacity = '1';
+          downloadBtn.classList.remove('opacity-70');
         }, 2000);
       } catch (error) {
         downloadBtn.textContent = 'Error - Try Again';
-        downloadBtn.style.opacity = '1';
+        downloadBtn.classList.remove('opacity-70');
         console.error('Template download failed:', error);
       }
     });
-    downloadBtn.addEventListener('mouseenter', () => {
-      downloadBtn.style.background = 'var(--designlibre-accent-hover, #6bbaff)';
-    });
-    downloadBtn.addEventListener('mouseleave', () => {
-      downloadBtn.style.background = 'var(--designlibre-accent, #4dabff)';
-    });
     item.appendChild(downloadBtn);
-
-    // Hover effect
-    item.addEventListener('mouseenter', () => {
-      item.style.background = 'var(--designlibre-bg-tertiary, #252525)';
-    });
-    item.addEventListener('mouseleave', () => {
-      item.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
 
     return item;
   }
 
   private createLayersSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-layers';
+    section.className = 'designlibre-sidebar-layers flex-1 flex flex-col overflow-hidden';
     section.id = 'designlibre-layers-section';
-    section.style.cssText = `
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `;
 
     // Header with "Layers"
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-    `;
+    header.className = 'flex items-center justify-between py-2 px-3';
 
     const label = document.createElement('span');
     label.textContent = 'Layers';
-    label.style.cssText = `
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      letter-spacing: 0.5px;
-    `;
+    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
 
     header.appendChild(label);
     section.appendChild(header);
 
     // Layers list
     const list = document.createElement('div');
-    list.className = 'designlibre-layers-list';
-    list.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 4px;
-    `;
+    list.className = 'designlibre-layers-list flex-1 overflow-y-auto px-1';
 
     // Get layers from scene graph for the current page
     const sceneGraph = this.runtime.getSceneGraph();
@@ -956,12 +702,7 @@ export class LeftSidebar {
 
     if (list.children.length === 0) {
       const empty = document.createElement('div');
-      empty.style.cssText = `
-        padding: 16px 12px;
-        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-        color: var(--designlibre-text-muted, #6a6a6a);
-        text-align: center;
-      `;
+      empty.className = 'py-4 px-3 text-xs text-content-muted text-center';
       empty.textContent = 'No layers yet. Use the toolbar to add shapes.';
       list.appendChild(empty);
     }
@@ -1013,40 +754,17 @@ export class LeftSidebar {
     isExpanded: boolean = false
   ): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'designlibre-layer-item';
+    item.className = `designlibre-layer-item group flex items-center gap-1 py-1 pr-2 cursor-pointer rounded transition-colors ${isSelected ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
     item.dataset['nodeId'] = node.id;
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      padding-left: ${8 + depth * 16}px;
-      cursor: pointer;
-      border-radius: 4px;
-      background: ${isSelected ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${isSelected ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      transition: background 0.15s;
-    `;
+    // Dynamic padding for depth - must be inline
+    item.style.paddingLeft = `${8 + depth * 16}px`;
 
     // Expand/collapse button for nodes with children
     const expandBtn = document.createElement('button');
     if (hasChildren) {
       expandBtn.innerHTML = isExpanded ? ICONS.chevronDown : ICONS.chevronRight;
       expandBtn.title = isExpanded ? 'Collapse' : 'Expand';
-      expandBtn.style.cssText = `
-        width: 16px;
-        height: 16px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--designlibre-text-muted, #6a6a6a);
-        border-radius: 2px;
-        padding: 0;
-        flex-shrink: 0;
-      `;
+      expandBtn.className = 'w-4 h-4 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm p-0 flex-shrink-0';
       expandBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.expandedNodeIds.has(node.id)) {
@@ -1058,16 +776,12 @@ export class LeftSidebar {
       });
     } else {
       // Spacer for alignment
-      expandBtn.style.cssText = `
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-      `;
+      expandBtn.className = 'w-4 h-4 flex-shrink-0';
     }
 
     // Icon based on type
     const icon = document.createElement('span');
-    icon.style.cssText = `display: flex; opacity: 0.6; flex-shrink: 0;`;
+    icon.className = 'flex opacity-60 flex-shrink-0';
     switch (node.type) {
       case 'FRAME':
         icon.innerHTML = ICONS.frame;
@@ -1085,33 +799,13 @@ export class LeftSidebar {
     // Name
     const name = document.createElement('span');
     name.textContent = node.name;
-    name.style.cssText = `
-      flex: 1;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    `;
+    name.className = 'flex-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis';
 
-    // Visibility toggle
+    // Visibility toggle - shows on hover via group-hover
     const visibilityBtn = document.createElement('button');
     visibilityBtn.innerHTML = node.visible !== false ? ICONS.eye : ICONS.eyeOff;
     visibilityBtn.title = node.visible !== false ? 'Hide layer' : 'Show layer';
-    visibilityBtn.style.cssText = `
-      width: 20px;
-      height: 20px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-muted, #6a6a6a);
-      border-radius: 2px;
-      opacity: 0;
-      transition: opacity 0.15s;
-      flex-shrink: 0;
-    `;
+    visibilityBtn.className = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
 
     // Toggle visibility on click
     visibilityBtn.addEventListener('click', (e) => {
@@ -1129,21 +823,6 @@ export class LeftSidebar {
     item.appendChild(icon);
     item.appendChild(name);
     item.appendChild(visibilityBtn);
-
-    // Show visibility button on hover
-    item.addEventListener('mouseenter', () => {
-      visibilityBtn.style.opacity = '1';
-      if (!isSelected) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      visibilityBtn.style.opacity = '0';
-      if (!isSelected) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
 
     // Select on click
     item.addEventListener('click', () => {
@@ -1166,16 +845,7 @@ export class LeftSidebar {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentName;
-    input.style.cssText = `
-      flex: 1;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid var(--designlibre-accent, #4dabff);
-      border-radius: 2px;
-      padding: 2px 4px;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      outline: none;
-    `;
+    input.className = 'flex-1 bg-surface-secondary border border-accent rounded-sm py-0.5 px-1 text-xs text-content outline-none';
 
     const finishRename = (): void => {
       const newName = input.value || currentName;
@@ -1214,31 +884,11 @@ export class LeftSidebar {
     }
   }
 
-  private getIconButtonStyles(): string {
-    return `
-      width: 32px;
-      height: 32px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      border-radius: 6px;
-    `;
-  }
+  /** Icon button class for consistent styling */
+  private readonly iconButtonClass = 'w-8 h-8 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded-md hover:bg-surface-secondary hover:text-content transition-colors';
 
-  private addHoverEffect(button: HTMLButtonElement): void {
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-    });
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
-    });
-  }
+  /** Small icon button class */
+  private readonly smallIconButtonClass = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded hover:bg-surface-secondary hover:text-content transition-colors';
 
   private toggleCollapse(): void {
     this.collapsed = !this.collapsed;
@@ -1290,16 +940,7 @@ export class LeftSidebar {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = leaf.name;
-    input.style.cssText = `
-      flex: 1;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid var(--designlibre-accent, #4dabff);
-      border-radius: 2px;
-      padding: 2px 4px;
-      font-size: var(--designlibre-sidebar-font-size, 13px);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      outline: none;
-    `;
+    input.className = 'flex-1 bg-surface-secondary border border-accent rounded-sm py-0.5 px-1 text-[13px] text-content outline-none';
 
     const finishRename = (): void => {
       const newName = input.value || leaf.name;
