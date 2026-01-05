@@ -4,6 +4,20 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { avatarComponent } from './avatar';
+export { avatarGroupComponent } from './avatar-group';
+export { tagComponent } from './tag';
+export { statComponent } from './stat';
+export { tableComponent } from './table';
+export { dataListComponent } from './data-list';
+export { timelineComponent } from './timeline';
+export { accordionComponent } from './accordion';
+export { treeComponent } from './tree';
+export { calendarComponent } from './calendar';
+export { emptyStateComponent } from './empty-state';
+export { skeletonComponent } from './skeleton';
+
 /**
  * Card Component
  * Contained content surface.
@@ -234,3 +248,39 @@ export const badgeComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 60, height: 22 },
 });
+
+// Import all components for export
+import { avatarComponent } from './avatar';
+import { avatarGroupComponent } from './avatar-group';
+import { tagComponent } from './tag';
+import { statComponent } from './stat';
+import { tableComponent } from './table';
+import { dataListComponent } from './data-list';
+import { timelineComponent } from './timeline';
+import { accordionComponent } from './accordion';
+import { treeComponent } from './tree';
+import { calendarComponent } from './calendar';
+import { emptyStateComponent } from './empty-state';
+import { skeletonComponent } from './skeleton';
+
+/**
+ * Get all data display components
+ */
+export function getDataDisplayComponents(): LibraryComponent[] {
+  return [
+    cardComponent,
+    badgeComponent,
+    avatarComponent,
+    avatarGroupComponent,
+    tagComponent,
+    statComponent,
+    tableComponent,
+    dataListComponent,
+    timelineComponent,
+    accordionComponent,
+    treeComponent,
+    calendarComponent,
+    emptyStateComponent,
+    skeletonComponent,
+  ];
+}

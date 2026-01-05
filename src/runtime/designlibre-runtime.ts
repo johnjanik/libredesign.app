@@ -53,6 +53,10 @@ import {
   InteractionManager,
   createInteractionManager,
 } from '@prototype/interaction-manager';
+import {
+  VariableManager,
+  createVariableManager,
+} from '@prototype/variable-manager';
 
 /**
  * Runtime events
@@ -121,6 +125,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private styleManager: StyleManager;
   private libraryRegistry: LibraryComponentRegistry;
   private interactionManager: InteractionManager;
+  private variableManager: VariableManager;
 
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
@@ -202,6 +207,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Initialize interaction manager for prototyping
     this.interactionManager = createInteractionManager();
+
+    // Initialize variable manager for prototype variables
+    this.variableManager = createVariableManager();
 
     // Initialize persistence
     this.serializer = createDocumentSerializer();
@@ -721,6 +729,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   getInteractionManager(): InteractionManager {
     return this.interactionManager;
+  }
+
+  /**
+   * Get the variable manager.
+   */
+  getVariableManager(): VariableManager {
+    return this.variableManager;
   }
 
   /**

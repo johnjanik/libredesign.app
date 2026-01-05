@@ -21,7 +21,9 @@ import type {
   OverlayPosition,
   TransitionType,
 } from '@core/types/page-schema';
+import type { VariableDefinition, VariableType } from '@prototype/variable-manager';
 import { FramePicker } from './frame-picker';
+import { VariablePicker } from './variable-picker';
 
 /** Inspector panel options */
 export interface InspectorPanelOptions {
@@ -1345,6 +1347,463 @@ export class InspectorPanel {
       `;
       this.contentElement.appendChild(tip);
     }
+
+    // Variables section
+    this.renderVariablesSection();
+  }
+
+  /**
+   * Render the Variables section in the Prototype panel
+   */
+  private renderVariablesSection(): void {
+    if (!this.contentElement) return;
+
+    const variableManager = this.runtime.getVariableManager?.();
+    if (!variableManager) return;
+
+    const section = this.createSection('Variables');
+
+    const allVariables = variableManager.getAllDefinitions();
+
+    // Render existing variables
+    if (allVariables.length > 0) {
+      const variablesList = document.createElement('div');
+      variablesList.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      `;
+
+      for (const variable of allVariables) {
+        variablesList.appendChild(this.renderVariableRow(variable));
+      }
+
+      section.appendChild(variablesList);
+    }
+
+    // Add variable button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'designlibre-add-variable-btn';
+    addBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 8px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text-muted, #888888);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+    addBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add variable
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.borderColor = 'var(--designlibre-primary, #3b82f6)';
+      addBtn.style.color = 'var(--designlibre-primary, #3b82f6)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addBtn.style.color = 'var(--designlibre-text-muted, #888888)';
+    });
+    addBtn.addEventListener('click', () => {
+      this.showAddVariableUI(section, addBtn);
+    });
+
+    section.appendChild(addBtn);
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render a single variable row
+   */
+  private renderVariableRow(variable: VariableDefinition): HTMLElement {
+    const variableManager = this.runtime.getVariableManager?.();
+
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+    `;
+
+    // Type icon
+    const iconSpan = document.createElement('span');
+    iconSpan.innerHTML = this.getVariableTypeIcon(variable.type);
+    iconSpan.style.cssText = `opacity: 0.7; flex-shrink: 0;`;
+    row.appendChild(iconSpan);
+
+    // Name
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = variable.name;
+    nameSpan.style.cssText = `
+      flex: 1;
+      font-size: 12px;
+      color: var(--designlibre-text, #ffffff);
+    `;
+    row.appendChild(nameSpan);
+
+    // Value input/toggle based on type
+    const currentValue = variableManager?.getValue(variable.id) ?? variable.defaultValue;
+
+    if (variable.type === 'boolean') {
+      const toggle = document.createElement('button');
+      toggle.style.cssText = `
+        width: 32px;
+        height: 18px;
+        padding: 2px;
+        background: ${currentValue ? 'var(--designlibre-primary, #3b82f6)' : 'var(--designlibre-border, #3d3d3d)'};
+        border: none;
+        border-radius: 9px;
+        cursor: pointer;
+        position: relative;
+        transition: background 0.2s ease;
+      `;
+      const knob = document.createElement('span');
+      knob.style.cssText = `
+        display: block;
+        width: 14px;
+        height: 14px;
+        background: white;
+        border-radius: 50%;
+        transform: translateX(${currentValue ? '14px' : '0'});
+        transition: transform 0.2s ease;
+      `;
+      toggle.appendChild(knob);
+      toggle.addEventListener('click', () => {
+        variableManager?.toggleBoolean(variable.id);
+        this.updateContent();
+      });
+      row.appendChild(toggle);
+    } else if (variable.type === 'number') {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.value = String(currentValue);
+      input.style.cssText = `
+        width: 60px;
+        padding: 4px 6px;
+        background: var(--designlibre-input-bg, #1a1a1a);
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        color: var(--designlibre-text, #ffffff);
+        font-size: 11px;
+        text-align: right;
+      `;
+      input.addEventListener('change', () => {
+        variableManager?.setValue(variable.id, parseFloat(input.value) || 0);
+      });
+      row.appendChild(input);
+    } else if (variable.type === 'string') {
+      const valueSpan = document.createElement('span');
+      valueSpan.textContent = String(currentValue).slice(0, 15) + (String(currentValue).length > 15 ? '...' : '');
+      valueSpan.style.cssText = `
+        font-size: 11px;
+        color: var(--designlibre-text-muted, #888888);
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      `;
+      row.appendChild(valueSpan);
+    } else if (variable.type === 'color') {
+      const colorSwatch = document.createElement('div');
+      colorSwatch.style.cssText = `
+        width: 18px;
+        height: 18px;
+        background: ${String(currentValue)};
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+      `;
+      row.appendChild(colorSwatch);
+    }
+
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.cssText = `
+      padding: 2px;
+      background: transparent;
+      border: none;
+      color: var(--designlibre-text-muted, #666666);
+      cursor: pointer;
+      opacity: 0.6;
+    `;
+    deleteBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>`;
+    deleteBtn.addEventListener('click', () => {
+      variableManager?.removeVariable(variable.id);
+      this.updateContent();
+    });
+    row.appendChild(deleteBtn);
+
+    return row;
+  }
+
+  /**
+   * Get icon for variable type
+   */
+  private getVariableTypeIcon(type: VariableType): string {
+    const icons: Record<VariableType, string> = {
+      boolean: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect>
+        <circle cx="16" cy="12" r="3"></circle>
+      </svg>`,
+      number: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <text x="4" y="17" font-size="14" font-weight="bold">#</text>
+      </svg>`,
+      string: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <text x="5" y="17" font-size="14">T</text>
+      </svg>`,
+      color: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="4" fill="currentColor"></circle>
+      </svg>`,
+    };
+    return icons[type] ?? '';
+  }
+
+  /**
+   * Show UI to add a new variable
+   */
+  private showAddVariableUI(section: HTMLElement, addBtn: HTMLElement): void {
+    addBtn.style.display = 'none';
+
+    const form = document.createElement('div');
+    form.style.cssText = `
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-primary, #3b82f6);
+      border-radius: 8px;
+      margin-top: 8px;
+    `;
+
+    // Name input
+    const nameRow = document.createElement('div');
+    nameRow.style.cssText = `margin-bottom: 12px;`;
+    const nameLabel = document.createElement('label');
+    nameLabel.style.cssText = `
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--designlibre-text-muted, #888888);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+    nameLabel.textContent = 'Name';
+    nameRow.appendChild(nameLabel);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'e.g. isLoggedIn, counter';
+    nameInput.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--designlibre-input-bg, #1a1a1a);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 13px;
+    `;
+    nameRow.appendChild(nameInput);
+    form.appendChild(nameRow);
+
+    // Type selector
+    const typeRow = document.createElement('div');
+    typeRow.style.cssText = `margin-bottom: 12px;`;
+    let selectedType: VariableType = 'boolean';
+    typeRow.appendChild(this.createLabeledDropdown(
+      'Type',
+      'Boolean',
+      ['Boolean', 'Number', 'String', 'Color'],
+      (v) => {
+        selectedType = v.toLowerCase() as VariableType;
+        updateDefaultValueInput();
+      }
+    ));
+    form.appendChild(typeRow);
+
+    // Default value input (dynamic based on type)
+    const defaultValueRow = document.createElement('div');
+    defaultValueRow.style.cssText = `margin-bottom: 12px;`;
+    form.appendChild(defaultValueRow);
+
+    let defaultValue: boolean | number | string = false;
+
+    const updateDefaultValueInput = () => {
+      defaultValueRow.innerHTML = '';
+      const label = document.createElement('label');
+      label.style.cssText = `
+        display: block;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--designlibre-text-muted, #888888);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      `;
+      label.textContent = 'Default Value';
+      defaultValueRow.appendChild(label);
+
+      if (selectedType === 'boolean') {
+        const toggle = document.createElement('button');
+        defaultValue = false;
+        toggle.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: var(--designlibre-input-bg, #1a1a1a);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          color: var(--designlibre-text, #ffffff);
+          font-size: 13px;
+          cursor: pointer;
+        `;
+        toggle.innerHTML = `<span class="bool-value">false</span>`;
+        toggle.addEventListener('click', () => {
+          defaultValue = !defaultValue;
+          toggle.querySelector('.bool-value')!.textContent = defaultValue ? 'true' : 'false';
+        });
+        defaultValueRow.appendChild(toggle);
+
+      } else if (selectedType === 'number') {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = '0';
+        defaultValue = 0;
+        input.style.cssText = `
+          width: 100%;
+          padding: 8px 12px;
+          background: var(--designlibre-input-bg, #1a1a1a);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          color: var(--designlibre-text, #ffffff);
+          font-size: 13px;
+        `;
+        input.addEventListener('input', () => {
+          defaultValue = parseFloat(input.value) || 0;
+        });
+        defaultValueRow.appendChild(input);
+
+      } else if (selectedType === 'string') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Default text...';
+        defaultValue = '';
+        input.style.cssText = `
+          width: 100%;
+          padding: 8px 12px;
+          background: var(--designlibre-input-bg, #1a1a1a);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          color: var(--designlibre-text, #ffffff);
+          font-size: 13px;
+        `;
+        input.addEventListener('input', () => {
+          defaultValue = input.value;
+        });
+        defaultValueRow.appendChild(input);
+
+      } else if (selectedType === 'color') {
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = '#3b82f6';
+        defaultValue = '#3b82f6';
+        input.style.cssText = `
+          width: 100%;
+          height: 36px;
+          padding: 2px;
+          background: var(--designlibre-input-bg, #1a1a1a);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          cursor: pointer;
+        `;
+        input.addEventListener('input', () => {
+          defaultValue = input.value;
+        });
+        defaultValueRow.appendChild(input);
+      }
+    };
+
+    updateDefaultValueInput();
+
+    // Buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    `;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      flex: 1;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 13px;
+      cursor: pointer;
+    `;
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      addBtn.style.display = 'flex';
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Add';
+    saveBtn.style.cssText = `
+      flex: 1;
+      padding: 8px;
+      background: var(--designlibre-primary, #3b82f6);
+      border: none;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    saveBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const variableManager = this.runtime.getVariableManager?.();
+      if (variableManager) {
+        const definition: VariableDefinition = {
+          id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          name,
+          type: selectedType,
+          defaultValue,
+          scope: 'document',
+        };
+        variableManager.defineVariable(definition);
+      }
+
+      form.remove();
+      this.updateContent();
+    });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    form.appendChild(btnRow);
+
+    section.appendChild(form);
+    nameInput.focus();
   }
 
   /**
@@ -1558,6 +2017,41 @@ export class InspectorPanel {
         </svg>
         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
           URL: ${action.url}
+        </span>
+      `;
+    } else if (action.type === 'SET_VARIABLE') {
+      const variableManager = this.runtime.getVariableManager?.();
+      const varDef = variableManager?.getDefinition(action.variableId);
+      const opLabels: Record<string, string> = {
+        'SET': 'Set',
+        'TOGGLE': 'Toggle',
+        'INCREMENT': 'Increment',
+        'DECREMENT': 'Decrement',
+      };
+      const opLabel = opLabels[action.operation] ?? 'Set';
+
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="5" width="22" height="14" rx="7" ry="7"></rect>
+          <circle cx="16" cy="12" r="3"></circle>
+        </svg>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${opLabel}: ${varDef?.name ?? action.variableId}
+        </span>
+      `;
+    } else if (action.type === 'CONDITIONAL') {
+      const condCount = action.conditions?.length ?? 0;
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 3h5v5"></path>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <path d="M21 14v5h-5"></path>
+          <line x1="21" y1="21" x2="14" y2="14"></line>
+          <path d="M3 16v5h5"></path>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          Conditional (${condCount} ${condCount === 1 ? 'condition' : 'conditions'})
         </span>
       `;
     }
@@ -1819,7 +2313,7 @@ export class InspectorPanel {
     actionTypeRow.appendChild(this.createLabeledDropdown(
       'Action',
       'Navigate',
-      ['Navigate', 'Open Overlay', 'Close Overlay', 'Back', 'Open URL'],
+      ['Navigate', 'Open Overlay', 'Close Overlay', 'Back', 'Open URL', 'Set Variable', 'Conditional'],
       (v) => {
         const mapping: Record<string, string> = {
           'Navigate': 'NAVIGATE',
@@ -1827,6 +2321,8 @@ export class InspectorPanel {
           'Close Overlay': 'CLOSE_OVERLAY',
           'Back': 'BACK',
           'Open URL': 'OPEN_URL',
+          'Set Variable': 'SET_VARIABLE',
+          'Conditional': 'CONDITIONAL',
         };
         selectedActionType = mapping[v] ?? 'NAVIGATE';
         updateFormForActionType();
@@ -1849,11 +2345,22 @@ export class InspectorPanel {
     let openUrl = '';
     let openInNewTab = true;
     let framePicker: FramePicker | null = null;
+    let variablePicker: VariablePicker | null = null;
+    let selectedVariableId: string | null = null;
+    let variableOperation = 'SET';
+    let variableValue: string | number | boolean = '';
+    // Conditional action state
+    let conditionVariableId: string | null = null;
+    let conditionOperator: string = 'equals';
+    let conditionValue: string | number | boolean = '';
+    let conditionalThenDestId: NodeId | null = null;
 
     const updateFormForActionType = () => {
       actionOptionsContainer.innerHTML = '';
       framePicker?.dispose();
       framePicker = null;
+      variablePicker?.dispose();
+      variablePicker = null;
 
       if (selectedActionType === 'NAVIGATE' || selectedActionType === 'OPEN_OVERLAY') {
         // Frame picker for destination
@@ -2082,6 +2589,452 @@ export class InspectorPanel {
         newTabRow.appendChild(newTabCheckbox);
         newTabRow.appendChild(newTabLabel);
         actionOptionsContainer.appendChild(newTabRow);
+
+      } else if (selectedActionType === 'SET_VARIABLE') {
+        // Variable picker
+        const variableManager = this.runtime.getVariableManager?.();
+        if (!variableManager) {
+          const noVarsMsg = document.createElement('div');
+          noVarsMsg.style.cssText = `
+            padding: 12px;
+            text-align: center;
+            color: var(--designlibre-text-muted, #888888);
+            font-size: 12px;
+          `;
+          noVarsMsg.textContent = 'Variable manager not available';
+          actionOptionsContainer.appendChild(noVarsMsg);
+          return;
+        }
+
+        const allVars = variableManager.getAllDefinitions();
+        if (allVars.length === 0) {
+          const noVarsMsg = document.createElement('div');
+          noVarsMsg.style.cssText = `
+            padding: 12px;
+            text-align: center;
+            color: var(--designlibre-text-muted, #888888);
+            font-size: 12px;
+          `;
+          noVarsMsg.textContent = 'No variables defined. Add variables in the Variables section above.';
+          actionOptionsContainer.appendChild(noVarsMsg);
+          return;
+        }
+
+        // Variable picker label
+        const varLabel = document.createElement('label');
+        varLabel.style.cssText = `
+          display: block;
+          margin-bottom: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--designlibre-text-muted, #888888);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        `;
+        varLabel.textContent = 'Variable';
+        actionOptionsContainer.appendChild(varLabel);
+
+        variablePicker = new VariablePicker({
+          variableManager,
+          selectedVariableId,
+          onSelect: (varId) => {
+            selectedVariableId = varId;
+            updateValueInput();
+          },
+          placeholder: 'Select variable...',
+        });
+        actionOptionsContainer.appendChild(variablePicker.createElement());
+
+        // Operation selector
+        const opRow = document.createElement('div');
+        opRow.style.cssText = `margin-top: 12px;`;
+        opRow.appendChild(this.createLabeledDropdown(
+          'Operation',
+          'Set to',
+          ['Set to', 'Toggle', 'Increment', 'Decrement'],
+          (v) => {
+            const mapping: Record<string, string> = {
+              'Set to': 'SET',
+              'Toggle': 'TOGGLE',
+              'Increment': 'INCREMENT',
+              'Decrement': 'DECREMENT',
+            };
+            variableOperation = mapping[v] ?? 'SET';
+            updateValueInput();
+          }
+        ));
+        actionOptionsContainer.appendChild(opRow);
+
+        // Value input container (dynamic based on operation and variable type)
+        const valueContainer = document.createElement('div');
+        valueContainer.className = 'variable-value-container';
+        valueContainer.style.cssText = `margin-top: 12px;`;
+        actionOptionsContainer.appendChild(valueContainer);
+
+        const updateValueInput = () => {
+          valueContainer.innerHTML = '';
+
+          // No value needed for toggle
+          if (variableOperation === 'TOGGLE') {
+            const info = document.createElement('div');
+            info.style.cssText = `
+              padding: 8px;
+              background: var(--designlibre-bg-tertiary, #1a1a1a);
+              border-radius: 4px;
+              font-size: 11px;
+              color: var(--designlibre-text-muted, #888888);
+            `;
+            info.textContent = 'Toggles the boolean value';
+            valueContainer.appendChild(info);
+            return;
+          }
+
+          const selectedVar = selectedVariableId
+            ? variableManager.getDefinition(selectedVariableId)
+            : null;
+
+          // Label
+          const valueLabel = document.createElement('label');
+          valueLabel.style.cssText = `
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--designlibre-text-muted, #888888);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          `;
+          valueLabel.textContent = variableOperation === 'INCREMENT' || variableOperation === 'DECREMENT'
+            ? 'Amount'
+            : 'Value';
+          valueContainer.appendChild(valueLabel);
+
+          if (!selectedVar) {
+            const placeholder = document.createElement('div');
+            placeholder.style.cssText = `
+              padding: 8px;
+              background: var(--designlibre-bg-tertiary, #1a1a1a);
+              border-radius: 4px;
+              font-size: 11px;
+              color: var(--designlibre-text-muted, #888888);
+            `;
+            placeholder.textContent = 'Select a variable first';
+            valueContainer.appendChild(placeholder);
+            return;
+          }
+
+          // Create input based on variable type and operation
+          if (selectedVar.type === 'boolean' && variableOperation === 'SET') {
+            // Boolean dropdown
+            const boolSelect = document.createElement('select');
+            boolSelect.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            const trueOpt = document.createElement('option');
+            trueOpt.value = 'true';
+            trueOpt.textContent = 'True';
+            const falseOpt = document.createElement('option');
+            falseOpt.value = 'false';
+            falseOpt.textContent = 'False';
+            boolSelect.appendChild(trueOpt);
+            boolSelect.appendChild(falseOpt);
+            boolSelect.value = String(variableValue === true || variableValue === 'true');
+            boolSelect.addEventListener('change', () => {
+              variableValue = boolSelect.value === 'true';
+            });
+            valueContainer.appendChild(boolSelect);
+          } else if (selectedVar.type === 'number' || variableOperation === 'INCREMENT' || variableOperation === 'DECREMENT') {
+            // Number input
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.value = typeof variableValue === 'number' ? String(variableValue) : '1';
+            numInput.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            numInput.addEventListener('input', () => {
+              variableValue = parseFloat(numInput.value) || 0;
+            });
+            variableValue = parseFloat(numInput.value) || 1;
+            valueContainer.appendChild(numInput);
+          } else if (selectedVar.type === 'color') {
+            // Color input
+            const colorRow = document.createElement('div');
+            colorRow.style.cssText = `display: flex; gap: 8px; align-items: center;`;
+
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.value = typeof variableValue === 'string' && variableValue.startsWith('#')
+              ? variableValue
+              : '#3b82f6';
+            colorInput.style.cssText = `
+              width: 40px;
+              height: 32px;
+              padding: 0;
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 4px;
+              cursor: pointer;
+            `;
+
+            const hexInput = document.createElement('input');
+            hexInput.type = 'text';
+            hexInput.value = colorInput.value;
+            hexInput.style.cssText = `
+              flex: 1;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+
+            colorInput.addEventListener('input', () => {
+              hexInput.value = colorInput.value;
+              variableValue = colorInput.value;
+            });
+            hexInput.addEventListener('input', () => {
+              if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+                colorInput.value = hexInput.value;
+                variableValue = hexInput.value;
+              }
+            });
+            variableValue = colorInput.value;
+
+            colorRow.appendChild(colorInput);
+            colorRow.appendChild(hexInput);
+            valueContainer.appendChild(colorRow);
+          } else {
+            // String input
+            const strInput = document.createElement('input');
+            strInput.type = 'text';
+            strInput.value = typeof variableValue === 'string' ? variableValue : '';
+            strInput.placeholder = 'Enter value...';
+            strInput.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            strInput.addEventListener('input', () => {
+              variableValue = strInput.value;
+            });
+            valueContainer.appendChild(strInput);
+          }
+        };
+
+        updateValueInput();
+
+      } else if (selectedActionType === 'CONDITIONAL') {
+        // Condition builder
+        const variableManager = this.runtime.getVariableManager?.();
+        if (!variableManager) {
+          const noVarsMsg = document.createElement('div');
+          noVarsMsg.style.cssText = `
+            padding: 12px;
+            text-align: center;
+            color: var(--designlibre-text-muted, #888888);
+            font-size: 12px;
+          `;
+          noVarsMsg.textContent = 'Variable manager not available';
+          actionOptionsContainer.appendChild(noVarsMsg);
+          return;
+        }
+
+        const allVars = variableManager.getAllDefinitions();
+        if (allVars.length === 0) {
+          const noVarsMsg = document.createElement('div');
+          noVarsMsg.style.cssText = `
+            padding: 12px;
+            text-align: center;
+            color: var(--designlibre-text-muted, #888888);
+            font-size: 12px;
+          `;
+          noVarsMsg.textContent = 'No variables defined. Add variables to use conditional actions.';
+          actionOptionsContainer.appendChild(noVarsMsg);
+          return;
+        }
+
+        // Condition section header
+        const condHeader = document.createElement('div');
+        condHeader.style.cssText = `
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--designlibre-text-muted, #888888);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 8px;
+        `;
+        condHeader.textContent = 'IF';
+        actionOptionsContainer.appendChild(condHeader);
+
+        // Condition variable picker
+        const condVarPicker = new VariablePicker({
+          variableManager,
+          selectedVariableId: conditionVariableId,
+          onSelect: (varId) => {
+            conditionVariableId = varId;
+            updateConditionValueInput();
+          },
+          placeholder: 'Select variable...',
+        });
+        actionOptionsContainer.appendChild(condVarPicker.createElement());
+
+        // Operator dropdown
+        const opRow = document.createElement('div');
+        opRow.style.cssText = `margin-top: 8px;`;
+        const operatorOptions = ['Equals', 'Not equals', 'Greater than', 'Less than', 'Is true', 'Is false'];
+        opRow.appendChild(this.createLabeledDropdown(
+          'Condition',
+          'Equals',
+          operatorOptions,
+          (v) => {
+            const mapping: Record<string, string> = {
+              'Equals': 'equals',
+              'Not equals': 'not_equals',
+              'Greater than': 'greater_than',
+              'Less than': 'less_than',
+              'Is true': 'is_true',
+              'Is false': 'is_false',
+            };
+            conditionOperator = mapping[v] ?? 'equals';
+            updateConditionValueInput();
+          }
+        ));
+        actionOptionsContainer.appendChild(opRow);
+
+        // Condition value container
+        const condValueContainer = document.createElement('div');
+        condValueContainer.className = 'condition-value-container';
+        condValueContainer.style.cssText = `margin-top: 8px;`;
+        actionOptionsContainer.appendChild(condValueContainer);
+
+        const updateConditionValueInput = () => {
+          condValueContainer.innerHTML = '';
+
+          // No value needed for is_true / is_false
+          if (conditionOperator === 'is_true' || conditionOperator === 'is_false') {
+            return;
+          }
+
+          const selectedVar = conditionVariableId
+            ? variableManager.getDefinition(conditionVariableId)
+            : null;
+
+          if (!selectedVar) {
+            return;
+          }
+
+          const valueLabel = document.createElement('label');
+          valueLabel.style.cssText = `
+            display: block;
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--designlibre-text-muted, #888888);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          `;
+          valueLabel.textContent = 'Value';
+          condValueContainer.appendChild(valueLabel);
+
+          if (selectedVar.type === 'boolean') {
+            const boolSelect = document.createElement('select');
+            boolSelect.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            boolSelect.innerHTML = `<option value="true">True</option><option value="false">False</option>`;
+            boolSelect.value = String(conditionValue);
+            boolSelect.addEventListener('change', () => {
+              conditionValue = boolSelect.value === 'true';
+            });
+            condValueContainer.appendChild(boolSelect);
+          } else if (selectedVar.type === 'number') {
+            const numInput = document.createElement('input');
+            numInput.type = 'number';
+            numInput.value = typeof conditionValue === 'number' ? String(conditionValue) : '0';
+            numInput.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            numInput.addEventListener('input', () => {
+              conditionValue = parseFloat(numInput.value) || 0;
+            });
+            condValueContainer.appendChild(numInput);
+          } else {
+            const strInput = document.createElement('input');
+            strInput.type = 'text';
+            strInput.value = typeof conditionValue === 'string' ? conditionValue : '';
+            strInput.placeholder = 'Enter value...';
+            strInput.style.cssText = `
+              width: 100%;
+              padding: 8px 12px;
+              background: var(--designlibre-input-bg, #1a1a1a);
+              border: 1px solid var(--designlibre-border, #3d3d3d);
+              border-radius: 6px;
+              color: var(--designlibre-text, #ffffff);
+              font-size: 13px;
+            `;
+            strInput.addEventListener('input', () => {
+              conditionValue = strInput.value;
+            });
+            condValueContainer.appendChild(strInput);
+          }
+        };
+
+        updateConditionValueInput();
+
+        // THEN section header
+        const thenHeader = document.createElement('div');
+        thenHeader.style.cssText = `
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--designlibre-text-muted, #888888);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-top: 16px;
+          margin-bottom: 8px;
+          padding-top: 12px;
+          border-top: 1px solid var(--designlibre-border, #3d3d3d);
+        `;
+        thenHeader.textContent = 'THEN Navigate to';
+        actionOptionsContainer.appendChild(thenHeader);
+
+        // Then destination frame picker
+        const thenFramePicker = new FramePicker({
+          sceneGraph: this.runtime.getSceneGraph(),
+          selectedFrameId: conditionalThenDestId,
+          excludeIds: [nodeId],
+          onSelect: (frameId) => {
+            conditionalThenDestId = frameId;
+          },
+        });
+        actionOptionsContainer.appendChild(thenFramePicker.createElement());
       }
     };
 
@@ -2112,6 +3065,7 @@ export class InspectorPanel {
       form.remove();
       addBtn.style.display = 'flex';
       framePicker?.dispose();
+      variablePicker?.dispose();
     });
 
     const saveBtn = document.createElement('button');
@@ -2133,6 +3087,12 @@ export class InspectorPanel {
         return;
       }
       if (selectedActionType === 'OPEN_URL' && !openUrl) {
+        return;
+      }
+      if (selectedActionType === 'SET_VARIABLE' && !selectedVariableId) {
+        return;
+      }
+      if (selectedActionType === 'CONDITIONAL' && (!conditionVariableId || !conditionalThenDestId)) {
         return;
       }
 
@@ -2192,6 +3152,47 @@ export class InspectorPanel {
               easing: 'EASE_OUT',
             },
           };
+        } else if (selectedActionType === 'SET_VARIABLE') {
+          action = {
+            type: 'SET_VARIABLE',
+            variableId: selectedVariableId as string,
+            operation: variableOperation as 'SET' | 'TOGGLE' | 'INCREMENT' | 'DECREMENT',
+            value: variableValue,
+          };
+        } else if (selectedActionType === 'CONDITIONAL') {
+          // Build the expression string for the condition
+          let expression: string;
+          if (conditionOperator === 'is_true') {
+            expression = `\${${conditionVariableId}} == true`;
+          } else if (conditionOperator === 'is_false') {
+            expression = `\${${conditionVariableId}} == false`;
+          } else {
+            const opSymbols: Record<string, string> = {
+              'equals': '==',
+              'not_equals': '!=',
+              'greater_than': '>',
+              'less_than': '<',
+            };
+            const opSymbol = opSymbols[conditionOperator] ?? '==';
+            const valueStr = typeof conditionValue === 'string' ? `"${conditionValue}"` : String(conditionValue);
+            expression = `\${${conditionVariableId}} ${opSymbol} ${valueStr}`;
+          }
+
+          action = {
+            type: 'CONDITIONAL',
+            conditions: [{
+              expression,
+              actions: [{
+                type: 'NAVIGATE',
+                destinationId: conditionalThenDestId as string,
+                transition: {
+                  type: 'DISSOLVE' as TransitionType,
+                  duration: 300,
+                  easing: 'EASE_OUT',
+                },
+              }],
+            }],
+          };
         } else {
           action = {
             type: 'OPEN_URL',
@@ -2212,6 +3213,7 @@ export class InspectorPanel {
 
       form.remove();
       framePicker?.dispose();
+      variablePicker?.dispose();
       this.updateContent();
     });
 

@@ -4,6 +4,16 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { richTextComponent } from './rich-text';
+export { linkComponent } from './link';
+export { labelComponent } from './label';
+export { listComponent } from './list';
+export { blockquoteComponent } from './blockquote';
+export { codeComponent } from './code';
+export { kbdComponent } from './kbd';
+export { highlightComponent } from './highlight';
+
 /**
  * Heading Component
  * Page and section headings.
@@ -164,3 +174,31 @@ export const textComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 400, height: 24 },
 });
+
+// Import all components for export
+import { richTextComponent } from './rich-text';
+import { linkComponent } from './link';
+import { labelComponent } from './label';
+import { listComponent } from './list';
+import { blockquoteComponent } from './blockquote';
+import { codeComponent } from './code';
+import { kbdComponent } from './kbd';
+import { highlightComponent } from './highlight';
+
+/**
+ * Get all typography components
+ */
+export function getTypographyComponents(): LibraryComponent[] {
+  return [
+    headingComponent,
+    textComponent,
+    richTextComponent,
+    linkComponent,
+    labelComponent,
+    listComponent,
+    blockquoteComponent,
+    codeComponent,
+    kbdComponent,
+    highlightComponent,
+  ];
+}

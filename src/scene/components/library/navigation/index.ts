@@ -4,6 +4,14 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { sidebarComponent } from './sidebar';
+export { navLinkComponent } from './nav-link';
+export { navGroupComponent } from './nav-group';
+export { breadcrumbsComponent } from './breadcrumbs';
+export { paginationComponent } from './pagination';
+export { stepperComponent } from './stepper';
+
 /**
  * Navbar Component
  * Horizontal navigation bar for page top.
@@ -69,86 +77,7 @@ export const navbarComponent: LibraryComponent = defineLibraryComponent({
       counterAxisSizing: 'FIXED',
       height: 64,
     },
-    children: [
-      {
-        type: 'FRAME',
-        name: 'Logo',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutGap: 8,
-          counterAxisAlign: 'CENTER',
-        },
-        slotId: 'logo',
-        children: [
-          {
-            type: 'TEXT',
-            name: 'LogoText',
-            properties: {
-              characters: 'Logo',
-              fills: [{ type: 'SOLID', color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 700,
-              fontSize: 20,
-            },
-          },
-        ],
-      },
-      {
-        type: 'FRAME',
-        name: 'NavLinks',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutGap: 24,
-          counterAxisAlign: 'CENTER',
-        },
-        slotId: 'links',
-        children: [
-          {
-            type: 'TEXT',
-            name: 'Link1',
-            properties: {
-              characters: 'Home',
-              fills: [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-          {
-            type: 'TEXT',
-            name: 'Link2',
-            properties: {
-              characters: 'About',
-              fills: [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-          {
-            type: 'TEXT',
-            name: 'Link3',
-            properties: {
-              characters: 'Contact',
-              fills: [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-        ],
-      },
-      {
-        type: 'FRAME',
-        name: 'Actions',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutGap: 12,
-          counterAxisAlign: 'CENTER',
-        },
-        slotId: 'actions',
-      },
-    ],
+    children: [],
     unoClasses: ['flex', 'items-center', 'justify-between', 'px-4', 'h-16', 'bg-white', 'border-b'],
   },
 
@@ -218,83 +147,7 @@ export const tabsComponent: LibraryComponent = defineLibraryComponent({
       primaryAxisAlign: 'MIN',
       counterAxisAlign: 'STRETCH',
     },
-    children: [
-      {
-        type: 'FRAME',
-        name: 'Tab1',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutPadding: { top: 12, right: 16, bottom: 12, left: 16 },
-          primaryAxisAlign: 'CENTER',
-          counterAxisAlign: 'CENTER',
-          strokes: [{ type: 'SOLID', color: { r: 0.23, g: 0.51, b: 0.96, a: 1 }, visible: true, opacity: 1 }],
-          strokeWeight: 2,
-          strokeAlign: 'INSIDE',
-        },
-        children: [
-          {
-            type: 'TEXT',
-            name: 'TabLabel',
-            properties: {
-              characters: 'Tab 1',
-              fills: [{ type: 'SOLID', color: { r: 0.23, g: 0.51, b: 0.96, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-        ],
-        unoClasses: ['px-4', 'py-3', 'border-b-2', 'border-blue-500', 'text-blue-500'],
-      },
-      {
-        type: 'FRAME',
-        name: 'Tab2',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutPadding: { top: 12, right: 16, bottom: 12, left: 16 },
-          primaryAxisAlign: 'CENTER',
-          counterAxisAlign: 'CENTER',
-        },
-        children: [
-          {
-            type: 'TEXT',
-            name: 'TabLabel',
-            properties: {
-              characters: 'Tab 2',
-              fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-        ],
-        unoClasses: ['px-4', 'py-3', 'border-b-2', 'border-transparent', 'text-gray-500', 'hover:text-gray-700'],
-      },
-      {
-        type: 'FRAME',
-        name: 'Tab3',
-        properties: {
-          autoLayoutMode: 'HORIZONTAL',
-          autoLayoutPadding: { top: 12, right: 16, bottom: 12, left: 16 },
-          primaryAxisAlign: 'CENTER',
-          counterAxisAlign: 'CENTER',
-        },
-        children: [
-          {
-            type: 'TEXT',
-            name: 'TabLabel',
-            properties: {
-              characters: 'Tab 3',
-              fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 }],
-              fontFamily: 'Inter',
-              fontWeight: 500,
-              fontSize: 14,
-            },
-          },
-        ],
-        unoClasses: ['px-4', 'py-3', 'border-b-2', 'border-transparent', 'text-gray-500', 'hover:text-gray-700'],
-      },
-    ],
+    children: [],
     slotId: 'tabs',
     unoClasses: ['flex', 'border-b'],
   },
@@ -303,3 +156,27 @@ export const tabsComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 400, height: 48 },
 });
+
+// Import all components for export
+import { sidebarComponent } from './sidebar';
+import { navLinkComponent } from './nav-link';
+import { navGroupComponent } from './nav-group';
+import { breadcrumbsComponent } from './breadcrumbs';
+import { paginationComponent } from './pagination';
+import { stepperComponent } from './stepper';
+
+/**
+ * Get all navigation components
+ */
+export function getNavigationComponents(): LibraryComponent[] {
+  return [
+    navbarComponent,
+    tabsComponent,
+    sidebarComponent,
+    navLinkComponent,
+    navGroupComponent,
+    breadcrumbsComponent,
+    paginationComponent,
+    stepperComponent,
+  ];
+}

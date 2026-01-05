@@ -799,7 +799,8 @@ export interface OpenUrlAction {
 export interface SetVariableAction {
   readonly type: 'SET_VARIABLE';
   readonly variableId: string;
-  readonly value: unknown;
+  readonly operation: 'SET' | 'TOGGLE' | 'INCREMENT' | 'DECREMENT';
+  readonly value?: string | number | boolean;
 }
 
 export interface ConditionalAction {

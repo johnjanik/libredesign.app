@@ -4,6 +4,18 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { frameComponent } from './frame';
+export { autoLayoutComponent } from './auto-layout';
+export { sectionComponent } from './section';
+export { dividerComponent } from './divider';
+export { spacerComponent } from './spacer';
+export { aspectRatioComponent } from './aspect-ratio';
+export { scrollAreaComponent } from './scroll-area';
+export { responsiveHideShowComponent } from './responsive-hide-show';
+export { centerComponent } from './center';
+export { absolutePositionComponent } from './absolute-position';
+
 /**
  * Container Component
  * Responsive max-width container for page content.
@@ -159,3 +171,34 @@ export const gridComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 600, height: 200 },
 });
+
+/**
+ * Get all layout components
+ */
+import { frameComponent } from './frame';
+import { autoLayoutComponent } from './auto-layout';
+import { sectionComponent } from './section';
+import { dividerComponent } from './divider';
+import { spacerComponent } from './spacer';
+import { aspectRatioComponent } from './aspect-ratio';
+import { scrollAreaComponent } from './scroll-area';
+import { responsiveHideShowComponent } from './responsive-hide-show';
+import { centerComponent } from './center';
+import { absolutePositionComponent } from './absolute-position';
+
+export function getLayoutComponents(): LibraryComponent[] {
+  return [
+    containerComponent,
+    gridComponent,
+    frameComponent,
+    autoLayoutComponent,
+    sectionComponent,
+    dividerComponent,
+    spacerComponent,
+    aspectRatioComponent,
+    scrollAreaComponent,
+    responsiveHideShowComponent,
+    centerComponent,
+    absolutePositionComponent,
+  ];
+}

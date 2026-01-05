@@ -4,6 +4,15 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { toastComponent } from './toast';
+export { progressBarComponent } from './progress-bar';
+export { progressCircleComponent } from './progress-circle';
+export { bannerComponent } from './banner';
+export { calloutComponent } from './callout';
+export { meterComponent } from './meter';
+export { ratingComponent } from './rating';
+
 /**
  * Alert Component
  * Inline status message.
@@ -231,3 +240,29 @@ export const spinnerComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 24, height: 24 },
 });
+
+// Import all components for export
+import { toastComponent } from './toast';
+import { progressBarComponent } from './progress-bar';
+import { progressCircleComponent } from './progress-circle';
+import { bannerComponent } from './banner';
+import { calloutComponent } from './callout';
+import { meterComponent } from './meter';
+import { ratingComponent } from './rating';
+
+/**
+ * Get all feedback components
+ */
+export function getFeedbackComponents(): LibraryComponent[] {
+  return [
+    alertComponent,
+    spinnerComponent,
+    toastComponent,
+    progressBarComponent,
+    progressCircleComponent,
+    bannerComponent,
+    calloutComponent,
+    meterComponent,
+    ratingComponent,
+  ];
+}

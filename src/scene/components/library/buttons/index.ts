@@ -4,6 +4,12 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { buttonGroupComponent } from './button-group';
+export { splitButtonComponent } from './split-button';
+export { fabComponent } from './fab';
+export { toggleButtonComponent } from './toggle-button';
+
 /**
  * Button Component
  * Primary interactive button with multiple variants and sizes.
@@ -194,3 +200,23 @@ export const iconButtonComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 40, height: 40 },
 });
+
+// Import all components for export
+import { buttonGroupComponent } from './button-group';
+import { splitButtonComponent } from './split-button';
+import { fabComponent } from './fab';
+import { toggleButtonComponent } from './toggle-button';
+
+/**
+ * Get all button components
+ */
+export function getButtonsComponents(): LibraryComponent[] {
+  return [
+    buttonComponent,
+    iconButtonComponent,
+    buttonGroupComponent,
+    splitButtonComponent,
+    fabComponent,
+    toggleButtonComponent,
+  ];
+}

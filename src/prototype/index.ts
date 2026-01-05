@@ -57,3 +57,22 @@ export type {
   InteractionManagerEvents,
   EditableInteraction,
 } from './interaction-manager';
+
+// Variable Manager
+export {
+  VariableManager,
+  createVariableManager,
+  getOperatorsForType,
+  getOperatorDisplayName,
+} from './variable-manager';
+export type {
+  VariableType,
+  VariableScope,
+  VariableDefinition,
+  VariableValue,
+  VariableInstance,
+  VariableManagerEvents,
+  ComparisonOperator,
+  Condition,
+  ConditionGroup,
+} from './variable-manager';

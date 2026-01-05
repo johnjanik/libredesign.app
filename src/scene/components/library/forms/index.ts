@@ -4,6 +4,21 @@
 
 import { defineLibraryComponent, type LibraryComponent } from '../../library-component-registry';
 
+// Re-export individual components
+export { textareaComponent } from './textarea';
+export { radioComponent } from './radio';
+export { radioGroupComponent } from './radio-group';
+export { switchComponent } from './switch';
+export { sliderComponent } from './slider';
+export { colorPickerComponent } from './color-picker';
+export { datePickerComponent } from './date-picker';
+export { fileUploadComponent } from './file-upload';
+export { otpInputComponent } from './otp-input';
+export { formFieldComponent } from './form-field';
+export { formComponent } from './form';
+export { searchInputComponent } from './search-input';
+export { numberInputComponent } from './number-input';
+
 /**
  * Input Component
  * Single-line text input.
@@ -297,3 +312,42 @@ export const selectComponent: LibraryComponent = defineLibraryComponent({
 
   defaultSize: { width: 280, height: 42 },
 });
+
+// Import all components for export
+import { textareaComponent } from './textarea';
+import { radioComponent } from './radio';
+import { radioGroupComponent } from './radio-group';
+import { switchComponent } from './switch';
+import { sliderComponent } from './slider';
+import { colorPickerComponent } from './color-picker';
+import { datePickerComponent } from './date-picker';
+import { fileUploadComponent } from './file-upload';
+import { otpInputComponent } from './otp-input';
+import { formFieldComponent } from './form-field';
+import { formComponent } from './form';
+import { searchInputComponent } from './search-input';
+import { numberInputComponent } from './number-input';
+
+/**
+ * Get all form components
+ */
+export function getFormsComponents(): LibraryComponent[] {
+  return [
+    inputComponent,
+    checkboxComponent,
+    selectComponent,
+    textareaComponent,
+    radioComponent,
+    radioGroupComponent,
+    switchComponent,
+    sliderComponent,
+    colorPickerComponent,
+    datePickerComponent,
+    fileUploadComponent,
+    otpInputComponent,
+    formFieldComponent,
+    formComponent,
+    searchInputComponent,
+    numberInputComponent,
+  ];
+}
