@@ -53,9 +53,8 @@ export class TokensPanel {
   private setup(): void {
     // Create panel element
     this.element = document.createElement('div');
-    this.element.className = `designlibre-tokens-panel absolute top-0 ${this.options.position}-0 h-full bg-surface flex flex-col text-xs z-100 shadow-lg`;
-    this.element.style.width = `${this.options.width}px`;
-    this.element.style[this.options.position === 'right' ? 'borderLeft' : 'borderRight'] = '1px solid var(--designlibre-border, #3d3d3d)';
+    this.element.className = 'designlibre-tokens-panel';
+    this.element.style.cssText = this.getPanelStyles();
 
     // Header
     const header = this.createHeader();
@@ -67,7 +66,12 @@ export class TokensPanel {
 
     // Content
     this.contentElement = document.createElement('div');
-    this.contentElement.className = 'designlibre-tokens-content flex-1 overflow-y-auto p-3';
+    this.contentElement.className = 'designlibre-tokens-content';
+    this.contentElement.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    `;
     this.element.appendChild(this.contentElement);
 
     // Export section
@@ -89,16 +93,42 @@ export class TokensPanel {
     this.updateContent();
   }
 
+  private getPanelStyles(): string {
+    return `
+      position: absolute;
+      top: 0;
+      ${this.options.position}: 0;
+      width: ${this.options.width}px;
+      height: 100%;
+      background: var(--designlibre-bg-primary, #ffffff);
+      border-${this.options.position === 'right' ? 'left' : 'right'}: 1px solid var(--designlibre-border, #e0e0e0);
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      z-index: 100;
+      box-shadow: var(--designlibre-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
+    `;
+  }
+
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'p-3 border-b border-border font-semibold';
+    header.style.cssText = `
+      padding: 12px;
+      border-bottom: 1px solid var(--designlibre-border, #e0e0e0);
+      font-weight: 600;
+    `;
     header.textContent = 'Design Tokens';
     return header;
   }
 
   private createTabs(): HTMLElement {
     const tabsContainer = document.createElement('div');
-    tabsContainer.className = 'flex border-b border-border overflow-x-auto';
+    tabsContainer.style.cssText = `
+      display: flex;
+      border-bottom: 1px solid var(--designlibre-border, #e0e0e0);
+      overflow-x: auto;
+    `;
 
     const tabs: Array<{ id: TokenType | 'all'; label: string }> = [
       { id: 'all', label: 'All' },
@@ -109,8 +139,18 @@ export class TokensPanel {
 
     for (const tab of tabs) {
       const tabBtn = document.createElement('button');
-      const isActive = tab.id === this.activeTab;
-      tabBtn.className = `flex-1 px-1 py-2 bg-transparent border-none border-b-2 cursor-pointer text-[11px] whitespace-nowrap ${isActive ? 'border-accent font-semibold text-accent' : 'border-transparent font-normal text-content-secondary'}`;
+      tabBtn.style.cssText = `
+        flex: 1;
+        padding: 8px 4px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid ${tab.id === this.activeTab ? 'var(--designlibre-accent, #0066ff)' : 'transparent'};
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: ${tab.id === this.activeTab ? '600' : '400'};
+        color: ${tab.id === this.activeTab ? 'var(--designlibre-accent, #0066ff)' : 'var(--designlibre-text-secondary, #666)'};
+        white-space: nowrap;
+      `;
       tabBtn.textContent = tab.label;
       tabBtn.addEventListener('click', () => {
         this.activeTab = tab.id;
@@ -129,27 +169,37 @@ export class TokensPanel {
 
     tabs.forEach((btn, index) => {
       const isActive = tabIds[index] === this.activeTab;
-      if (isActive) {
-        btn.classList.remove('border-transparent', 'font-normal', 'text-content-secondary');
-        btn.classList.add('border-accent', 'font-semibold', 'text-accent');
-      } else {
-        btn.classList.remove('border-accent', 'font-semibold', 'text-accent');
-        btn.classList.add('border-transparent', 'font-normal', 'text-content-secondary');
-      }
+      btn.style.borderBottom = isActive ? '2px solid var(--designlibre-accent, #0066ff)' : '2px solid transparent';
+      btn.style.fontWeight = isActive ? '600' : '400';
+      btn.style.color = isActive ? 'var(--designlibre-accent, #0066ff)' : 'var(--designlibre-text-secondary, #666)';
     });
   }
 
   private createExportSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'p-3 border-t border-border';
+    section.style.cssText = `
+      padding: 12px;
+      border-top: 1px solid var(--designlibre-border, #e0e0e0);
+    `;
 
     const label = document.createElement('div');
-    label.className = 'text-[11px] text-content-secondary mb-2';
+    label.style.cssText = `
+      font-size: 11px;
+      color: var(--designlibre-text-secondary, #666);
+      margin-bottom: 8px;
+    `;
     label.textContent = 'Export Format';
     section.appendChild(label);
 
     const select = document.createElement('select');
-    select.className = 'w-full p-2 border border-border rounded text-xs mb-2';
+    select.style.cssText = `
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--designlibre-border, #e0e0e0);
+      border-radius: var(--designlibre-radius-sm, 4px);
+      font-size: 12px;
+      margin-bottom: 8px;
+    `;
 
     const formats: Array<{ value: TokenExportFormat; label: string }> = [
       { value: 'css-variables', label: 'CSS Variables' },
@@ -170,7 +220,17 @@ export class TokensPanel {
     section.appendChild(select);
 
     const exportBtn = document.createElement('button');
-    exportBtn.className = 'w-full py-2.5 bg-accent text-white border-none rounded cursor-pointer text-xs font-medium hover:bg-accent-hover transition-colors';
+    exportBtn.style.cssText = `
+      width: 100%;
+      padding: 10px;
+      background: var(--designlibre-accent, #0066ff);
+      color: white;
+      border: none;
+      border-radius: var(--designlibre-radius-sm, 4px);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    `;
     exportBtn.textContent = 'Copy to Clipboard';
     exportBtn.addEventListener('click', async () => {
       const format = select.value as TokenExportFormat;
@@ -215,11 +275,15 @@ export class TokensPanel {
     if (!this.contentElement) return;
 
     const empty = document.createElement('div');
-    empty.className = 'text-content-secondary text-center py-10 px-5';
+    empty.style.cssText = `
+      color: var(--designlibre-text-secondary, #666);
+      text-align: center;
+      padding: 40px 20px;
+    `;
     empty.innerHTML = `
-      <div class="text-2xl mb-2">🎨</div>
+      <div style="font-size: 24px; margin-bottom: 8px;">🎨</div>
       <div>No tokens defined yet.</div>
-      <div class="text-[11px] mt-2">
+      <div style="font-size: 11px; margin-top: 8px;">
         Select elements to create tokens from their styles.
       </div>
     `;
@@ -230,10 +294,17 @@ export class TokensPanel {
     if (!this.contentElement) return;
 
     const section = document.createElement('div');
-    section.className = 'mb-4';
+    section.style.cssText = 'margin-bottom: 16px;';
 
     const header = document.createElement('div');
-    header.className = 'font-semibold text-[11px] uppercase tracking-wide text-content-secondary mb-2';
+    header.style.cssText = `
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--designlibre-text-secondary, #666);
+      margin-bottom: 8px;
+    `;
     header.textContent = this.formatTypeName(type);
     section.appendChild(header);
 
@@ -253,29 +324,53 @@ export class TokensPanel {
 
   private createTokenElement(token: AnyDesignToken): HTMLElement {
     const el = document.createElement('div');
-    el.className = 'group flex items-center p-2 mb-1 bg-surface-secondary rounded cursor-pointer hover:bg-surface-tertiary transition-colors';
+    el.style.cssText = `
+      display: flex;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 4px;
+      background: var(--designlibre-bg-secondary, #f5f5f5);
+      border-radius: var(--designlibre-radius-sm, 4px);
+      cursor: pointer;
+    `;
 
     // Preview (for colors)
     if (token.type === 'color') {
       const colorToken = token as ColorToken;
       const hex = rgbaToHex(colorToken.value);
       const preview = document.createElement('div');
-      preview.className = 'w-6 h-6 rounded border border-border mr-2.5 flex-shrink-0';
-      preview.style.background = hex;
+      preview.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        background: ${hex};
+        border: 1px solid var(--designlibre-border, #e0e0e0);
+        margin-right: 10px;
+        flex-shrink: 0;
+      `;
       el.appendChild(preview);
     }
 
     // Info
     const info = document.createElement('div');
-    info.className = 'flex-1 min-w-0';
+    info.style.cssText = 'flex: 1; min-width: 0;';
 
     const name = document.createElement('div');
-    name.className = 'font-medium whitespace-nowrap overflow-hidden text-ellipsis';
+    name.style.cssText = `
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
     name.textContent = token.name;
     info.appendChild(name);
 
     const value = document.createElement('div');
-    value.className = 'text-[10px] text-content-secondary font-mono';
+    value.style.cssText = `
+      font-size: 10px;
+      color: var(--designlibre-text-secondary, #666);
+      font-family: 'SF Mono', Monaco, monospace;
+    `;
     value.textContent = this.formatTokenValue(token);
     info.appendChild(value);
 
@@ -283,7 +378,13 @@ export class TokensPanel {
 
     // Delete button
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'bg-transparent border-none cursor-pointer opacity-0 group-hover:opacity-50 hover:opacity-100 p-1 text-content-secondary hover:text-red-500 transition-opacity';
+    deleteBtn.style.cssText = `
+      background: none;
+      border: none;
+      cursor: pointer;
+      opacity: 0.5;
+      padding: 4px;
+    `;
     deleteBtn.textContent = '×';
     deleteBtn.title = 'Delete token';
     deleteBtn.addEventListener('click', (e) => {
@@ -297,11 +398,9 @@ export class TokensPanel {
       const copyValue = this.getTokenCopyValue(token);
       const result = await copyToClipboard(copyValue);
       if (result.success) {
-        el.classList.remove('bg-surface-secondary');
-        el.classList.add('bg-accent-light');
+        el.style.background = 'var(--designlibre-accent-light, #e6f0ff)';
         setTimeout(() => {
-          el.classList.remove('bg-accent-light');
-          el.classList.add('bg-surface-secondary');
+          el.style.background = 'var(--designlibre-bg-secondary, #f5f5f5)';
         }, 300);
       }
     });

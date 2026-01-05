@@ -38,6 +38,7 @@ export class SidePanel {
 
   private width: number;
   private collapsed: boolean;
+  private isResizing: boolean = false;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -87,24 +88,28 @@ export class SidePanel {
   }
 
   private setup(): void {
-    const isLeft = this.options.position === 'left';
-
     // Create panel wrapper
     this.element = document.createElement('aside');
-    this.element.className = `designlibre-side-panel ${this.collapsed ? 'hidden' : 'flex'} flex-row h-full bg-surface-secondary relative flex-shrink-0 overflow-hidden ${isLeft ? 'border-r' : 'border-l'} border-border`;
+    this.element.className = 'designlibre-side-panel';
     this.element.setAttribute('role', 'complementary');
     this.element.setAttribute('aria-label', 'Side panel');
-    this.element.style.width = `${this.width}px`;
+    this.element.style.cssText = this.getPanelStyles();
 
     // Create content area
     this.contentElement = document.createElement('div');
-    this.contentElement.className = 'side-panel-content flex flex-col h-full overflow-hidden';
+    this.contentElement.className = 'side-panel-content';
+    this.contentElement.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    `;
     this.element.appendChild(this.contentElement);
 
     // Create resize handle
     this.resizeHandle = document.createElement('div');
-    this.resizeHandle.className = 'side-panel-resize-handle absolute top-0 w-1.5 h-full cursor-col-resize z-10 bg-transparent transition-colors hover:bg-accent';
-    this.resizeHandle.style[isLeft ? 'right' : 'left'] = '-3px';
+    this.resizeHandle.className = 'side-panel-resize-handle';
+    this.resizeHandle.style.cssText = this.getResizeHandleStyles();
     this.resizeHandle.setAttribute('role', 'separator');
     this.resizeHandle.setAttribute('aria-orientation', 'vertical');
     this.resizeHandle.setAttribute('aria-valuenow', String(this.width));
@@ -118,8 +123,53 @@ export class SidePanel {
     this.setupResize();
   }
 
+  private getPanelStyles(): string {
+    const isLeft = this.options.position === 'left';
+
+    return `
+      display: ${this.collapsed ? 'none' : 'flex'};
+      flex-direction: row;
+      width: ${this.width}px;
+      height: 100%;
+      background: var(--designlibre-bg-secondary, #1e1e1e);
+      border-${isLeft ? 'right' : 'left'}: 1px solid var(--designlibre-border, #2d2d2d);
+      position: relative;
+      flex-shrink: 0;
+      overflow: hidden;
+    `;
+  }
+
+  private getResizeHandleStyles(): string {
+    const isLeft = this.options.position === 'left';
+
+    return `
+      position: absolute;
+      top: 0;
+      ${isLeft ? 'right: -3px' : 'left: -3px'};
+      width: 6px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 10;
+      background: transparent;
+      transition: background-color 0.15s;
+    `;
+  }
+
   private setupResize(): void {
     if (!this.resizeHandle) return;
+
+    // Hover effect
+    this.resizeHandle.addEventListener('mouseenter', () => {
+      if (!this.isResizing) {
+        this.resizeHandle!.style.backgroundColor = 'var(--designlibre-accent, #0d99ff)';
+      }
+    });
+
+    this.resizeHandle.addEventListener('mouseleave', () => {
+      if (!this.isResizing) {
+        this.resizeHandle!.style.backgroundColor = 'transparent';
+      }
+    });
 
     // Drag to resize
     this.resizeHandle.addEventListener('mousedown', (e) => {
@@ -134,8 +184,8 @@ export class SidePanel {
   }
 
   private startResize(startEvent: MouseEvent): void {
-    this.resizeHandle!.classList.add('bg-accent');
-    this.resizeHandle!.classList.remove('bg-transparent');
+    this.isResizing = true;
+    this.resizeHandle!.style.backgroundColor = 'var(--designlibre-accent, #0d99ff)';
 
     const startX = startEvent.clientX;
     const startWidth = this.width;
@@ -152,8 +202,8 @@ export class SidePanel {
     };
 
     const onMouseUp = () => {
-      this.resizeHandle!.classList.remove('bg-accent');
-      this.resizeHandle!.classList.add('bg-transparent');
+      this.isResizing = false;
+      this.resizeHandle!.style.backgroundColor = 'transparent';
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
       document.removeEventListener('mousemove', onMouseMove);
@@ -224,14 +274,14 @@ export class SidePanel {
     this.collapsed = collapsed;
     if (this.element) {
       if (collapsed) {
-        // Hide completely via classes
-        this.element.classList.add('hidden');
-        this.element.classList.remove('flex');
+        // Hide completely - set display none and width to 0
         this.element.style.width = '0';
+        this.element.style.display = 'none';
+        this.element.style.visibility = 'hidden';
       } else {
-        // Show via classes
-        this.element.classList.remove('hidden');
-        this.element.classList.add('flex');
+        // Show - restore width and display
+        this.element.style.display = 'flex';
+        this.element.style.visibility = 'visible';
         this.element.style.width = `${this.width}px`;
       }
     }
@@ -270,7 +320,13 @@ export class SidePanel {
     if (!this.contentElement) return;
 
     const divider = document.createElement('div');
-    divider.className = 'side-panel-divider h-px bg-border m-0 flex-shrink-0';
+    divider.className = 'side-panel-divider';
+    divider.style.cssText = `
+      height: 1px;
+      background: var(--designlibre-border, #2d2d2d);
+      margin: 0;
+      flex-shrink: 0;
+    `;
     this.contentElement.appendChild(divider);
   }
 

@@ -95,38 +95,38 @@ export class ViewSwitcher {
 
   private createViewStructure(): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.className = 'view-switcher flex flex-col flex-1 h-full min-h-0';
+    wrapper.className = 'view-switcher';
     wrapper.innerHTML = `
-      <div class="view-switcher-toolbar flex items-center justify-center h-10 bg-surface border-b border-border flex-shrink-0">
-        <div class="flex gap-0.5 bg-surface-secondary rounded-lg p-0.75">
-          <button class="view-tab" data-mode="design" title="Design view (Cmd+1)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="opacity-70">
+      <div class="view-switcher-toolbar">
+        <div class="view-switcher-tabs">
+          <button class="view-switcher-tab" data-mode="design" title="Design view (Cmd+1)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z"/>
               <rect x="5" y="5" width="6" height="6" rx="1"/>
             </svg>
             <span>Design</span>
           </button>
-          <button class="view-tab" data-mode="code" title="Code view (Cmd+2)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="opacity-70">
+          <button class="view-switcher-tab" data-mode="code" title="Code view (Cmd+2)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5.854 4.146a.5.5 0 0 1 0 .708L2.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0zm4.292 0a.5.5 0 0 0 0 .708L13.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0z"/>
             </svg>
             <span>Code</span>
           </button>
-          <button class="view-tab" data-mode="preview" title="Preview view (Cmd+3)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="opacity-70">
+          <button class="view-switcher-tab" data-mode="preview" title="Preview view (Cmd+3)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8zm7-5.9A5.9 5.9 0 1 0 8 13.9 5.9 5.9 0 0 0 8 2.1z"/>
               <path d="M6.5 5.5l4 2.5-4 2.5V5.5z"/>
             </svg>
             <span>Preview</span>
           </button>
-          <button class="view-tab" data-mode="split" title="Design + Code split (Cmd+4)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="opacity-70">
+          <button class="view-switcher-tab" data-mode="split" title="Design + Code split (Cmd+4)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 2h5v12H2V2zm1 1v10h3V3H3zm5-1h6v12H8V2zm1 1v10h4V3H9z"/>
             </svg>
             <span>Split</span>
           </button>
-          <button class="view-tab" data-mode="design-preview" title="Design + Preview split (Cmd+5)">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" class="opacity-70">
+          <button class="view-switcher-tab" data-mode="design-preview" title="Design + Preview split (Cmd+5)">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 2h5v12H2V2zm1 1v10h3V3H3z"/>
               <circle cx="11.5" cy="8" r="3.5"/>
               <path d="M10 6.5l2.5 1.5-2.5 1.5V6.5z" fill="white"/>
@@ -135,16 +135,16 @@ export class ViewSwitcher {
           </button>
         </div>
       </div>
-      <div class="view-switcher-content flex flex-1 overflow-hidden">
-        <div class="view-switcher-design flex flex-col relative overflow-hidden"></div>
-        <div class="view-switcher-divider hidden w-2 bg-surface cursor-col-resize items-center justify-center border-l border-r border-border hover:bg-accent-light transition-colors">
-          <div class="w-1 h-10 bg-border rounded-full hover:bg-accent transition-colors"></div>
+      <div class="view-switcher-content">
+        <div class="view-switcher-design"></div>
+        <div class="view-switcher-divider" title="Drag to resize, double-click to reset">
+          <div class="view-switcher-divider-handle"></div>
         </div>
-        <div class="view-switcher-code overflow-hidden"></div>
-        <div class="view-switcher-divider-2 hidden w-2 bg-surface cursor-col-resize items-center justify-center border-l border-r border-border hover:bg-accent-light transition-colors">
-          <div class="w-1 h-10 bg-border rounded-full hover:bg-accent transition-colors"></div>
+        <div class="view-switcher-code"></div>
+        <div class="view-switcher-divider-2" title="Drag to resize, double-click to reset">
+          <div class="view-switcher-divider-handle"></div>
         </div>
-        <div class="view-switcher-preview overflow-hidden"></div>
+        <div class="view-switcher-preview"></div>
       </div>
     `;
 
@@ -162,7 +162,7 @@ export class ViewSwitcher {
 
   private setupEventListeners(): void {
     // Tab clicks
-    const tabs = this.toolbar.querySelectorAll('.view-tab, .view-tab-active');
+    const tabs = this.toolbar.querySelectorAll('.view-switcher-tab');
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
         const mode = tab.getAttribute('data-mode') as ViewMode;
@@ -227,7 +227,7 @@ export class ViewSwitcher {
     if (this.currentMode !== 'split' && this.currentMode !== 'design-preview') return;
     e.preventDefault();
     this.isDragging = true;
-    this.element.classList.add('select-none');
+    this.element.classList.add('dragging');
     document.body.style.cursor = 'col-resize';
   }
 
@@ -253,18 +253,17 @@ export class ViewSwitcher {
   private endDrag(): void {
     if (!this.isDragging) return;
     this.isDragging = false;
-    this.element.classList.remove('select-none');
+    this.element.classList.remove('dragging');
     document.body.style.cursor = '';
     this.saveSplitRatio();
   }
 
   private applyMode(): void {
     // Update tab states
-    const tabs = this.toolbar.querySelectorAll('[data-mode]');
+    const tabs = this.toolbar.querySelectorAll('.view-switcher-tab');
     tabs.forEach(tab => {
       const mode = tab.getAttribute('data-mode');
-      const isActive = mode === this.currentMode;
-      tab.className = isActive ? 'view-tab-active' : 'view-tab';
+      tab.classList.toggle('active', mode === this.currentMode);
     });
 
     // Update element class

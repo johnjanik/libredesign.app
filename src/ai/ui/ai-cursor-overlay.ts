@@ -87,12 +87,29 @@ export class AICursorOverlay {
   private createOverlay(): void {
     // Create overlay container
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-ai-cursor-overlay absolute inset-0 w-full h-full pointer-events-none z-1000 overflow-hidden';
+    this.overlay.className = 'designlibre-ai-cursor-overlay';
+    this.overlay.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1000;
+      overflow: hidden;
+    `;
 
     // Create trail canvas (for drawing movement trail)
     if (this.options.showTrail) {
       const trailCanvas = document.createElement('canvas');
-      trailCanvas.className = 'ai-cursor-trail absolute inset-0 w-full h-full';
+      trailCanvas.className = 'ai-cursor-trail';
+      trailCanvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      `;
       this.overlay.appendChild(trailCanvas);
       this.ctx = trailCanvas.getContext('2d');
       this.resizeTrailCanvas(trailCanvas);
@@ -100,10 +117,16 @@ export class AICursorOverlay {
 
     // Create cursor element
     this.cursorElement = document.createElement('div');
-    this.cursorElement.className = 'ai-cursor absolute pointer-events-none transition-opacity duration-200 opacity-0';
-    this.cursorElement.style.width = `${this.options.size}px`;
-    this.cursorElement.style.height = `${this.options.size}px`;
-    this.cursorElement.style.transform = 'translate(-50%, -50%)';
+    this.cursorElement.className = 'ai-cursor';
+    this.cursorElement.style.cssText = `
+      position: absolute;
+      width: ${this.options.size}px;
+      height: ${this.options.size}px;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: opacity 0.2s;
+      opacity: 0;
+    `;
 
     // Inner cursor design
     this.cursorElement.innerHTML = `
@@ -140,9 +163,22 @@ export class AICursorOverlay {
 
     // Create label element (shows action being performed)
     this.labelElement = document.createElement('div');
-    this.labelElement.className = 'ai-cursor-label absolute py-1 px-2 text-white text-[10px] font-medium rounded pointer-events-none opacity-0 transition-opacity duration-200 whitespace-nowrap';
-    this.labelElement.style.background = this.options.color;
-    this.labelElement.style.transform = 'translate(-50%, 8px)';
+    this.labelElement.className = 'ai-cursor-label';
+    this.labelElement.style.cssText = `
+      position: absolute;
+      padding: 4px 8px;
+      background: ${this.options.color};
+      color: white;
+      font-size: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-weight: 500;
+      border-radius: 4px;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      opacity: 0;
+      transition: opacity 0.2s;
+      white-space: nowrap;
+    `;
     this.overlay.appendChild(this.labelElement);
 
     // Add to canvas parent

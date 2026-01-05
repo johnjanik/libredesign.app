@@ -86,18 +86,47 @@ export class AISettingsPanel {
 
   private render(): void {
     this.element = document.createElement('div');
-    this.element.className = 'ai-settings-panel fixed inset-0 bg-black/60 flex items-center justify-center z-1000';
+    this.element.className = 'ai-settings-panel';
+    this.element.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    `;
 
     // Modal content
     const modal = document.createElement('div');
-    modal.className = 'ai-settings-modal w-[90%] max-w-150 max-h-[80vh] bg-surface border border-border rounded-xl overflow-hidden flex flex-col shadow-2xl';
+    modal.className = 'ai-settings-modal';
+    modal.style.cssText = `
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    `;
 
     // Header
     modal.appendChild(this.createHeader());
 
     // Content
     const content = document.createElement('div');
-    content.className = 'ai-settings-content flex-1 overflow-y-auto p-5';
+    content.className = 'ai-settings-content';
+    content.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    `;
     content.appendChild(this.createProviderSection('anthropic'));
     content.appendChild(this.createProviderSection('openai'));
     content.appendChild(this.createProviderSection('ollama'));
@@ -131,18 +160,51 @@ export class AISettingsPanel {
 
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'ai-settings-header flex items-center justify-between px-5 py-4 border-b border-border bg-surface-tertiary';
+    header.className = 'ai-settings-header';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+    `;
 
     const title = document.createElement('h2');
     title.textContent = 'AI Settings';
-    title.className = 'm-0 text-base font-semibold text-content';
+    title.style.cssText = `
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = ICONS.close;
     closeBtn.title = 'Close';
-    closeBtn.className = 'w-8 h-8 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded-md transition-all hover:bg-surface-secondary hover:text-content';
+    closeBtn.style.cssText = `
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      transition: all 0.15s;
+    `;
     closeBtn.addEventListener('click', () => this.close());
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      closeBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = 'transparent';
+      closeBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
     header.appendChild(closeBtn);
 
     return header;
@@ -153,25 +215,48 @@ export class AISettingsPanel {
     const providerConfig = config.providers[provider];
 
     const section = document.createElement('div');
-    section.className = 'ai-settings-provider mb-6 pb-6 border-b border-border';
+    section.className = 'ai-settings-provider';
+    section.style.cssText = `
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // Provider header with toggle
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between mb-4';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    `;
 
     const titleRow = document.createElement('div');
-    titleRow.className = 'flex items-center gap-3';
+    titleRow.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
     const title = document.createElement('h3');
     title.textContent = PROVIDER_NAMES[provider];
-    title.className = 'm-0 text-sm font-semibold text-content';
+    title.style.cssText = `
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     titleRow.appendChild(title);
 
     // Active badge
     if (config.activeProvider === provider) {
       const badge = document.createElement('span');
       badge.textContent = 'Active';
-      badge.className = 'py-0.5 px-2 bg-accent text-white text-[10px] font-semibold rounded-full uppercase';
+      badge.style.cssText = `
+        padding: 2px 8px;
+        background: var(--designlibre-accent, #4dabff);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 10px;
+        text-transform: uppercase;
+      `;
       titleRow.appendChild(badge);
     }
 
@@ -198,7 +283,7 @@ export class AISettingsPanel {
     const config = this.configManager.getConfig();
     const providerConfig = config.providers[provider];
     const container = document.createElement('div');
-    container.className = 'flex flex-col gap-4';
+    container.style.cssText = 'display: flex; flex-direction: column; gap: 16px;';
 
     // Authentication (for cloud providers)
     // Note: Anthropic OAuth is not publicly available for third-party apps.
@@ -292,14 +377,28 @@ export class AISettingsPanel {
 
     // Test connection button
     const testRow = document.createElement('div');
-    testRow.className = 'flex items-center gap-3';
+    testRow.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
     const testBtn = document.createElement('button');
-    testBtn.className = 'sp-test-btn flex items-center gap-1.5 py-2 px-4 border border-border bg-surface-secondary text-content text-xs rounded-md cursor-pointer transition-all hover:bg-surface-tertiary';
+    testBtn.className = 'sp-test-btn';
     testBtn.innerHTML = `${ICONS.refresh} Test Connection`;
+    testBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
 
     const statusSpan = document.createElement('span');
-    statusSpan.className = 'sp-test-status text-xs';
+    statusSpan.className = 'sp-test-status';
+    statusSpan.style.cssText = 'font-size: 12px;';
 
     testBtn.addEventListener('click', async () => {
       testBtn.disabled = true;
@@ -343,11 +442,16 @@ export class AISettingsPanel {
 
     const title = document.createElement('h3');
     title.textContent = 'General Settings';
-    title.className = 'm-0 mb-4 text-sm font-semibold text-content';
+    title.style.cssText = `
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     section.appendChild(title);
 
     const container = document.createElement('div');
-    container.className = 'flex flex-col gap-4';
+    container.style.cssText = 'display: flex; flex-direction: column; gap: 16px;';
 
     // Active provider
     const providers: ProviderType[] = ['anthropic', 'openai', 'ollama', 'llamacpp'];
@@ -396,20 +500,60 @@ export class AISettingsPanel {
 
   private createFooter(): HTMLElement {
     const footer = document.createElement('div');
-    footer.className = 'ai-settings-footer flex items-center justify-end gap-3 px-5 py-4 border-t border-border bg-surface-tertiary';
+    footer.className = 'ai-settings-footer';
+    footer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+    `;
 
     const cancelBtn = document.createElement('button');
     cancelBtn.textContent = 'Cancel';
-    cancelBtn.className = 'py-2 px-5 border border-border bg-transparent text-content text-[13px] rounded-md cursor-pointer transition-all hover:bg-surface-secondary';
+    cancelBtn.style.cssText = `
+      padding: 8px 20px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: transparent;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
     cancelBtn.addEventListener('click', () => this.close());
+    cancelBtn.addEventListener('mouseenter', () => {
+      cancelBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    cancelBtn.addEventListener('mouseleave', () => {
+      cancelBtn.style.background = 'transparent';
+    });
     footer.appendChild(cancelBtn);
 
     const saveBtn = document.createElement('button');
     saveBtn.textContent = 'Save Changes';
-    saveBtn.className = 'py-2 px-5 border-none bg-accent text-white text-[13px] font-medium rounded-md cursor-pointer transition-all hover:bg-accent-hover';
+    saveBtn.style.cssText = `
+      padding: 8px 20px;
+      border: none;
+      background: var(--designlibre-accent, #4dabff);
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
     saveBtn.addEventListener('click', () => {
       this.options.onSave?.();
       this.close();
+    });
+    saveBtn.addEventListener('mouseenter', () => {
+      saveBtn.style.background = 'var(--designlibre-accent-hover, #6bbaff)';
+    });
+    saveBtn.addEventListener('mouseleave', () => {
+      saveBtn.style.background = 'var(--designlibre-accent, #4dabff)';
     });
     footer.appendChild(saveBtn);
 
@@ -418,26 +562,51 @@ export class AISettingsPanel {
 
   private createToggle(checked: boolean, onChange: (checked: boolean) => void): HTMLElement {
     const toggle = document.createElement('label');
-    toggle.className = 'sp-toggle relative w-11 h-6 cursor-pointer';
+    toggle.className = 'sp-toggle';
+    toggle.style.cssText = `
+      position: relative;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    `;
 
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = checked;
-    input.className = 'opacity-0 w-0 h-0';
+    input.style.cssText = 'opacity: 0; width: 0; height: 0;';
     input.addEventListener('change', () => onChange(input.checked));
     toggle.appendChild(input);
 
     const slider = document.createElement('span');
-    slider.className = `absolute inset-0 rounded-xl transition-all ${checked ? 'bg-accent' : 'bg-surface-secondary'}`;
+    slider.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: ${checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)'};
+      border-radius: 12px;
+      transition: all 0.2s;
+    `;
 
     const knob = document.createElement('span');
-    knob.className = 'absolute w-4.5 h-4.5 top-0.75 bg-white rounded-full transition-all';
-    knob.style.left = checked ? '23px' : '3px';
+    knob.style.cssText = `
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: ${checked ? '23px' : '3px'};
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+    `;
     slider.appendChild(knob);
     toggle.appendChild(slider);
 
     input.addEventListener('change', () => {
-      slider.className = `absolute inset-0 rounded-xl transition-all ${input.checked ? 'bg-accent' : 'bg-surface-secondary'}`;
+      slider.style.background = input.checked
+        ? 'var(--designlibre-accent, #4dabff)'
+        : 'var(--designlibre-bg-secondary, #3d3d3d)';
       knob.style.left = input.checked ? '23px' : '3px';
     });
 
@@ -451,18 +620,35 @@ export class AISettingsPanel {
     type = 'text'
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1.5';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
-    labelEl.className = 'text-xs font-medium text-content-secondary';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
     row.appendChild(labelEl);
 
     const input = document.createElement('input');
     input.type = type;
     input.value = value;
-    input.className = 'py-2 px-3 border border-border rounded-md bg-surface-secondary text-content text-[13px] outline-none transition-colors focus:border-accent';
+    input.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    `;
+    input.addEventListener('focus', () => {
+      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+    });
     input.addEventListener('blur', () => {
+      input.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
       onChange(input.value);
     });
     row.appendChild(input);
@@ -472,23 +658,42 @@ export class AISettingsPanel {
 
   private createApiKeyInput(provider: ProviderType, value: string): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1.5';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
     const labelEl = document.createElement('label');
     labelEl.textContent = 'API Key';
-    labelEl.className = 'text-xs font-medium text-content-secondary';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
     row.appendChild(labelEl);
 
     const inputWrapper = document.createElement('div');
-    inputWrapper.className = 'flex gap-2';
+    inputWrapper.style.cssText = 'display: flex; gap: 8px;';
 
     const input = document.createElement('input');
     const showKey = this.showApiKeys.get(provider) || false;
     input.type = showKey ? 'text' : 'password';
     input.value = value;
     input.placeholder = provider === 'anthropic' ? 'sk-ant-...' : 'sk-...';
-    input.className = 'flex-1 py-2 px-3 border border-border rounded-md bg-surface-secondary text-content text-[13px] font-mono outline-none transition-colors focus:border-accent';
+    input.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      outline: none;
+      transition: border-color 0.15s;
+    `;
+    input.addEventListener('focus', () => {
+      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+    });
     input.addEventListener('blur', () => {
+      input.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
       this.configManager.setApiKey(provider, input.value);
     });
     inputWrapper.appendChild(input);
@@ -496,7 +701,19 @@ export class AISettingsPanel {
     const toggleBtn = document.createElement('button');
     toggleBtn.innerHTML = showKey ? ICONS.eyeOff : ICONS.eye;
     toggleBtn.title = showKey ? 'Hide API key' : 'Show API key';
-    toggleBtn.className = 'w-9 h-9 border border-border bg-surface-secondary text-content-secondary rounded-md cursor-pointer flex items-center justify-center transition-all hover:border-accent hover:text-accent';
+    toggleBtn.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    `;
     toggleBtn.addEventListener('click', () => {
       const newShow = !this.showApiKeys.get(provider);
       this.showApiKeys.set(provider, newShow);
@@ -703,15 +920,28 @@ export class AISettingsPanel {
     onChange: (value: string) => void
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1.5';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
-    labelEl.className = 'text-xs font-medium text-content-secondary';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
     row.appendChild(labelEl);
 
     const select = document.createElement('select');
-    select.className = 'py-2 px-3 border border-border rounded-md bg-surface-secondary text-content text-[13px] outline-none cursor-pointer';
+    select.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    `;
 
     for (const opt of options) {
       const option = document.createElement('option');
@@ -736,19 +966,27 @@ export class AISettingsPanel {
     onChange: (value: number) => void
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1.5';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
     const labelRow = document.createElement('div');
-    labelRow.className = 'flex justify-between items-center';
+    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
 
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
-    labelEl.className = 'text-xs font-medium text-content-secondary';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
     labelRow.appendChild(labelEl);
 
     const valueEl = document.createElement('span');
     valueEl.textContent = value.toFixed(1);
-    valueEl.className = 'text-xs text-content font-mono';
+    valueEl.style.cssText = `
+      font-size: 12px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+    `;
     labelRow.appendChild(valueEl);
 
     row.appendChild(labelRow);
@@ -759,7 +997,15 @@ export class AISettingsPanel {
     slider.max = String(max);
     slider.step = String(step);
     slider.value = String(value);
-    slider.className = 'w-full h-1.5 rounded-sm bg-surface-secondary outline-none cursor-pointer appearance-none';
+    slider.style.cssText = `
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--designlibre-bg-secondary, #3d3d3d);
+      outline: none;
+      cursor: pointer;
+      -webkit-appearance: none;
+    `;
     slider.addEventListener('input', () => {
       const val = parseFloat(slider.value);
       valueEl.textContent = val.toFixed(1);
@@ -778,18 +1024,26 @@ export class AISettingsPanel {
     onChange: (checked: boolean) => void
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex items-center gap-3';
+    row.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.checked = checked;
-    checkbox.className = 'w-4 h-4 cursor-pointer';
+    checkbox.style.cssText = `
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    `;
     checkbox.addEventListener('change', () => onChange(checkbox.checked));
     row.appendChild(checkbox);
 
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
-    labelEl.className = 'text-[13px] text-content cursor-pointer';
+    labelEl.style.cssText = `
+      font-size: 13px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      cursor: pointer;
+    `;
     labelEl.addEventListener('click', () => {
       checkbox.checked = !checkbox.checked;
       onChange(checkbox.checked);
@@ -825,21 +1079,48 @@ export class AISettingsPanel {
     container.innerHTML = '';
 
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1.5';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
     const labelRow = document.createElement('div');
-    labelRow.className = 'flex justify-between items-center';
+    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
 
     const labelEl = document.createElement('label');
     labelEl.innerHTML = isVision ? `${ICONS.vision} ${labelText}` : labelText;
-    labelEl.className = 'text-xs font-medium text-content-secondary flex items-center gap-1.5';
+    labelEl.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
     labelRow.appendChild(labelEl);
 
     // Refresh button
     const refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = ICONS.refresh;
     refreshBtn.title = 'Refresh models from Ollama';
-    refreshBtn.className = 'w-6 h-6 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded transition-all hover:bg-surface-secondary hover:text-content';
+    refreshBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 4px;
+      transition: all 0.15s;
+    `;
+    refreshBtn.addEventListener('mouseenter', () => {
+      refreshBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      refreshBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    refreshBtn.addEventListener('mouseleave', () => {
+      refreshBtn.style.background = 'transparent';
+      refreshBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
     refreshBtn.addEventListener('click', () => {
       this.ollamaModels = null; // Clear cache
       this.loadOllamaModels(container, providerConfig, modelType);
@@ -850,11 +1131,21 @@ export class AISettingsPanel {
 
     // Select and test button row
     const selectRow = document.createElement('div');
-    selectRow.className = 'flex gap-2 items-center';
+    selectRow.style.cssText = 'display: flex; gap: 8px; align-items: center;';
 
     // Select element
     const select = document.createElement('select');
-    select.className = 'flex-1 py-2 px-3 border border-border rounded-md bg-surface-secondary text-content text-[13px] outline-none cursor-pointer';
+    select.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+    `;
 
     // Show loading option
     const loadingOption = document.createElement('option');
@@ -869,14 +1160,34 @@ export class AISettingsPanel {
     const testBtn = document.createElement('button');
     testBtn.innerHTML = ICONS.refresh;
     testBtn.title = `Test ${isVision ? 'vision' : 'chat'} model`;
-    testBtn.className = 'w-9 h-9 border border-border bg-surface-secondary text-content-secondary rounded-md cursor-pointer flex items-center justify-center transition-all hover:border-accent hover:text-accent';
+    testBtn.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    `;
+    testBtn.addEventListener('mouseenter', () => {
+      testBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      testBtn.style.color = 'var(--designlibre-accent, #4dabff)';
+    });
+    testBtn.addEventListener('mouseleave', () => {
+      testBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      testBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
     selectRow.appendChild(testBtn);
 
     row.appendChild(selectRow);
 
     // Status message
     const statusEl = document.createElement('div');
-    statusEl.className = 'text-[11px] min-h-4';
+    statusEl.style.cssText = 'font-size: 11px; min-height: 16px;';
     row.appendChild(statusEl);
 
     container.appendChild(row);
@@ -969,23 +1280,54 @@ export class AISettingsPanel {
    */
   private createOllamaServerControls(_providerConfig: { endpoint?: string }): HTMLElement {
     const container = document.createElement('div');
-    container.className = 'mt-4 p-3 bg-surface-tertiary rounded-lg border border-border';
+    container.style.cssText = `
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border-radius: 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     const title = document.createElement('div');
     title.textContent = 'Server Controls';
-    title.className = 'text-xs font-semibold text-content-secondary mb-3';
+    title.style.cssText = `
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+    `;
     container.appendChild(title);
 
     const buttonRow = document.createElement('div');
-    buttonRow.className = 'flex gap-2 flex-wrap';
+    buttonRow.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap;';
 
     // Start server button
     const startBtn = document.createElement('button');
     startBtn.innerHTML = `${ICONS.play} Start Ollama`;
-    startBtn.className = 'flex items-center gap-1.5 py-2 px-4 border border-border bg-surface-secondary text-content text-xs rounded-md cursor-pointer transition-all hover:border-green-500 hover:text-green-500';
+    startBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
+    startBtn.addEventListener('mouseenter', () => {
+      startBtn.style.borderColor = 'var(--designlibre-success, #4caf50)';
+      startBtn.style.color = 'var(--designlibre-success, #4caf50)';
+    });
+    startBtn.addEventListener('mouseleave', () => {
+      startBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      startBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
 
     const statusSpan = document.createElement('span');
-    statusSpan.className = 'text-xs ml-3';
+    statusSpan.style.cssText = 'font-size: 12px; margin-left: 12px;';
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
@@ -1025,10 +1367,15 @@ export class AISettingsPanel {
 
     // Help text
     const helpText = document.createElement('div');
-    helpText.className = 'mt-3 text-[11px] text-content-muted leading-snug';
+    helpText.style.cssText = `
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      line-height: 1.5;
+    `;
     helpText.innerHTML = `
       <strong>Note:</strong> Ollama must be installed on your system.
-      <a href="https://ollama.com" target="_blank" class="text-accent hover:underline">Download Ollama</a>
+      <a href="https://ollama.com" target="_blank" style="color: var(--designlibre-accent, #4dabff);">Download Ollama</a>
     `;
     container.appendChild(helpText);
 

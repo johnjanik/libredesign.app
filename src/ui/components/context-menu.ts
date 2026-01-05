@@ -180,19 +180,112 @@ export class ContextMenu {
    */
   private createContainer(): void {
     this.container = document.createElement('div');
-    this.container.className = 'fixed inset-0 z-10000 pointer-events-none';
+    this.container.className = 'designlibre-context-menu-container';
+    this.container.innerHTML = `
+      <style>
+        .designlibre-context-menu-container {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 10000;
+          pointer-events: none;
+        }
 
-    // Backdrop for capturing clicks outside menu
-    const backdrop = document.createElement('div');
-    backdrop.className = 'absolute inset-0 pointer-events-none';
-    backdrop.dataset['backdrop'] = 'true';
-    this.container.appendChild(backdrop);
+        .designlibre-context-menu {
+          position: absolute;
+          background: var(--designlibre-bg-secondary, #2d2d2d);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: var(--designlibre-radius, 8px);
+          box-shadow: var(--designlibre-shadow, 0 4px 12px rgba(0, 0, 0, 0.4));
+          min-width: 200px;
+          padding: 4px 0;
+          pointer-events: auto;
+          opacity: 0;
+          transform: scale(0.95);
+          transform-origin: top left;
+          transition: opacity ${this.options.animationDuration}ms ease, transform ${this.options.animationDuration}ms ease;
+        }
+
+        .designlibre-context-menu.visible {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        .designlibre-context-menu-item {
+          display: flex;
+          align-items: center;
+          padding: 8px 12px;
+          cursor: pointer;
+          color: var(--designlibre-text-primary, #e4e4e4);
+          font-size: 13px;
+          font-family: system-ui, -apple-system, sans-serif;
+          transition: background ${this.options.animationDuration}ms ease;
+        }
+
+        .designlibre-context-menu-item:hover:not(.disabled) {
+          background: var(--designlibre-accent-light, #1a3a5c);
+        }
+
+        .designlibre-context-menu-item.disabled {
+          color: var(--designlibre-text-muted, #6a6a6a);
+          cursor: not-allowed;
+        }
+
+        .designlibre-context-menu-item-icon {
+          width: 16px;
+          height: 16px;
+          margin-right: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.8;
+        }
+
+        .designlibre-context-menu-item-icon svg {
+          width: 16px;
+          height: 16px;
+        }
+
+        .designlibre-context-menu-item-label {
+          flex: 1;
+        }
+
+        .designlibre-context-menu-item-shortcut {
+          color: var(--designlibre-text-muted, #6a6a6a);
+          font-size: 12px;
+          margin-left: 20px;
+        }
+
+        .designlibre-context-menu-separator {
+          height: 1px;
+          background: var(--designlibre-border, #3d3d3d);
+          margin: 4px 8px;
+        }
+
+        .designlibre-context-menu-backdrop {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+        }
+
+        .designlibre-context-menu-backdrop.active {
+          pointer-events: auto;
+        }
+      </style>
+      <div class="designlibre-context-menu-backdrop"></div>
+    `;
 
     document.body.appendChild(this.container);
 
     // Close on backdrop click
-    backdrop.addEventListener('click', () => this.hide());
-    backdrop.addEventListener('contextmenu', (e) => {
+    const backdrop = this.container.querySelector('.designlibre-context-menu-backdrop');
+    backdrop?.addEventListener('click', () => this.hide());
+    backdrop?.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       this.hide();
     });
@@ -230,9 +323,9 @@ export class ContextMenu {
     const contextType = this.getContextType();
     const items = this.getMenuItems(contextType);
 
-    // Create menu element with UnoCSS classes
+    // Create menu element
     this.menuElement = document.createElement('div');
-    this.menuElement.className = 'context-menu absolute min-w-50 py-1 pointer-events-auto opacity-0 scale-95 origin-top-left transition-all duration-150';
+    this.menuElement.className = 'designlibre-context-menu';
     this.renderMenuItems(items);
 
     this.container.appendChild(this.menuElement);
@@ -256,13 +349,12 @@ export class ContextMenu {
     this.menuElement.style.top = `${Math.max(8, menuY)}px`;
 
     // Activate backdrop to capture clicks outside menu
-    const backdrop = this.container.querySelector('[data-backdrop]');
-    backdrop?.classList.replace('pointer-events-none', 'pointer-events-auto');
+    const backdrop = this.container.querySelector('.designlibre-context-menu-backdrop');
+    backdrop?.classList.add('active');
 
     // Trigger animation
     requestAnimationFrame(() => {
-      this.menuElement?.classList.replace('opacity-0', 'opacity-100');
-      this.menuElement?.classList.replace('scale-95', 'scale-100');
+      this.menuElement?.classList.add('visible');
     });
 
     this.isVisible = true;
@@ -273,8 +365,7 @@ export class ContextMenu {
    */
   hide(): void {
     if (this.menuElement) {
-      this.menuElement.classList.replace('opacity-100', 'opacity-0');
-      this.menuElement.classList.replace('scale-100', 'scale-95');
+      this.menuElement.classList.remove('visible');
       setTimeout(() => {
         this.menuElement?.remove();
         this.menuElement = null;
@@ -282,8 +373,8 @@ export class ContextMenu {
     }
 
     // Deactivate backdrop
-    const backdrop = this.container?.querySelector('[data-backdrop]');
-    backdrop?.classList.replace('pointer-events-auto', 'pointer-events-none');
+    const backdrop = this.container?.querySelector('.designlibre-context-menu-backdrop');
+    backdrop?.classList.remove('active');
 
     this.isVisible = false;
   }
@@ -589,34 +680,16 @@ export class ContextMenu {
     for (const item of items) {
       if (item.separator) {
         const separator = document.createElement('div');
-        separator.className = 'context-menu-separator';
+        separator.className = 'designlibre-context-menu-separator';
         this.menuElement.appendChild(separator);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.className = item.disabled
-          ? 'context-menu-item text-content-muted cursor-not-allowed'
-          : 'context-menu-item';
-
-        // Icon
-        const iconSpan = document.createElement('span');
-        iconSpan.className = 'w-4 h-4 mr-2.5 flex items-center justify-center opacity-80';
-        iconSpan.innerHTML = item.icon || '';
-
-        // Label
-        const labelSpan = document.createElement('span');
-        labelSpan.className = 'flex-1';
-        labelSpan.textContent = item.label;
-
-        menuItem.appendChild(iconSpan);
-        menuItem.appendChild(labelSpan);
-
-        // Shortcut (if present)
-        if (item.shortcut) {
-          const shortcutSpan = document.createElement('span');
-          shortcutSpan.className = 'text-content-muted text-xs ml-5';
-          shortcutSpan.textContent = item.shortcut;
-          menuItem.appendChild(shortcutSpan);
-        }
+        menuItem.className = `designlibre-context-menu-item${item.disabled ? ' disabled' : ''}`;
+        menuItem.innerHTML = `
+          <span class="designlibre-context-menu-item-icon">${item.icon || ''}</span>
+          <span class="designlibre-context-menu-item-label">${item.label}</span>
+          ${item.shortcut ? `<span class="designlibre-context-menu-item-shortcut">${item.shortcut}</span>` : ''}
+        `;
 
         if (!item.disabled && item.action) {
           menuItem.addEventListener('click', () => {

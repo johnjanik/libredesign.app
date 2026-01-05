@@ -285,8 +285,18 @@ export class LeftSidebar {
     // When embedded (width: 0), fill parent and allow flex grow
     const isEmbedded = this.options.width === 0;
 
-    this.element.className = `designlibre-left-sidebar h-full bg-surface flex flex-col overflow-hidden transition-all min-h-0 ${isEmbedded ? 'flex-1 border-r-0' : 'flex-shrink-0 border-r border-border'}`;
-    this.element.style.width = widthStyle;
+    this.element.style.cssText = `
+      width: ${widthStyle};
+      height: 100%;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border-right: ${isEmbedded ? 'none' : '1px solid var(--designlibre-border, #3d3d3d)'};
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width 0.2s ease;
+      flex: ${isEmbedded ? '1' : '0 0 auto'};
+      min-height: 0;
+    `;
   }
 
   private render(): void {
@@ -306,10 +316,27 @@ export class LeftSidebar {
 
     // Just show expand button
     const expandBtn = document.createElement('button');
-    expandBtn.className = 'designlibre-sidebar-expand-btn w-full h-12 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary hover:bg-surface-secondary transition-colors';
+    expandBtn.className = 'designlibre-sidebar-expand-btn';
     expandBtn.innerHTML = ICONS.expand;
     expandBtn.title = 'Expand sidebar';
+    expandBtn.style.cssText = `
+      width: 100%;
+      height: 48px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
     expandBtn.addEventListener('click', () => this.toggleCollapse());
+    expandBtn.addEventListener('mouseenter', () => {
+      expandBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    expandBtn.addEventListener('mouseleave', () => {
+      expandBtn.style.backgroundColor = 'transparent';
+    });
 
     this.element.appendChild(expandBtn);
   }
@@ -339,7 +366,11 @@ export class LeftSidebar {
 
       // Separator
       const separator = document.createElement('div');
-      separator.className = 'h-px bg-border';
+      separator.style.cssText = `
+        height: 1px;
+        background: var(--designlibre-border, #3d3d3d);
+        margin: 0;
+      `;
       this.element.appendChild(separator);
 
       // Layers section
@@ -350,16 +381,30 @@ export class LeftSidebar {
 
   private createPlaceholderSection(title: string, message: string): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'flex-1 flex flex-col items-center justify-center p-6 text-content-secondary text-center';
+    section.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: var(--designlibre-text-secondary, #888);
+      text-align: center;
+    `;
 
     const titleEl = document.createElement('div');
     titleEl.textContent = title;
-    titleEl.className = 'text-sm font-semibold mb-2 text-content';
+    titleEl.style.cssText = `
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     section.appendChild(titleEl);
 
     const messageEl = document.createElement('div');
     messageEl.textContent = message;
-    messageEl.className = 'text-xs';
+    messageEl.style.cssText = 'font-size: 12px;';
     section.appendChild(messageEl);
 
     return section;
@@ -367,25 +412,37 @@ export class LeftSidebar {
 
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'designlibre-sidebar-header flex items-center justify-between h-12 px-3 border-b border-border';
+    header.className = 'designlibre-sidebar-header';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // File Menu button
     const menuBtn = document.createElement('button');
-    menuBtn.className = `designlibre-sidebar-menu-btn ${this.iconButtonClass}`;
+    menuBtn.className = 'designlibre-sidebar-menu-btn';
     menuBtn.innerHTML = ICONS.menu;
     menuBtn.title = 'File Menu';
+    menuBtn.style.cssText = this.getIconButtonStyles();
     menuBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
       this.showFileMenu(menuBtn);
     });
+    this.addHoverEffect(menuBtn);
 
     // Minimize button
     const minimizeBtn = document.createElement('button');
-    minimizeBtn.className = `designlibre-sidebar-minimize-btn ${this.iconButtonClass}`;
+    minimizeBtn.className = 'designlibre-sidebar-minimize-btn';
     minimizeBtn.innerHTML = ICONS.minimize;
     minimizeBtn.title = 'Minimize sidebar';
+    minimizeBtn.style.cssText = this.getIconButtonStyles();
     minimizeBtn.addEventListener('click', () => this.toggleCollapse());
+    this.addHoverEffect(minimizeBtn);
 
     header.appendChild(menuBtn);
     header.appendChild(minimizeBtn);
@@ -395,14 +452,38 @@ export class LeftSidebar {
 
   private createFileNameSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-filename flex items-center gap-2 p-3 border-b border-border';
+    section.className = 'designlibre-sidebar-filename';
+    section.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // Editable filename input
     const input = document.createElement('input');
     input.type = 'text';
     input.value = this.documentName;
-    input.className = 'designlibre-filename-input flex-1 bg-transparent border border-transparent rounded py-1.5 px-2 text-sm font-medium text-content outline-none focus:border-accent focus:bg-surface-secondary';
+    input.className = 'designlibre-filename-input';
+    input.style.cssText = `
+      flex: 1;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
+      font-weight: 500;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      outline: none;
+    `;
+    input.addEventListener('focus', () => {
+      input.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      input.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
     input.addEventListener('blur', () => {
+      input.style.borderColor = 'transparent';
+      input.style.backgroundColor = 'transparent';
       this.documentName = input.value || 'Untitled';
     });
     input.addEventListener('keydown', (e) => {
@@ -413,14 +494,27 @@ export class LeftSidebar {
 
     // Dropdown button for file options
     const dropdownBtn = document.createElement('button');
-    dropdownBtn.className = `designlibre-filename-dropdown w-6 h-6 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded hover:bg-surface-secondary hover:text-content transition-colors`;
+    dropdownBtn.className = 'designlibre-filename-dropdown';
     dropdownBtn.innerHTML = ICONS.dropdown;
     dropdownBtn.title = 'File options';
+    dropdownBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 4px;
+    `;
     dropdownBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
       this.showFileOptionsMenu(dropdownBtn);
     });
+    this.addHoverEffect(dropdownBtn);
 
     section.appendChild(input);
     section.appendChild(dropdownBtn);
@@ -430,21 +524,49 @@ export class LeftSidebar {
 
   private createLeavesSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-leaves py-2 border-b border-border';
+    section.className = 'designlibre-sidebar-leaves';
+    section.style.cssText = `
+      padding: 8px 0;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // Header with "Leaves" and + button
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between px-3 py-1 mb-1';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 12px;
+      margin-bottom: 4px;
+    `;
 
     const label = document.createElement('span');
     label.textContent = 'Leaves';
-    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
+    label.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
 
     const addBtn = document.createElement('button');
     addBtn.innerHTML = ICONS.plus;
     addBtn.title = 'Add new leaf';
-    addBtn.className = this.smallIconButtonClass;
+    addBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 4px;
+    `;
     addBtn.addEventListener('click', () => this.addLeaf());
+    this.addHoverEffect(addBtn);
 
     header.appendChild(label);
     header.appendChild(addBtn);
@@ -465,17 +587,32 @@ export class LeftSidebar {
   }
 
   private createLeafItem(leaf: Leaf): HTMLElement {
-    const isActive = leaf.id === this.activeLeafId;
     const item = document.createElement('div');
-    item.className = `designlibre-leaf-item group flex items-center gap-2 py-1.5 px-3 cursor-pointer transition-colors ${isActive ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
+    item.className = 'designlibre-leaf-item';
+    item.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      cursor: pointer;
+      background: ${leaf.id === this.activeLeafId ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+      color: ${leaf.id === this.activeLeafId ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      transition: background 0.15s;
+    `;
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.leaf;
-    icon.className = 'flex opacity-60';
+    icon.style.cssText = `display: flex; opacity: 0.6;`;
 
     const name = document.createElement('span');
     name.textContent = leaf.name;
-    name.className = 'flex-1 text-[13px] whitespace-nowrap overflow-hidden text-ellipsis';
+    name.style.cssText = `
+      flex: 1;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
 
     // Get visibility from the PAGE node if available
     let isVisible = true;
@@ -489,11 +626,25 @@ export class LeftSidebar {
       }
     }
 
-    // Visibility toggle button - shows on hover via group-hover
+    // Visibility toggle button
     const visibilityBtn = document.createElement('button');
     visibilityBtn.innerHTML = isVisible ? ICONS.eye : ICONS.eyeOff;
     visibilityBtn.title = isVisible ? 'Hide leaf' : 'Show leaf';
-    visibilityBtn.className = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
+    visibilityBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    `;
 
     // Toggle visibility on click
     visibilityBtn.addEventListener('click', (e) => {
@@ -546,26 +697,62 @@ export class LeftSidebar {
       }
     });
 
+    item.addEventListener('mouseenter', () => {
+      visibilityBtn.style.opacity = '1';
+      if (leaf.id !== this.activeLeafId) {
+        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      }
+    });
+
+    item.addEventListener('mouseleave', () => {
+      visibilityBtn.style.opacity = '0';
+      if (leaf.id !== this.activeLeafId) {
+        item.style.backgroundColor = 'transparent';
+      }
+    });
+
     return item;
   }
 
   private createLibrarySection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-library flex-1 flex flex-col overflow-hidden';
+    section.className = 'designlibre-sidebar-library';
+    section.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `;
 
     // Header
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between py-2 px-3';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+    `;
 
     const label = document.createElement('span');
     label.textContent = 'Templates';
-    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
+    label.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
     header.appendChild(label);
     section.appendChild(header);
 
     // Templates list
     const list = document.createElement('div');
-    list.className = 'designlibre-library-list flex-1 overflow-y-auto px-2';
+    list.className = 'designlibre-library-list';
+    list.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px;
+    `;
 
     // iOS 26 Template
     const iOSTemplate = this.createTemplateItem(
@@ -591,10 +778,15 @@ export class LeftSidebar {
 
     // Placeholder for more templates
     const moreTemplates = document.createElement('div');
-    moreTemplates.className = 'py-4 px-2 text-xs text-content-muted text-center';
+    moreTemplates.style.cssText = `
+      padding: 16px 8px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      color: var(--designlibre-text-muted, #6a6a6a);
+      text-align: center;
+    `;
     moreTemplates.innerHTML = `
-      <div class="mb-2">More templates coming soon</div>
-      <div class="text-[11px] opacity-70">Drag templates to Assets to use them in your project</div>
+      <div style="margin-bottom: 8px;">More templates coming soon</div>
+      <div style="font-size: 11px; opacity: 0.7;">Drag templates to Assets to use them in your project</div>
     `;
     list.appendChild(moreTemplates);
 
@@ -610,71 +802,143 @@ export class LeftSidebar {
     onDownload: () => Promise<void>
   ): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'designlibre-template-item flex flex-col gap-1 p-3 mb-2 bg-surface-secondary rounded-lg cursor-pointer transition-colors hover:bg-surface-tertiary';
+    item.className = 'designlibre-template-item';
+    item.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
 
     // Platform badge
     const badge = document.createElement('span');
     badge.textContent = platform;
-    badge.className = 'text-[10px] font-semibold text-accent uppercase tracking-wide';
+    badge.style.cssText = `
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--designlibre-accent, #4dabff);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
     item.appendChild(badge);
 
     // Name
     const nameEl = document.createElement('span');
     nameEl.textContent = name;
-    nameEl.className = 'text-sm font-medium text-content';
+    nameEl.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-lg, 14px);
+      font-weight: 500;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     item.appendChild(nameEl);
 
     // Description
     const descEl = document.createElement('span');
     descEl.textContent = description;
-    descEl.className = 'text-xs text-content-secondary leading-snug';
+    descEl.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      line-height: 1.4;
+    `;
     item.appendChild(descEl);
 
     // Download button
     const downloadBtn = document.createElement('button');
     downloadBtn.textContent = 'Download .seed';
-    downloadBtn.className = 'mt-2 py-1.5 px-3 bg-accent border-none rounded text-xs font-medium text-white cursor-pointer transition-colors hover:bg-accent-hover';
+    downloadBtn.style.cssText = `
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: var(--designlibre-accent, #4dabff);
+      border: none;
+      border-radius: 4px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      font-weight: 500;
+      color: white;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
     downloadBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       downloadBtn.textContent = 'Downloading...';
-      downloadBtn.classList.add('opacity-70');
+      downloadBtn.style.opacity = '0.7';
       try {
         await onDownload();
         downloadBtn.textContent = 'Downloaded!';
         setTimeout(() => {
           downloadBtn.textContent = 'Download .seed';
-          downloadBtn.classList.remove('opacity-70');
+          downloadBtn.style.opacity = '1';
         }, 2000);
       } catch (error) {
         downloadBtn.textContent = 'Error - Try Again';
-        downloadBtn.classList.remove('opacity-70');
+        downloadBtn.style.opacity = '1';
         console.error('Template download failed:', error);
       }
     });
+    downloadBtn.addEventListener('mouseenter', () => {
+      downloadBtn.style.background = 'var(--designlibre-accent-hover, #6bbaff)';
+    });
+    downloadBtn.addEventListener('mouseleave', () => {
+      downloadBtn.style.background = 'var(--designlibre-accent, #4dabff)';
+    });
     item.appendChild(downloadBtn);
+
+    // Hover effect
+    item.addEventListener('mouseenter', () => {
+      item.style.background = 'var(--designlibre-bg-tertiary, #252525)';
+    });
+    item.addEventListener('mouseleave', () => {
+      item.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
 
     return item;
   }
 
   private createLayersSection(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'designlibre-sidebar-layers flex-1 flex flex-col overflow-hidden';
+    section.className = 'designlibre-sidebar-layers';
     section.id = 'designlibre-layers-section';
+    section.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `;
 
     // Header with "Layers"
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between py-2 px-3';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+    `;
 
     const label = document.createElement('span');
     label.textContent = 'Layers';
-    label.className = 'text-xs font-semibold uppercase text-content-secondary tracking-wide';
+    label.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      letter-spacing: 0.5px;
+    `;
 
     header.appendChild(label);
     section.appendChild(header);
 
     // Layers list
     const list = document.createElement('div');
-    list.className = 'designlibre-layers-list flex-1 overflow-y-auto px-1';
+    list.className = 'designlibre-layers-list';
+    list.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 4px;
+    `;
 
     // Get layers from scene graph for the current page
     const sceneGraph = this.runtime.getSceneGraph();
@@ -692,7 +956,12 @@ export class LeftSidebar {
 
     if (list.children.length === 0) {
       const empty = document.createElement('div');
-      empty.className = 'py-4 px-3 text-xs text-content-muted text-center';
+      empty.style.cssText = `
+        padding: 16px 12px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-muted, #6a6a6a);
+        text-align: center;
+      `;
       empty.textContent = 'No layers yet. Use the toolbar to add shapes.';
       list.appendChild(empty);
     }
@@ -744,17 +1013,40 @@ export class LeftSidebar {
     isExpanded: boolean = false
   ): HTMLElement {
     const item = document.createElement('div');
-    item.className = `designlibre-layer-item group flex items-center gap-1 py-1 pr-2 cursor-pointer rounded transition-colors ${isSelected ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
+    item.className = 'designlibre-layer-item';
     item.dataset['nodeId'] = node.id;
-    // Dynamic padding for depth - must be inline
-    item.style.paddingLeft = `${8 + depth * 16}px`;
+    item.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      padding-left: ${8 + depth * 16}px;
+      cursor: pointer;
+      border-radius: 4px;
+      background: ${isSelected ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+      color: ${isSelected ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      transition: background 0.15s;
+    `;
 
     // Expand/collapse button for nodes with children
     const expandBtn = document.createElement('button');
     if (hasChildren) {
       expandBtn.innerHTML = isExpanded ? ICONS.chevronDown : ICONS.chevronRight;
       expandBtn.title = isExpanded ? 'Collapse' : 'Expand';
-      expandBtn.className = 'w-4 h-4 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm p-0 flex-shrink-0';
+      expandBtn.style.cssText = `
+        width: 16px;
+        height: 16px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        border-radius: 2px;
+        padding: 0;
+        flex-shrink: 0;
+      `;
       expandBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.expandedNodeIds.has(node.id)) {
@@ -766,12 +1058,16 @@ export class LeftSidebar {
       });
     } else {
       // Spacer for alignment
-      expandBtn.className = 'w-4 h-4 flex-shrink-0';
+      expandBtn.style.cssText = `
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+      `;
     }
 
     // Icon based on type
     const icon = document.createElement('span');
-    icon.className = 'flex opacity-60 flex-shrink-0';
+    icon.style.cssText = `display: flex; opacity: 0.6; flex-shrink: 0;`;
     switch (node.type) {
       case 'FRAME':
         icon.innerHTML = ICONS.frame;
@@ -789,13 +1085,33 @@ export class LeftSidebar {
     // Name
     const name = document.createElement('span');
     name.textContent = node.name;
-    name.className = 'flex-1 text-xs whitespace-nowrap overflow-hidden text-ellipsis';
+    name.style.cssText = `
+      flex: 1;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    `;
 
-    // Visibility toggle - shows on hover via group-hover
+    // Visibility toggle
     const visibilityBtn = document.createElement('button');
     visibilityBtn.innerHTML = node.visible !== false ? ICONS.eye : ICONS.eyeOff;
     visibilityBtn.title = node.visible !== false ? 'Hide layer' : 'Show layer';
-    visibilityBtn.className = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-muted rounded-sm opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0';
+    visibilityBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-muted, #6a6a6a);
+      border-radius: 2px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    `;
 
     // Toggle visibility on click
     visibilityBtn.addEventListener('click', (e) => {
@@ -813,6 +1129,21 @@ export class LeftSidebar {
     item.appendChild(icon);
     item.appendChild(name);
     item.appendChild(visibilityBtn);
+
+    // Show visibility button on hover
+    item.addEventListener('mouseenter', () => {
+      visibilityBtn.style.opacity = '1';
+      if (!isSelected) {
+        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      }
+    });
+
+    item.addEventListener('mouseleave', () => {
+      visibilityBtn.style.opacity = '0';
+      if (!isSelected) {
+        item.style.backgroundColor = 'transparent';
+      }
+    });
 
     // Select on click
     item.addEventListener('click', () => {
@@ -835,7 +1166,16 @@ export class LeftSidebar {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentName;
-    input.className = 'flex-1 bg-surface-secondary border border-accent rounded-sm py-0.5 px-1 text-xs text-content outline-none';
+    input.style.cssText = `
+      flex: 1;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-accent, #4dabff);
+      border-radius: 2px;
+      padding: 2px 4px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      outline: none;
+    `;
 
     const finishRename = (): void => {
       const newName = input.value || currentName;
@@ -874,11 +1214,31 @@ export class LeftSidebar {
     }
   }
 
-  /** Icon button class for consistent styling */
-  private readonly iconButtonClass = 'w-8 h-8 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded-md hover:bg-surface-secondary hover:text-content transition-colors';
+  private getIconButtonStyles(): string {
+    return `
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+    `;
+  }
 
-  /** Small icon button class */
-  private readonly smallIconButtonClass = 'w-5 h-5 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded hover:bg-surface-secondary hover:text-content transition-colors';
+  private addHoverEffect(button: HTMLButtonElement): void {
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+  }
 
   private toggleCollapse(): void {
     this.collapsed = !this.collapsed;
@@ -930,7 +1290,16 @@ export class LeftSidebar {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = leaf.name;
-    input.className = 'flex-1 bg-surface-secondary border border-accent rounded-sm py-0.5 px-1 text-[13px] text-content outline-none';
+    input.style.cssText = `
+      flex: 1;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-accent, #4dabff);
+      border-radius: 2px;
+      padding: 2px 4px;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      outline: none;
+    `;
 
     const finishRename = (): void => {
       const newName = input.value || leaf.name;
@@ -972,9 +1341,21 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-file-menu';
-    menu.className = 'fixed min-w-55 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
-    menu.style.left = `${rect.left}px`;
-    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.bottom + 4}px;
+      min-width: 220px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
 
     const menuItems = [
       { label: 'New File', shortcut: 'Ctrl+N', action: () => this.createNewFile() },
@@ -992,11 +1373,17 @@ export class LeftSidebar {
     for (const item of menuItems) {
       if (item.separator) {
         const sep = document.createElement('div');
-        sep.className = 'h-px bg-border my-1';
+        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
         menu.appendChild(sep);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.className = 'flex justify-between py-2 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+        menuItem.style.cssText = `
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        `;
 
         const label = document.createElement('span');
         label.textContent = item.label ?? '';
@@ -1005,10 +1392,16 @@ export class LeftSidebar {
         if (item.shortcut) {
           const shortcut = document.createElement('span');
           shortcut.textContent = item.shortcut;
-          shortcut.className = 'text-[11px] text-content-muted';
+          shortcut.style.cssText = 'font-size: 11px; color: #6a6a6a;';
           menuItem.appendChild(shortcut);
         }
 
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.background = '#2d2d2d';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.background = 'transparent';
+        });
         menuItem.addEventListener('click', () => {
           menu.remove();
           item.action?.();
@@ -1047,9 +1440,21 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-templates-menu';
-    menu.className = 'fixed min-w-65 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
-    menu.style.left = `${rect.right + 4}px`;
-    menu.style.top = `${rect.top}px`;
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 260px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
 
     const templateItems = [
       {
@@ -1072,26 +1477,39 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
     header.textContent = 'Download Template';
     menu.appendChild(header);
 
     for (const item of templateItems) {
       const menuItem = document.createElement('div');
-      menuItem.className = 'flex flex-col gap-0.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+      menuItem.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.className = 'font-medium';
+      label.style.fontWeight = '500';
       menuItem.appendChild(label);
 
       if (item.description) {
         const desc = document.createElement('span');
         desc.textContent = item.description;
-        desc.className = 'text-[11px] text-content-muted';
+        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
         menuItem.appendChild(desc);
       }
 
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
       menuItem.addEventListener('click', () => {
         item.action();
       });
@@ -1127,9 +1545,21 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-export-menu';
-    menu.className = 'fixed min-w-70 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
-    menu.style.left = `${rect.right + 4}px`;
-    menu.style.top = `${rect.top}px`;
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 280px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
 
     const exportItems = [
       {
@@ -1151,26 +1581,39 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
     header.textContent = 'Export as Project';
     menu.appendChild(header);
 
     for (const item of exportItems) {
       const menuItem = document.createElement('div');
-      menuItem.className = 'flex flex-col gap-0.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+      menuItem.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.className = 'font-medium';
+      label.style.fontWeight = '500';
       menuItem.appendChild(label);
 
       if (item.description) {
         const desc = document.createElement('span');
         desc.textContent = item.description;
-        desc.className = 'text-[11px] text-content-muted';
+        desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
         menuItem.appendChild(desc);
       }
 
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
       menuItem.addEventListener('click', () => {
         menu.remove();
         item.action();
@@ -1207,9 +1650,21 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-import-menu';
-    menu.className = 'fixed min-w-75 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
-    menu.style.left = `${rect.right + 4}px`;
-    menu.style.top = `${rect.top}px`;
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.right + 4}px;
+      top: ${rect.top}px;
+      min-width: 300px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
 
     const importItems = [
       {
@@ -1228,42 +1683,55 @@ export class LeftSidebar {
 
     // Header
     const header = document.createElement('div');
-    header.className = 'py-2 px-3 text-[11px] font-semibold text-content-muted uppercase';
+    header.style.cssText = 'padding: 8px 12px; font-size: 11px; font-weight: 600; color: #6a6a6a; text-transform: uppercase;';
     header.textContent = 'Import from Project';
     menu.appendChild(header);
 
     // Info text
     const infoText = document.createElement('div');
-    infoText.className = 'px-3 pb-2 text-[11px] text-content-secondary leading-snug';
+    infoText.style.cssText = 'padding: 4px 12px 8px; font-size: 11px; color: #888; line-height: 1.4;';
     infoText.textContent = 'Import UI elements from mobile projects. Designers can edit visual properties while code logic stays read-only.';
     menu.appendChild(infoText);
 
     for (const item of importItems) {
       const menuItem = document.createElement('div');
-      menuItem.className = 'flex items-start gap-2.5 py-2.5 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+      menuItem.style.cssText = `
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
 
       // Icon container
       const iconContainer = document.createElement('div');
-      iconContainer.className = 'flex-shrink-0 w-6 h-6 flex items-center justify-center';
+      iconContainer.style.cssText = 'flex-shrink: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;';
       iconContainer.innerHTML = item.icon;
       menuItem.appendChild(iconContainer);
 
       // Text container
       const textContainer = document.createElement('div');
-      textContainer.className = 'flex flex-col gap-0.5';
+      textContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
 
       const label = document.createElement('span');
       label.textContent = item.label;
-      label.className = 'font-medium';
+      label.style.fontWeight = '500';
       textContainer.appendChild(label);
 
       const desc = document.createElement('span');
       desc.textContent = item.description;
-      desc.className = 'text-[11px] text-content-muted';
+      desc.style.cssText = 'font-size: 11px; color: #6a6a6a;';
       textContainer.appendChild(desc);
 
       menuItem.appendChild(textContainer);
 
+      menuItem.addEventListener('mouseenter', () => {
+        menuItem.style.background = '#2d2d2d';
+      });
+      menuItem.addEventListener('mouseleave', () => {
+        menuItem.style.background = 'transparent';
+      });
       menuItem.addEventListener('click', () => {
         menu.remove();
         item.action();
@@ -1274,12 +1742,12 @@ export class LeftSidebar {
 
     // Separator
     const sep = document.createElement('div');
-    sep.className = 'h-px bg-border my-2';
+    sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 8px 0;';
     menu.appendChild(sep);
 
     // Feature note
     const note = document.createElement('div');
-    note.className = 'py-2 px-3 text-[10px] text-content-muted leading-snug';
+    note.style.cssText = 'padding: 8px 12px; font-size: 10px; color: #666; line-height: 1.4;';
     note.innerHTML = '<strong>Live Sync:</strong> Changes sync bidirectionally. Code-controlled properties (state, bindings) are locked.';
     menu.appendChild(note);
 
@@ -1444,26 +1912,47 @@ export class LeftSidebar {
       // Create overlay
       const overlay = document.createElement('div');
       overlay.id = 'import-options-dialog-overlay';
-      overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-1000000';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000000;
+      `;
 
       const dialog = document.createElement('div');
-      dialog.className = 'bg-surface border border-border rounded-lg p-6 min-w-100 max-w-125 text-content text-[13px]';
+      dialog.style.cssText = `
+        background: #1e1e1e;
+        border: 1px solid #3d3d3d;
+        border-radius: 8px;
+        padding: 24px;
+        min-width: 400px;
+        max-width: 500px;
+        color: #e4e4e4;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 13px;
+      `;
 
       // Title
       const title = document.createElement('h2');
-      title.className = 'm-0 mb-2 text-lg font-semibold';
+      title.style.cssText = 'margin: 0 0 8px 0; font-size: 18px; font-weight: 600;';
       title.textContent = projectType === 'xcode' ? 'Import Xcode Project' : 'Import Android Project';
       dialog.appendChild(title);
 
       // Project name
       const projectInfo = document.createElement('div');
-      projectInfo.className = 'mb-5 text-content-secondary';
+      projectInfo.style.cssText = 'margin-bottom: 20px; color: #888;';
       projectInfo.textContent = `Project: ${projectName}`;
       dialog.appendChild(projectInfo);
 
       // Options container
       const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'flex flex-col gap-3 mb-6';
+      optionsContainer.style.cssText = 'display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;';
 
       // Scale option
       const scaleRow = this.createOptionRow('Scale Factor', 'Number multiplier for sizes', 'number', '1');
@@ -1489,11 +1978,19 @@ export class LeftSidebar {
 
       // Buttons
       const buttonRow = document.createElement('div');
-      buttonRow.className = 'flex justify-end gap-3';
+      buttonRow.style.cssText = 'display: flex; justify-content: flex-end; gap: 12px;';
 
       const cancelBtn = document.createElement('button');
       cancelBtn.textContent = 'Cancel';
-      cancelBtn.className = 'py-2 px-4 bg-transparent border border-border rounded text-content text-[13px] cursor-pointer hover:bg-surface-secondary transition-colors';
+      cancelBtn.style.cssText = `
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid #3d3d3d;
+        border-radius: 4px;
+        color: #e4e4e4;
+        cursor: pointer;
+        font-size: 13px;
+      `;
       cancelBtn.addEventListener('click', () => {
         overlay.remove();
         resolve(null);
@@ -1502,7 +1999,16 @@ export class LeftSidebar {
 
       const importBtn = document.createElement('button');
       importBtn.textContent = 'Import';
-      importBtn.className = 'py-2 px-5 bg-accent border-none rounded text-black text-[13px] font-medium cursor-pointer hover:bg-accent-hover transition-colors';
+      importBtn.style.cssText = `
+        padding: 8px 20px;
+        background: #4dabff;
+        border: none;
+        border-radius: 4px;
+        color: #000;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+      `;
       importBtn.addEventListener('click', () => {
         const options: XcodeProjectImportOptions | AndroidProjectImportOptions = {
           scale: parseFloat((scaleRow.input as HTMLInputElement).value) || 1,
@@ -1550,19 +2056,19 @@ export class LeftSidebar {
     defaultValue: string
   ): { container: HTMLElement; input: HTMLElement } {
     const container = document.createElement('div');
-    container.className = 'flex items-center justify-between gap-4';
+    container.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 16px;';
 
     const labelContainer = document.createElement('div');
-    labelContainer.className = 'flex flex-col gap-0.5';
+    labelContainer.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
-    labelEl.className = 'font-medium';
+    labelEl.style.fontWeight = '500';
     labelContainer.appendChild(labelEl);
 
     const descEl = document.createElement('span');
     descEl.textContent = description;
-    descEl.className = 'text-[11px] text-content-muted';
+    descEl.style.cssText = 'font-size: 11px; color: #6a6a6a;';
     labelContainer.appendChild(descEl);
 
     container.appendChild(labelContainer);
@@ -1573,7 +2079,7 @@ export class LeftSidebar {
       input = document.createElement('input');
       input.type = 'checkbox';
       input.checked = defaultValue === 'true';
-      input.className = 'w-4.5 h-4.5 cursor-pointer';
+      input.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
     } else {
       input = document.createElement('input');
       input.type = 'number';
@@ -1581,7 +2087,16 @@ export class LeftSidebar {
       input.min = '0.1';
       input.max = '10';
       input.step = '0.1';
-      input.className = 'w-15 py-1 px-2 bg-surface-secondary border border-border rounded text-content text-[13px] text-center';
+      input.style.cssText = `
+        width: 60px;
+        padding: 4px 8px;
+        background: #2d2d2d;
+        border: 1px solid #3d3d3d;
+        border-radius: 4px;
+        color: #e4e4e4;
+        font-size: 13px;
+        text-align: center;
+      `;
     }
 
     container.appendChild(input);
@@ -1595,24 +2110,56 @@ export class LeftSidebar {
   private showImportProgressDialog(projectType: string): HTMLElement {
     const overlay = document.createElement('div');
     overlay.id = 'import-progress-dialog';
-    overlay.className = 'fixed inset-0 bg-black/60 flex items-center justify-center z-1000000';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000000;
+    `;
 
     const dialog = document.createElement('div');
-    dialog.className = 'bg-surface border border-border rounded-lg py-8 px-12 text-center text-content';
+    dialog.style.cssText = `
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 32px 48px;
+      text-align: center;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    `;
 
     // Spinner
     const spinner = document.createElement('div');
-    spinner.className = 'w-10 h-10 mx-auto mb-4 border-3 border-border border-t-accent rounded-full animate-spin';
+    spinner.style.cssText = `
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 16px;
+      border: 3px solid #3d3d3d;
+      border-top-color: #4dabff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    `;
     dialog.appendChild(spinner);
+
+    // Add keyframes
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+    document.head.appendChild(style);
 
     // Text
     const text = document.createElement('div');
-    text.className = 'text-sm';
+    text.style.fontSize = '14px';
     text.textContent = `Importing ${projectType} project...`;
     dialog.appendChild(text);
 
     const subtext = document.createElement('div');
-    subtext.className = 'text-xs text-content-secondary mt-2';
+    subtext.style.cssText = 'font-size: 12px; color: #888; margin-top: 8px;';
     subtext.textContent = 'Parsing source files and creating nodes';
     dialog.appendChild(subtext);
 
@@ -1815,9 +2362,21 @@ export class LeftSidebar {
     const rect = anchor.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.id = 'designlibre-file-options-menu';
-    menu.className = 'fixed min-w-45 bg-surface border border-border rounded-md p-1 text-content text-[13px] shadow-xl z-999999';
-    menu.style.left = `${rect.left}px`;
-    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.bottom + 4}px;
+      min-width: 180px;
+      background: #1e1e1e;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 4px;
+      color: #e4e4e4;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: var(--designlibre-sidebar-font-size, 13px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+    `;
 
     const menuItems = [
       { label: 'Rename', action: () => {} },
@@ -1832,13 +2391,23 @@ export class LeftSidebar {
     for (const item of menuItems) {
       if (item.separator) {
         const sep = document.createElement('div');
-        sep.className = 'h-px bg-border my-1';
+        sep.style.cssText = 'height: 1px; background: #3d3d3d; margin: 4px 0;';
         menu.appendChild(sep);
       } else {
         const menuItem = document.createElement('div');
-        menuItem.className = 'py-2 px-3 rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+        menuItem.style.cssText = `
+          padding: 8px 12px;
+          border-radius: 4px;
+          cursor: pointer;
+        `;
         menuItem.textContent = item.label ?? '';
 
+        menuItem.addEventListener('mouseenter', () => {
+          menuItem.style.background = '#2d2d2d';
+        });
+        menuItem.addEventListener('mouseleave', () => {
+          menuItem.style.background = 'transparent';
+        });
         menuItem.addEventListener('click', () => {
           menu.remove();
           item.action?.();

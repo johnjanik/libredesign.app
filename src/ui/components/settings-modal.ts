@@ -155,7 +155,18 @@ export class SettingsModal {
   private render(): void {
     // Create overlay
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-settings-overlay fixed inset-0 bg-black/70 flex items-center justify-center z-10000 opacity-0 transition-opacity';
+    this.overlay.className = 'designlibre-settings-overlay';
+    this.overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    `;
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.close();
@@ -164,7 +175,19 @@ export class SettingsModal {
 
     // Create modal container
     this.modal = document.createElement('div');
-    this.modal.className = 'designlibre-settings-modal flex w-225 max-w-[calc(100vw-64px)] h-150 max-h-[calc(100vh-64px)] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden';
+    this.modal.className = 'designlibre-settings-modal';
+    this.modal.style.cssText = `
+      display: flex;
+      width: 900px;
+      max-width: calc(100vw - 64px);
+      height: 600px;
+      max-height: calc(100vh - 64px);
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 12px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    `;
 
     // Create sidebar
     this.sidebar = this.createSidebar();
@@ -172,15 +195,32 @@ export class SettingsModal {
 
     // Create content area
     this.content = document.createElement('div');
-    this.content.className = 'settings-content flex-1 flex flex-col overflow-hidden';
+    this.content.className = 'settings-content';
+    this.content.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    `;
 
     // Content header
     const contentHeader = document.createElement('div');
-    contentHeader.className = 'flex items-center justify-between px-6 py-4 border-b border-border';
+    contentHeader.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     const title = document.createElement('h2');
     title.id = 'settings-title';
-    title.className = 'm-0 text-lg font-semibold text-content';
+    title.style.cssText = `
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     title.textContent = this.getCategoryLabel(this.activeCategory);
     contentHeader.appendChild(title);
 
@@ -188,7 +228,24 @@ export class SettingsModal {
     closeBtn.innerHTML = ICONS['close'] ?? '';
     closeBtn.title = 'Close (Escape)';
     closeBtn.setAttribute('aria-label', 'Close settings');
-    closeBtn.className = 'flex p-1.5 border-none bg-transparent text-content-secondary cursor-pointer rounded hover:bg-surface-secondary hover:text-content transition-all';
+    closeBtn.style.cssText = `
+      display: flex;
+      padding: 6px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #888);
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s;
+    `;
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      closeBtn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.backgroundColor = 'transparent';
+      closeBtn.style.color = 'var(--designlibre-text-secondary, #888)';
+    });
     closeBtn.addEventListener('click', () => this.close());
     contentHeader.appendChild(closeBtn);
 
@@ -196,7 +253,12 @@ export class SettingsModal {
 
     // Content body (scrollable)
     const contentBody = document.createElement('div');
-    contentBody.className = 'settings-content-body flex-1 overflow-y-auto p-6';
+    contentBody.className = 'settings-content-body';
+    contentBody.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    `;
     this.renderCategoryContent(contentBody);
     this.content.appendChild(contentBody);
 
@@ -214,11 +276,26 @@ export class SettingsModal {
 
   private createSidebar(): HTMLElement {
     const sidebar = document.createElement('div');
-    sidebar.className = 'settings-sidebar w-55 bg-surface-tertiary border-r border-border flex flex-col overflow-y-auto';
+    sidebar.className = 'settings-sidebar';
+    sidebar.style.cssText = `
+      width: 220px;
+      background: var(--designlibre-bg-tertiary, #161616);
+      border-right: 1px solid var(--designlibre-border, #2d2d2d);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    `;
 
     // Header
     const header = document.createElement('div');
-    header.className = 'p-4 text-xs font-semibold uppercase tracking-wide text-content-secondary';
+    header.style.cssText = `
+      padding: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--designlibre-text-secondary, #888);
+    `;
     header.textContent = 'Options';
     sidebar.appendChild(header);
 
@@ -233,21 +310,45 @@ export class SettingsModal {
 
   private createCategoryButton(category: SettingsCategory): HTMLElement {
     const button = document.createElement('button');
+    button.className = 'settings-category-btn';
     button.dataset['category'] = category.id;
     const isActive = category.id === this.activeCategory;
 
-    button.className = isActive
-      ? 'settings-category-btn flex items-center gap-2.5 w-full px-4 py-2.5 border-none text-sm text-left cursor-pointer transition-colors bg-accent text-white'
-      : 'settings-category-btn flex items-center gap-2.5 w-full px-4 py-2.5 border-none text-sm text-left cursor-pointer transition-colors bg-transparent text-content hover:bg-surface-secondary';
+    button.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      background: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'transparent'};
+      color: ${isActive ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
+      font-size: 14px;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    `;
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS[category.icon] ?? ICONS['settings'] ?? '';
-    icon.className = 'flex opacity-80';
+    icon.style.cssText = 'display: flex; opacity: 0.8;';
     button.appendChild(icon);
 
     const label = document.createElement('span');
     label.textContent = category.label;
     button.appendChild(label);
+
+    button.addEventListener('mouseenter', () => {
+      if (category.id !== this.activeCategory) {
+        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
+      }
+    });
+
+    button.addEventListener('mouseleave', () => {
+      if (category.id !== this.activeCategory) {
+        button.style.backgroundColor = 'transparent';
+      }
+    });
 
     button.addEventListener('click', () => {
       this.setActiveCategory(category.id);
@@ -264,13 +365,8 @@ export class SettingsModal {
     buttons?.forEach((btn) => {
       const el = btn as HTMLElement;
       const isActive = el.dataset['category'] === categoryId;
-      if (isActive) {
-        el.classList.add('bg-accent', 'text-white');
-        el.classList.remove('bg-transparent', 'text-content', 'hover:bg-surface-secondary');
-      } else {
-        el.classList.remove('bg-accent', 'text-white');
-        el.classList.add('bg-transparent', 'text-content', 'hover:bg-surface-secondary');
-      }
+      el.style.backgroundColor = isActive ? 'var(--designlibre-accent, #0d99ff)' : 'transparent';
+      el.style.color = isActive ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)';
     });
 
     // Update title
@@ -544,11 +640,19 @@ export class SettingsModal {
 
     // Reset all button
     const headerRow = document.createElement('div');
-    headerRow.className = 'flex justify-end mb-4';
+    headerRow.style.cssText = 'display: flex; justify-content: flex-end; margin-bottom: 16px;';
 
     const resetAllBtn = document.createElement('button');
     resetAllBtn.textContent = 'Reset All to Defaults';
-    resetAllBtn.className = 'px-3 py-1.5 bg-transparent border border-border text-content-secondary text-xs rounded cursor-pointer hover:bg-surface-secondary transition-colors';
+    resetAllBtn.style.cssText = `
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      color: var(--designlibre-text-secondary, #888);
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
     resetAllBtn.addEventListener('click', () => {
       hotkeyManager.resetAllShortcuts();
       container.innerHTML = '';
@@ -592,20 +696,50 @@ export class SettingsModal {
     const isCustom = hotkeyManager.hasCustomShortcut(action.id);
 
     const row = document.createElement('div');
-    row.className = 'flex justify-between items-center py-2.5 border-b border-surface-tertiary';
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--designlibre-border-light, #252525);
+    `;
 
     const actionEl = document.createElement('span');
     actionEl.textContent = action.name;
-    actionEl.className = 'text-sm text-content';
+    actionEl.style.cssText = `
+      font-size: 13px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     row.appendChild(actionEl);
 
     const controlsWrapper = document.createElement('div');
-    controlsWrapper.className = 'flex items-center gap-2';
+    controlsWrapper.style.cssText = 'display: flex; align-items: center; gap: 8px;';
 
     // Shortcut button (clickable to edit)
     const shortcutBtn = document.createElement('button');
+    shortcutBtn.className = 'hotkey-shortcut-btn';
     shortcutBtn.textContent = currentShortcut || 'Click to set';
-    shortcutBtn.className = `hotkey-shortcut-btn px-3 py-1.5 min-w-20 bg-surface-secondary rounded font-mono text-xs cursor-pointer transition-all border ${isCustom ? 'border-accent text-accent' : 'border-border text-content-secondary'} hover:border-accent`;
+    shortcutBtn.style.cssText = `
+      padding: 6px 12px;
+      min-width: 80px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-secondary, #888)'};
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
+
+    shortcutBtn.addEventListener('mouseenter', () => {
+      shortcutBtn.style.borderColor = 'var(--designlibre-accent, #0d99ff)';
+    });
+    shortcutBtn.addEventListener('mouseleave', () => {
+      if (!shortcutBtn.classList.contains('recording')) {
+        shortcutBtn.style.borderColor = isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)';
+      }
+    });
 
     shortcutBtn.addEventListener('click', () => {
       this.startRecordingHotkey(shortcutBtn, action, container);
@@ -618,7 +752,16 @@ export class SettingsModal {
       const resetBtn = document.createElement('button');
       resetBtn.innerHTML = '↺';
       resetBtn.title = `Reset to default (${action.defaultShortcut})`;
-      resetBtn.className = 'w-6 h-6 border-none bg-transparent text-content-secondary text-sm cursor-pointer rounded hover:bg-surface-secondary hover:text-content transition-colors';
+      resetBtn.style.cssText = `
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: var(--designlibre-text-secondary, #888);
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 4px;
+      `;
       resetBtn.addEventListener('click', () => {
         hotkeyManager.resetShortcut(action.id);
         container.innerHTML = '';
@@ -765,24 +908,38 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): void {
     const row = document.createElement('div');
-    row.className = 'p-4 bg-surface-tertiary rounded-lg mb-3 border border-border';
+    row.style.cssText = `
+      padding: 16px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // Header row with toggle
     const headerRow = document.createElement('div');
-    headerRow.className = 'flex justify-between items-center mb-3';
+    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;';
 
     const nameEl = document.createElement('div');
-    nameEl.className = 'flex items-center gap-3';
+    nameEl.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
     const title = document.createElement('span');
     title.textContent = displayName;
-    title.className = 'font-semibold text-sm text-content';
+    title.style.cssText = 'font-weight: 600; font-size: 14px; color: var(--designlibre-text-primary, #e4e4e4);';
     nameEl.appendChild(title);
 
     if (configManager.getConfig().activeProvider === provider) {
       const badge = document.createElement('span');
       badge.textContent = 'Active';
-      badge.className = 'px-2 py-0.5 bg-accent text-white text-[10px] font-semibold rounded-full uppercase';
+      badge.style.cssText = `
+        padding: 2px 8px;
+        background: var(--designlibre-accent, #4dabff);
+        color: white;
+        font-size: 10px;
+        font-weight: 600;
+        border-radius: 10px;
+        text-transform: uppercase;
+      `;
       nameEl.appendChild(badge);
     }
 
@@ -801,7 +958,7 @@ export class SettingsModal {
     // Provider details (only if enabled)
     if (providerConfig.enabled) {
       const details = document.createElement('div');
-      details.className = 'flex flex-col gap-3';
+      details.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
 
       // API Key for cloud providers
       if (provider === 'anthropic' || provider === 'openai') {
@@ -832,15 +989,23 @@ export class SettingsModal {
         const models = AVAILABLE_MODELS[provider] ?? [];
         if (models.length > 0) {
           const modelRow = document.createElement('div');
-          modelRow.className = 'flex flex-col gap-1';
+          modelRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
           const label = document.createElement('label');
           label.textContent = 'Model';
-          label.className = 'text-xs font-medium text-content-secondary';
+          label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
           modelRow.appendChild(label);
 
           const select = document.createElement('select');
-          select.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
+          select.style.cssText = `
+            padding: 8px 12px;
+            border: 1px solid var(--designlibre-border, #3d3d3d);
+            border-radius: 6px;
+            background: var(--designlibre-bg-secondary, #2d2d2d);
+            color: var(--designlibre-text-primary, #e4e4e4);
+            font-size: 13px;
+            outline: none;
+          `;
 
           for (const model of models) {
             const option = document.createElement('option');
@@ -861,15 +1026,15 @@ export class SettingsModal {
 
       // Temperature slider
       const tempRow = document.createElement('div');
-      tempRow.className = 'flex flex-col gap-1';
+      tempRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
       const tempLabel = document.createElement('label');
       tempLabel.textContent = 'Temperature';
-      tempLabel.className = 'text-xs font-medium text-content-secondary';
+      tempLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
       tempRow.appendChild(tempLabel);
 
       const tempSliderWrapper = document.createElement('div');
-      tempSliderWrapper.className = 'flex items-center gap-3';
+      tempSliderWrapper.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
       const tempSlider = document.createElement('input');
       tempSlider.type = 'range';
@@ -877,11 +1042,25 @@ export class SettingsModal {
       tempSlider.max = '1';
       tempSlider.step = '0.05';
       tempSlider.value = String(providerConfig.temperature);
-      tempSlider.className = 'flex-1 h-1 appearance-none bg-surface-tertiary rounded-sm outline-none cursor-pointer';
+      tempSlider.style.cssText = `
+        flex: 1;
+        height: 4px;
+        -webkit-appearance: none;
+        background: #444;
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+      `;
 
       const tempValue = document.createElement('span');
       tempValue.textContent = providerConfig.temperature.toFixed(2);
-      tempValue.className = 'text-sm text-accent font-medium min-w-10 text-right';
+      tempValue.style.cssText = `
+        font-size: 13px;
+        color: var(--designlibre-accent, #0d99ff);
+        font-weight: 500;
+        min-width: 40px;
+        text-align: right;
+      `;
 
       tempSlider.addEventListener('input', () => {
         const val = parseFloat(tempSlider.value);
@@ -896,11 +1075,11 @@ export class SettingsModal {
 
       // Max Tokens input
       const tokensRow = document.createElement('div');
-      tokensRow.className = 'flex flex-col gap-1';
+      tokensRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
       const tokensLabel = document.createElement('label');
       tokensLabel.textContent = 'Max Tokens';
-      tokensLabel.className = 'text-xs font-medium text-content-secondary';
+      tokensLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
       tokensRow.appendChild(tokensLabel);
 
       const tokensInput = document.createElement('input');
@@ -908,7 +1087,16 @@ export class SettingsModal {
       tokensInput.value = String(providerConfig.maxTokens);
       tokensInput.min = '1';
       tokensInput.max = '128000';
-      tokensInput.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none w-30';
+      tokensInput.style.cssText = `
+        padding: 8px 12px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 6px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: 13px;
+        outline: none;
+        width: 120px;
+      `;
 
       tokensInput.addEventListener('blur', () => {
         const val = parseInt(tokensInput.value, 10);
@@ -922,14 +1110,25 @@ export class SettingsModal {
 
       // Test connection button
       const testRow = document.createElement('div');
-      testRow.className = 'flex items-center gap-3';
+      testRow.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
       const testBtn = document.createElement('button');
       testBtn.innerHTML = `${ICONS['refresh'] ?? ''} Test Connection`;
-      testBtn.className = 'flex items-center gap-1.5 px-4 py-2 border border-border bg-surface-secondary text-content text-xs rounded-md cursor-pointer hover:bg-surface-tertiary transition-colors';
+      testBtn.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+      `;
 
       const statusSpan = document.createElement('span');
-      statusSpan.className = 'text-xs';
+      statusSpan.style.cssText = 'font-size: 12px;';
 
       testBtn.addEventListener('click', async () => {
         testBtn.disabled = true;
@@ -968,32 +1167,39 @@ export class SettingsModal {
 
   private createAIToggle(checked: boolean, onChange: (checked: boolean) => void): HTMLElement {
     const toggle = document.createElement('label');
-    toggle.className = 'relative w-11 h-6 cursor-pointer';
+    toggle.style.cssText = 'position: relative; width: 44px; height: 24px; cursor: pointer;';
 
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = checked;
-    input.className = 'opacity-0 w-0 h-0';
+    input.style.cssText = 'opacity: 0; width: 0; height: 0;';
     input.addEventListener('change', () => onChange(input.checked));
     toggle.appendChild(input);
 
     const slider = document.createElement('span');
-    slider.className = `absolute inset-0 rounded-xl transition-all ${checked ? 'bg-accent' : 'bg-surface-secondary'}`;
+    slider.style.cssText = `
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: ${checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)'};
+      border-radius: 12px;
+      transition: all 0.2s;
+    `;
 
     const knob = document.createElement('span');
-    knob.className = 'absolute w-4.5 h-4.5 top-[3px] bg-white rounded-full transition-all';
-    knob.style.left = checked ? '23px' : '3px';
+    knob.style.cssText = `
+      position: absolute;
+      width: 18px; height: 18px;
+      left: ${checked ? '23px' : '3px'};
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.2s;
+    `;
     slider.appendChild(knob);
     toggle.appendChild(slider);
 
     input.addEventListener('change', () => {
-      if (input.checked) {
-        slider.classList.remove('bg-surface-secondary');
-        slider.classList.add('bg-accent');
-      } else {
-        slider.classList.remove('bg-accent');
-        slider.classList.add('bg-surface-secondary');
-      }
+      slider.style.background = input.checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)';
       knob.style.left = input.checked ? '23px' : '3px';
     });
 
@@ -1006,21 +1212,31 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
     const label = document.createElement('label');
     label.textContent = 'API Key';
-    label.className = 'text-xs font-medium text-content-secondary';
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     row.appendChild(label);
 
     const inputWrapper = document.createElement('div');
-    inputWrapper.className = 'flex gap-2';
+    inputWrapper.style.cssText = 'display: flex; gap: 8px;';
 
     const input = document.createElement('input');
     input.type = 'password';
     input.value = apiKey;
     input.placeholder = provider === 'anthropic' ? 'sk-ant-...' : 'sk-...';
-    input.className = 'flex-1 px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm font-mono outline-none';
+    input.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      outline: none;
+    `;
     input.addEventListener('blur', () => {
       configManager.setApiKey(provider, input.value);
     });
@@ -1030,7 +1246,17 @@ export class SettingsModal {
     const toggleBtn = document.createElement('button');
     toggleBtn.innerHTML = ICONS['eye'] ?? '';
     toggleBtn.title = 'Show API key';
-    toggleBtn.className = 'w-9 h-9 border border-border bg-surface-secondary text-content-secondary rounded-md cursor-pointer flex items-center justify-center hover:bg-surface-tertiary transition-colors';
+    toggleBtn.style.cssText = `
+      width: 36px; height: 36px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
 
     let showKey = false;
     toggleBtn.addEventListener('click', () => {
@@ -1051,17 +1277,25 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'flex flex-col gap-1';
+    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
     const label = document.createElement('label');
     label.textContent = 'Endpoint';
-    label.className = 'text-xs font-medium text-content-secondary';
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     row.appendChild(label);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.value = endpoint;
-    input.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
+    input.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+    `;
     input.addEventListener('blur', () => {
       configManager.updateProviderConfig(provider, { endpoint: input.value });
     });
@@ -1087,21 +1321,32 @@ export class SettingsModal {
     const configKey = isVision ? 'visionModel' : 'defaultModel';
 
     container.innerHTML = '';
-    container.className = 'flex flex-col gap-1';
+    container.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
 
     // Label row with refresh button
     const labelRow = document.createElement('div');
-    labelRow.className = 'flex justify-between items-center';
+    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
 
     const label = document.createElement('label');
-    label.innerHTML = isVision ? `<span class="flex items-center gap-1.5">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
-    label.className = 'text-xs font-medium text-content-secondary';
+    label.innerHTML = isVision ? `<span style="display: flex; align-items: center; gap: 6px;">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
+    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     labelRow.appendChild(label);
 
     const refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = ICONS['refresh'] ?? '';
     refreshBtn.title = 'Refresh models';
-    refreshBtn.className = 'w-6 h-6 border-none bg-transparent text-content-secondary cursor-pointer rounded flex items-center justify-center hover:bg-surface-secondary hover:text-content transition-colors';
+    refreshBtn.style.cssText = `
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
     refreshBtn.addEventListener('click', () => {
       this.loadOllamaModels(container, provider, modelType, currentModel, configManager);
     });
@@ -1110,7 +1355,15 @@ export class SettingsModal {
 
     // Select element
     const select = document.createElement('select');
-    select.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
+    select.style.cssText = `
+      padding: 8px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      outline: none;
+    `;
 
     // Show loading state
     const loadingOption = document.createElement('option');
@@ -1215,7 +1468,12 @@ export class SettingsModal {
     this.addSectionHeader(container, 'Community Plugins');
 
     const placeholder = document.createElement('div');
-    placeholder.className = 'p-6 text-center text-content-secondary text-sm';
+    placeholder.style.cssText = `
+      padding: 24px;
+      text-align: center;
+      color: var(--designlibre-text-secondary, #888);
+      font-size: 13px;
+    `;
     placeholder.textContent = 'Community plugins coming soon';
     container.appendChild(placeholder);
   }
@@ -1226,7 +1484,17 @@ export class SettingsModal {
 
   private addSectionHeader(container: HTMLElement, title: string): void {
     const header = document.createElement('div');
-    header.className = `text-sm font-semibold text-content pt-4 pb-2 border-b border-border mb-2 ${container.children.length > 0 ? 'mt-4' : ''}`;
+    header.style.cssText = `
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      padding: 16px 0 8px;
+      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
+      margin-bottom: 8px;
+    `;
+    if (container.children.length > 0) {
+      header.style.marginTop = '16px';
+    }
     header.textContent = title;
     container.appendChild(header);
   }
@@ -1247,19 +1515,33 @@ export class SettingsModal {
     }
   ): void {
     const row = document.createElement('div');
-    row.className = 'flex justify-between items-start py-3 border-b border-surface-tertiary';
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--designlibre-border-light, #252525);
+    `;
 
     const textContainer = document.createElement('div');
-    textContainer.className = 'flex-1 mr-4';
+    textContainer.style.cssText = 'flex: 1; margin-right: 16px;';
 
     const titleEl = document.createElement('div');
     titleEl.textContent = options.title;
-    titleEl.className = 'text-sm font-medium text-content mb-1';
+    titleEl.style.cssText = `
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      margin-bottom: 4px;
+    `;
     textContainer.appendChild(titleEl);
 
     const descEl = document.createElement('div');
     descEl.textContent = options.description;
-    descEl.className = 'text-xs text-content-secondary';
+    descEl.style.cssText = `
+      font-size: 12px;
+      color: var(--designlibre-text-secondary, #888);
+    `;
     textContainer.appendChild(descEl);
 
     row.appendChild(textContainer);
@@ -1293,17 +1575,35 @@ export class SettingsModal {
 
   private createToggle(value: boolean, onChange?: (v: boolean) => void): HTMLElement {
     const toggle = document.createElement('button');
-    toggle.className = `w-11 h-6 rounded-full border-none cursor-pointer relative transition-colors flex-shrink-0 ${value ? 'bg-accent' : 'bg-surface-tertiary'}`;
+    toggle.style.cssText = `
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.2s;
+      background: ${value ? 'var(--designlibre-accent, #0d99ff)' : '#444'};
+      flex-shrink: 0;
+    `;
 
     const knob = document.createElement('div');
-    knob.className = 'w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all';
-    knob.style.left = value ? '22px' : '2px';
+    knob.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      position: absolute;
+      top: 2px;
+      transition: left 0.2s;
+      left: ${value ? '22px' : '2px'};
+    `;
     toggle.appendChild(knob);
 
     let enabled = value;
     toggle.addEventListener('click', () => {
       enabled = !enabled;
-      toggle.className = `w-11 h-6 rounded-full border-none cursor-pointer relative transition-colors flex-shrink-0 ${enabled ? 'bg-accent' : 'bg-surface-tertiary'}`;
+      toggle.style.background = enabled ? 'var(--designlibre-accent, #0d99ff)' : '#444';
       knob.style.left = enabled ? '22px' : '2px';
       onChange?.(enabled);
     });
@@ -1320,11 +1620,17 @@ export class SettingsModal {
     onChange?: (v: number) => void
   ): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.className = 'flex items-center gap-3';
+    wrapper.style.cssText = 'display: flex; align-items: center; gap: 12px;';
 
     const valueDisplay = document.createElement('span');
     valueDisplay.textContent = format(value);
-    valueDisplay.className = 'text-sm text-accent font-medium min-w-12 text-right';
+    valueDisplay.style.cssText = `
+      font-size: 13px;
+      color: var(--designlibre-accent, #0d99ff);
+      font-weight: 500;
+      min-width: 50px;
+      text-align: right;
+    `;
 
     const slider = document.createElement('input');
     slider.type = 'range';
@@ -1332,7 +1638,15 @@ export class SettingsModal {
     slider.max = String(max);
     slider.step = String(step);
     slider.value = String(value);
-    slider.className = 'w-30 h-1 appearance-none bg-surface-tertiary rounded-sm outline-none cursor-pointer';
+    slider.style.cssText = `
+      width: 120px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #444;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    `;
 
     slider.addEventListener('input', () => {
       const v = parseFloat(slider.value);
@@ -1352,7 +1666,16 @@ export class SettingsModal {
     onChange?: (v: string) => void
   ): HTMLElement {
     const select = document.createElement('select');
-    select.className = 'px-3 py-1.5 bg-surface-secondary border border-border rounded text-content text-sm cursor-pointer outline-none';
+    select.style.cssText = `
+      padding: 6px 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    `;
 
     for (const opt of options) {
       const option = document.createElement('option');
@@ -1371,16 +1694,33 @@ export class SettingsModal {
 
   private addHotkeyRow(container: HTMLElement, action: string, shortcut: string): void {
     const row = document.createElement('div');
-    row.className = 'flex justify-between items-center py-2 border-b border-surface-tertiary';
+    row.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--designlibre-border-light, #252525);
+    `;
 
     const actionEl = document.createElement('span');
     actionEl.textContent = action;
-    actionEl.className = 'text-sm text-content';
+    actionEl.style.cssText = `
+      font-size: 13px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     row.appendChild(actionEl);
 
     const shortcutEl = document.createElement('kbd');
     shortcutEl.textContent = shortcut;
-    shortcutEl.className = 'px-2 py-1 bg-surface-secondary border border-border rounded font-mono text-xs text-content-secondary';
+    shortcutEl.style.cssText = `
+      padding: 4px 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--designlibre-text-secondary, #888);
+    `;
     row.appendChild(shortcutEl);
 
     container.appendChild(row);

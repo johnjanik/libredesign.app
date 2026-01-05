@@ -112,7 +112,18 @@ export class ExportDialog {
   private render(): void {
     // Create overlay
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-export-overlay fixed inset-0 bg-black/70 flex items-center justify-center z-10000 opacity-0 transition-opacity';
+    this.overlay.className = 'designlibre-export-overlay';
+    this.overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    `;
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.close();
@@ -121,7 +132,19 @@ export class ExportDialog {
 
     // Create modal
     this.modal = document.createElement('div');
-    this.modal.className = 'designlibre-export-modal flex w-175 max-w-[calc(100vw-64px)] h-125 max-h-[calc(100vh-64px)] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden';
+    this.modal.className = 'designlibre-export-modal';
+    this.modal.style.cssText = `
+      display: flex;
+      width: 700px;
+      max-width: calc(100vw - 64px);
+      height: 500px;
+      max-height: calc(100vh - 64px);
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 12px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    `;
 
     // Left panel (preview)
     const previewPanel = this.createPreviewPanel();
@@ -153,17 +176,35 @@ export class ExportDialog {
 
   private createPreviewPanel(): HTMLElement {
     const panel = document.createElement('div');
-    panel.className = 'flex-1 flex flex-col bg-surface-tertiary border-r border-border';
+    panel.style.cssText = `
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--designlibre-bg-tertiary, #0a0a0a);
+      border-right: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     // Preview header
     const header = document.createElement('div');
-    header.className = 'p-4 border-b border-border font-semibold text-content';
+    header.style.cssText = `
+      padding: 16px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
     header.textContent = 'Preview';
     panel.appendChild(header);
 
     // Preview container
     this.previewContainer = document.createElement('div');
-    this.previewContainer.className = 'flex-1 flex items-center justify-center p-5 overflow-hidden';
+    this.previewContainer.style.cssText = `
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+    `;
     panel.appendChild(this.previewContainer);
 
     return panel;
@@ -171,21 +212,40 @@ export class ExportDialog {
 
   private createOptionsPanel(): HTMLElement {
     const panel = document.createElement('div');
-    panel.className = 'w-70 flex flex-col bg-surface';
+    panel.style.cssText = `
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+    `;
 
     // Header
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between p-4 border-b border-border';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     const title = document.createElement('span');
     title.textContent = 'Export';
-    title.className = 'font-semibold text-base text-content';
+    title.style.cssText = 'font-weight: 600; font-size: 16px; color: var(--designlibre-text-primary, #e4e4e4);';
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = ICONS.close;
     closeBtn.title = 'Close';
-    closeBtn.className = 'flex p-1.5 border-none bg-transparent text-content-secondary cursor-pointer rounded hover:bg-surface-secondary hover:text-content transition-colors';
+    closeBtn.style.cssText = `
+      display: flex;
+      padding: 6px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #888);
+      cursor: pointer;
+      border-radius: 4px;
+    `;
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
 
@@ -193,7 +253,11 @@ export class ExportDialog {
 
     // Options content
     const content = document.createElement('div');
-    content.className = 'flex-1 overflow-y-auto p-4';
+    content.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    `;
 
     // Format selector
     content.appendChild(this.createFormatSelector());
@@ -208,11 +272,28 @@ export class ExportDialog {
 
     // Footer
     const footer = document.createElement('div');
-    footer.className = 'p-4 border-t border-border';
+    footer.style.cssText = `
+      padding: 16px;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
 
     const exportBtn = document.createElement('button');
     exportBtn.innerHTML = `${ICONS.download} Export`;
-    exportBtn.className = 'w-full flex items-center justify-center gap-2 py-3 px-4 bg-accent border-none rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-accent-hover transition-colors';
+    exportBtn.style.cssText = `
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--designlibre-accent, #0d99ff);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    `;
     exportBtn.addEventListener('click', () => this.doExport());
     footer.appendChild(exportBtn);
 
@@ -223,15 +304,20 @@ export class ExportDialog {
 
   private createFormatSelector(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'mb-5';
+    section.style.cssText = 'margin-bottom: 20px;';
 
     const label = document.createElement('div');
     label.textContent = 'Format';
-    label.className = 'text-xs font-medium text-content-secondary mb-2';
+    label.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #888);
+      margin-bottom: 8px;
+    `;
     section.appendChild(label);
 
     const buttons = document.createElement('div');
-    buttons.className = 'flex gap-2';
+    buttons.style.cssText = 'display: flex; gap: 8px;';
 
     const formats: ExportFormat[] = ['png', 'svg', 'pdf'];
     for (const format of formats) {
@@ -239,7 +325,17 @@ export class ExportDialog {
       btn.textContent = format.toUpperCase();
       btn.dataset['format'] = format;
       const isActive = format === this.selectedFormat;
-      btn.className = `flex-1 py-2.5 border rounded-md text-xs font-semibold cursor-pointer transition-colors ${isActive ? 'border-accent bg-accent text-white' : 'border-border bg-surface-secondary text-content'}`;
+      btn.style.cssText = `
+        flex: 1;
+        padding: 10px;
+        border: 1px solid ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
+        background: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-bg-secondary, #2d2d2d)'};
+        color: ${isActive ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      `;
       btn.addEventListener('click', () => {
         this.selectedFormat = format;
         this.updateFormatButtons(buttons);
@@ -258,30 +354,41 @@ export class ExportDialog {
     buttons.forEach((btn) => {
       const format = btn.dataset['format'];
       const isActive = format === this.selectedFormat;
-      if (isActive) {
-        btn.classList.remove('border-border', 'bg-surface-secondary', 'text-content');
-        btn.classList.add('border-accent', 'bg-accent', 'text-white');
-      } else {
-        btn.classList.remove('border-accent', 'bg-accent', 'text-white');
-        btn.classList.add('border-border', 'bg-surface-secondary', 'text-content');
-      }
+      btn.style.borderColor = isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)';
+      btn.style.background = isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-bg-secondary, #2d2d2d)';
+      btn.style.color = isActive ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)';
     });
   }
 
   private createFilenameInput(): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'mb-5';
+    section.style.cssText = 'margin-bottom: 20px;';
 
     const label = document.createElement('label');
     label.textContent = 'Filename';
-    label.className = 'block text-xs font-medium text-content-secondary mb-2';
+    label.style.cssText = `
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #888);
+      margin-bottom: 8px;
+    `;
     section.appendChild(label);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.value = this.filename;
     input.placeholder = 'export';
-    input.className = 'w-full py-2.5 px-3 border border-border rounded-md bg-surface-secondary text-content text-sm box-border';
+    input.style.cssText = `
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+      box-sizing: border-box;
+    `;
     input.addEventListener('input', () => {
       this.filename = input.value || 'export';
     });
@@ -384,7 +491,14 @@ export class ExportDialog {
 
     const note = document.createElement('div');
     note.textContent = 'PDF export coming soon. For now, export as SVG and convert.';
-    note.className = 'p-4 bg-surface-secondary rounded-md text-content-secondary text-xs text-center';
+    note.style.cssText = `
+      padding: 16px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      color: var(--designlibre-text-secondary, #888);
+      font-size: 12px;
+      text-align: center;
+    `;
     container.appendChild(note);
 
     return container;
@@ -400,19 +514,19 @@ export class ExportDialog {
     onChange: (v: number) => void
   ): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'mb-4';
+    section.style.cssText = 'margin-bottom: 16px;';
 
     const header = document.createElement('div');
-    header.className = 'flex justify-between items-center mb-2';
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
 
     const labelEl = document.createElement('span');
     labelEl.textContent = label;
-    labelEl.className = 'text-xs font-medium text-content-secondary';
+    labelEl.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #888);';
     header.appendChild(labelEl);
 
     const valueEl = document.createElement('span');
     valueEl.textContent = format(value);
-    valueEl.className = 'text-xs text-accent';
+    valueEl.style.cssText = 'font-size: 12px; color: var(--designlibre-accent, #0d99ff);';
     header.appendChild(valueEl);
 
     section.appendChild(header);
@@ -423,7 +537,14 @@ export class ExportDialog {
     slider.max = String(max);
     slider.step = String(step);
     slider.value = String(value);
-    slider.className = 'w-full h-1 appearance-none bg-[#444] rounded-sm cursor-pointer accent-accent';
+    slider.style.cssText = `
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #444;
+      border-radius: 2px;
+      cursor: pointer;
+    `;
     slider.addEventListener('input', () => {
       const v = parseFloat(slider.value);
       valueEl.textContent = format(v);
@@ -441,15 +562,29 @@ export class ExportDialog {
     onChange: (v: string) => void
   ): HTMLElement {
     const section = document.createElement('div');
-    section.className = 'mb-4';
+    section.style.cssText = 'margin-bottom: 16px;';
 
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
-    labelEl.className = 'block text-xs font-medium text-content-secondary mb-2';
+    labelEl.style.cssText = `
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text-secondary, #888);
+      margin-bottom: 8px;
+    `;
     section.appendChild(labelEl);
 
     const select = document.createElement('select');
-    select.className = 'w-full py-2.5 px-3 border border-border rounded-md bg-surface-secondary text-content text-sm';
+    select.style.cssText = `
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 13px;
+    `;
     for (const opt of options) {
       const option = document.createElement('option');
       option.value = opt.value;
@@ -489,8 +624,16 @@ export class ExportDialog {
 
         this.previewContainer.innerHTML = '';
         const previewWrapper = document.createElement('div');
-        previewWrapper.className = 'max-w-full max-h-full flex items-center justify-center rounded-lg p-5';
-        previewWrapper.style.background = this.getPreviewBackground();
+        previewWrapper.style.cssText = `
+          max-width: 100%;
+          max-height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: ${this.getPreviewBackground()};
+          border-radius: 8px;
+          padding: 20px;
+        `;
         previewWrapper.innerHTML = result.svg;
 
         // Scale SVG to fit
@@ -513,12 +656,16 @@ export class ExportDialog {
         this.previewContainer.innerHTML = '';
         const img = document.createElement('img');
         img.src = result.url;
-        img.className = 'max-w-full max-h-75 rounded-lg';
-        img.style.background = this.getPreviewBackground();
+        img.style.cssText = `
+          max-width: 100%;
+          max-height: 300px;
+          border-radius: 8px;
+          background: ${this.getPreviewBackground()};
+        `;
         this.previewContainer.appendChild(img);
       } else {
         this.previewContainer.innerHTML = `
-          <div class="text-center text-content-muted">
+          <div style="text-align: center; color: var(--designlibre-text-muted, #6a6a6a);">
             PDF preview not available
           </div>
         `;
@@ -527,7 +674,7 @@ export class ExportDialog {
       console.error('Preview error:', error);
       if (this.previewContainer) {
         this.previewContainer.innerHTML = `
-          <div class="text-center text-red-500">
+          <div style="text-align: center; color: var(--designlibre-error, #f44336);">
             Error generating preview
           </div>
         `;

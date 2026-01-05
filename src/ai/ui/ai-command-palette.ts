@@ -118,7 +118,21 @@ export class AICommandPalette {
   private createOverlay(): void {
     // Backdrop
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-ai-command-palette fixed inset-0 bg-black/50 flex items-start justify-center pt-25 z-10000';
+    this.overlay.className = 'designlibre-ai-command-palette';
+    this.overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 100px;
+      z-index: 10000;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.hide();
@@ -127,21 +141,36 @@ export class AICommandPalette {
 
     // Palette container
     const palette = document.createElement('div');
-    palette.className = 'w-125 max-w-[90vw] bg-surface border border-border rounded-xl shadow-2xl overflow-hidden';
+    palette.style.cssText = `
+      width: 500px;
+      max-width: 90vw;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    `;
 
     // Header with AI icon
     const header = document.createElement('div');
-    header.className = 'flex items-center gap-3 p-4 border-b border-border bg-surface-tertiary';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+    `;
 
     const icon = document.createElement('div');
     icon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--designlibre-accent, #a855f7)" stroke-width="2">
       <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
     </svg>`;
-    icon.className = 'flex';
+    icon.style.cssText = `display: flex;`;
     header.appendChild(icon);
 
     const title = document.createElement('div');
-    title.innerHTML = '<div class="font-semibold text-sm text-content">AI Command</div><div class="text-[11px] text-content-muted">Type a command or select from suggestions</div>';
+    title.innerHTML = '<div style="font-weight: 600; font-size: 14px; color: var(--designlibre-text-primary, #e4e4e4);">AI Command</div><div style="font-size: 11px; color: var(--designlibre-text-muted, #6a6a6a);">Type a command or select from suggestions</div>';
     header.appendChild(title);
 
     palette.appendChild(header);
@@ -150,37 +179,60 @@ export class AICommandPalette {
     this.input = document.createElement('input');
     this.input.type = 'text';
     this.input.placeholder = 'What would you like to do?';
-    this.input.className = 'w-full p-4 border-none bg-transparent text-content text-base outline-none box-border';
+    this.input.style.cssText = `
+      width: 100%;
+      padding: 16px;
+      border: none;
+      background: transparent;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 16px;
+      outline: none;
+      box-sizing: border-box;
+    `;
     this.input.addEventListener('input', () => this.updateSuggestions());
     this.input.addEventListener('keydown', (e) => this.handleKeyDown(e));
     palette.appendChild(this.input);
 
     // Suggestions list
     this.suggestionsList = document.createElement('div');
-    this.suggestionsList.className = 'suggestions-list max-h-75 overflow-y-auto border-t border-border';
+    this.suggestionsList.className = 'suggestions-list';
+    this.suggestionsList.style.cssText = `
+      max-height: 300px;
+      overflow-y: auto;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
     this.filteredCommands = [...QUICK_COMMANDS];
     this.renderSuggestions();
     palette.appendChild(this.suggestionsList);
 
     // Footer
     const footer = document.createElement('div');
-    footer.className = 'flex items-center justify-between py-3 px-4 border-t border-border bg-surface-tertiary text-[11px] text-content-muted';
+    footer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+      background: var(--designlibre-bg-tertiary, #252525);
+      font-size: 11px;
+      color: var(--designlibre-text-muted, #6a6a6a);
+    `;
 
     const shortcuts = document.createElement('div');
     shortcuts.innerHTML = `
-      <span class="mr-3"><kbd class="bg-surface-secondary py-0.5 px-1.5 rounded mr-1">↑↓</kbd> Navigate</span>
-      <span class="mr-3"><kbd class="bg-surface-secondary py-0.5 px-1.5 rounded mr-1">Enter</kbd> Execute</span>
-      <span><kbd class="bg-surface-secondary py-0.5 px-1.5 rounded mr-1">Esc</kbd> Close</span>
+      <span style="margin-right: 12px;"><kbd style="background: var(--designlibre-bg-secondary, #2d2d2d); padding: 2px 6px; border-radius: 3px; margin-right: 4px;">↑↓</kbd> Navigate</span>
+      <span style="margin-right: 12px;"><kbd style="background: var(--designlibre-bg-secondary, #2d2d2d); padding: 2px 6px; border-radius: 3px; margin-right: 4px;">Enter</kbd> Execute</span>
+      <span><kbd style="background: var(--designlibre-bg-secondary, #2d2d2d); padding: 2px 6px; border-radius: 3px; margin-right: 4px;">Esc</kbd> Close</span>
     `;
     footer.appendChild(shortcuts);
 
     // Screenshot toggle
     const screenshotLabel = document.createElement('label');
-    screenshotLabel.className = 'flex items-center gap-1.5 cursor-pointer';
+    screenshotLabel.style.cssText = `display: flex; align-items: center; gap: 6px; cursor: pointer;`;
     const screenshotCheckbox = document.createElement('input');
     screenshotCheckbox.type = 'checkbox';
     screenshotCheckbox.checked = this.options.defaultScreenshot;
-    screenshotCheckbox.className = 'accent-accent';
+    screenshotCheckbox.style.cssText = `accent-color: var(--designlibre-accent, #a855f7);`;
     screenshotLabel.appendChild(screenshotCheckbox);
     screenshotLabel.appendChild(document.createTextNode('Include screenshot'));
     footer.appendChild(screenshotLabel);
@@ -214,7 +266,12 @@ export class AICommandPalette {
 
     if (this.filteredCommands.length === 0) {
       const empty = document.createElement('div');
-      empty.className = 'p-5 text-center text-content-muted text-xs';
+      empty.style.cssText = `
+        padding: 20px;
+        text-align: center;
+        color: var(--designlibre-text-muted, #6a6a6a);
+        font-size: 12px;
+      `;
       empty.textContent = 'Press Enter to send your custom command';
       this.suggestionsList.appendChild(empty);
       return;
@@ -223,16 +280,25 @@ export class AICommandPalette {
     for (let i = 0; i < this.filteredCommands.length; i++) {
       const cmd = this.filteredCommands[i]!;
       const item = document.createElement('div');
-      item.className = `suggestion-item py-3 px-4 cursor-pointer flex items-center justify-between transition-colors ${i === this.selectedIndex ? 'bg-surface-secondary' : 'bg-transparent'}`;
+      item.className = 'suggestion-item';
+      item.style.cssText = `
+        padding: 12px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: ${i === this.selectedIndex ? 'var(--designlibre-bg-secondary, #2d2d2d)' : 'transparent'};
+        transition: background 0.1s;
+      `;
 
       const left = document.createElement('div');
       const label = document.createElement('div');
-      label.className = 'text-[13px] text-content mb-0.5';
+      label.style.cssText = `font-size: 13px; color: var(--designlibre-text-primary, #e4e4e4); margin-bottom: 2px;`;
       label.textContent = cmd.label;
       left.appendChild(label);
 
       const desc = document.createElement('div');
-      desc.className = 'text-[11px] text-content-muted';
+      desc.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #6a6a6a);`;
       desc.textContent = cmd.description;
       left.appendChild(desc);
 
