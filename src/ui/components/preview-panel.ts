@@ -134,63 +134,20 @@ export class PreviewPanel {
 
   private createStructure(): HTMLElement {
     const panel = document.createElement('div');
-    panel.className = 'preview-panel';
-    panel.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border-left: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    panel.className = 'preview-panel flex flex-col h-full bg-surface border-l border-border';
 
     panel.innerHTML = `
-      <div class="preview-panel-toolbar" style="
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: var(--designlibre-bg-tertiary, #252525);
-        border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-        flex-shrink: 0;
-      ">
+      <div class="preview-panel-toolbar flex items-center gap-2 px-3 py-2 bg-surface-tertiary border-b border-border flex-shrink-0">
         <!-- Device selector -->
-        <select class="preview-device-selector" style="
-          padding: 4px 8px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-primary, #e4e4e4);
-          font-size: 11px;
-          cursor: pointer;
-          min-width: 120px;
-        ">
+        <select class="preview-device-selector px-2 py-1 bg-surface-secondary border border-border rounded text-content text-xs cursor-pointer min-w-30">
           ${DEVICE_PRESETS.map(d => `<option value="${d.name}">${d.name}${d.width ? ` (${d.width}×${d.height})` : ''}</option>`).join('')}
         </select>
 
         <!-- Rotate button -->
-        <button class="preview-rotate-btn" title="Rotate device" style="
-          padding: 4px 6px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-secondary, #a0a0a0);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">${ICONS.rotate}</button>
+        <button class="preview-rotate-btn preview-toolbar-btn" title="Rotate device">${ICONS.rotate}</button>
 
         <!-- Zoom selector -->
-        <select class="preview-zoom-selector" style="
-          padding: 4px 8px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-primary, #e4e4e4);
-          font-size: 11px;
-          cursor: pointer;
-          width: 70px;
-        ">
+        <select class="preview-zoom-selector px-2 py-1 bg-surface-secondary border border-border rounded text-content text-xs cursor-pointer w-17">
           <option value="50">50%</option>
           <option value="75">75%</option>
           <option value="100" selected>100%</option>
@@ -198,88 +155,37 @@ export class PreviewPanel {
           <option value="150">150%</option>
         </select>
 
-        <div style="flex: 1;"></div>
+        <div class="flex-1"></div>
 
         <!-- Hover state toggle -->
-        <button class="preview-hover-btn" title="Preview hover state" style="
-          padding: 4px 6px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-secondary, #a0a0a0);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">${ICONS.hover}</button>
+        <button class="preview-hover-btn preview-toolbar-btn" title="Preview hover state">${ICONS.hover}</button>
 
         <!-- Refresh button -->
-        <button class="preview-refresh-btn" title="Refresh preview" style="
-          padding: 4px 6px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-secondary, #a0a0a0);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">${ICONS.refresh}</button>
+        <button class="preview-refresh-btn preview-toolbar-btn" title="Refresh preview">${ICONS.refresh}</button>
 
         <!-- Open in new window -->
-        <button class="preview-newwindow-btn" title="Open in new window" style="
-          padding: 4px 6px;
-          background: var(--designlibre-bg-secondary, #2d2d2d);
-          border: 1px solid var(--designlibre-border, #3d3d3d);
-          border-radius: 4px;
-          color: var(--designlibre-text-secondary, #a0a0a0);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">${ICONS.newWindow}</button>
+        <button class="preview-newwindow-btn preview-toolbar-btn" title="Open in new window">${ICONS.newWindow}</button>
       </div>
 
-      <div class="preview-viewport" style="
-        flex: 1;
-        overflow: auto;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        background: ${this.options.backgroundColor};
-      ">
-        <div class="preview-iframe-container" style="
-          position: relative;
-          transition: all 0.2s ease;
-        ">
+      <div class="preview-viewport flex-1 overflow-auto flex items-center justify-center p-6" style="background: ${this.options.backgroundColor};">
+        <div class="preview-iframe-container relative transition-all duration-200">
           <iframe
-            class="preview-iframe"
+            class="preview-iframe border-none bg-white shadow-lg rounded"
             sandbox="allow-scripts allow-same-origin"
-            style="
-              border: none;
-              background: white;
-              box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-              border-radius: 4px;
-            "
           ></iframe>
         </div>
       </div>
 
-      <div class="preview-status-bar" style="
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 6px 12px;
-        background: var(--designlibre-bg-tertiary, #252525);
-        border-top: 1px solid var(--designlibre-border, #3d3d3d);
-        font-size: 10px;
-        color: var(--designlibre-text-secondary, #a0a0a0);
-      ">
+      <div class="preview-status-bar flex items-center justify-between px-3 py-1.5 bg-surface-tertiary border-t border-border text-2xs text-content-secondary">
         <span class="preview-status-text">Ready</span>
         <span class="preview-dimensions-text"></span>
       </div>
     `;
+
+    // Apply button styles
+    panel.querySelectorAll('.preview-toolbar-btn').forEach(btn => {
+      (btn as HTMLElement).className += ' flex items-center justify-center px-1.5 py-1 bg-surface-secondary border border-border rounded text-content-secondary cursor-pointer hover:bg-surface-tertiary hover:text-content transition-colors';
+    });
 
     return panel;
   }
@@ -315,32 +221,29 @@ export class PreviewPanel {
         this.updateIframeSize();
       }
     });
-    this.setupButtonHover(rotateBtn as HTMLElement);
 
     // Refresh button
     const refreshBtn = this.element.querySelector('.preview-refresh-btn');
     refreshBtn?.addEventListener('click', () => this.refresh());
-    this.setupButtonHover(refreshBtn as HTMLElement);
 
     // Hover state toggle
-    const hoverBtn = this.element.querySelector('.preview-hover-btn');
+    const hoverBtn = this.element.querySelector('.preview-hover-btn') as HTMLElement;
     let hoverActive = false;
     hoverBtn?.addEventListener('click', () => {
       hoverActive = !hoverActive;
-      (hoverBtn as HTMLElement).style.background = hoverActive
-        ? 'var(--designlibre-accent, #4dabff)'
-        : 'var(--designlibre-bg-secondary, #2d2d2d)';
-      (hoverBtn as HTMLElement).style.color = hoverActive
-        ? 'white'
-        : 'var(--designlibre-text-secondary, #a0a0a0)';
+      if (hoverActive) {
+        hoverBtn.classList.add('bg-accent', 'text-white', 'border-accent');
+        hoverBtn.classList.remove('bg-surface-secondary', 'text-content-secondary');
+      } else {
+        hoverBtn.classList.remove('bg-accent', 'text-white', 'border-accent');
+        hoverBtn.classList.add('bg-surface-secondary', 'text-content-secondary');
+      }
       this.toggleHoverState(hoverActive);
     });
-    this.setupButtonHover(hoverBtn as HTMLElement);
 
     // Open in new window
     const newWindowBtn = this.element.querySelector('.preview-newwindow-btn');
     newWindowBtn?.addEventListener('click', () => this.openInNewWindow());
-    this.setupButtonHover(newWindowBtn as HTMLElement);
 
     // Subscribe to selection changes
     if (this.options.autoRefresh) {
@@ -362,24 +265,6 @@ export class PreviewPanel {
 
     // Initial iframe size
     this.updateIframeSize();
-  }
-
-  private setupButtonHover(btn: HTMLElement | null): void {
-    if (!btn) return;
-    const originalBg = btn.style.background;
-    const originalColor = btn.style.color;
-    btn.addEventListener('mouseenter', () => {
-      if (!btn.classList.contains('active')) {
-        btn.style.background = 'var(--designlibre-bg-tertiary, #353535)';
-        btn.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-      }
-    });
-    btn.addEventListener('mouseleave', () => {
-      if (!btn.classList.contains('active')) {
-        btn.style.background = originalBg;
-        btn.style.color = originalColor;
-      }
-    });
   }
 
   private updateIframeSize(): void {
