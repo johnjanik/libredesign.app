@@ -160,25 +160,9 @@ export class AIPanel {
   private updateStyles(): void {
     if (!this.element) return;
 
-    const position = this.options.position === 'right' ? 'right: 0;' : 'left: 0;';
-    const borderSide = this.options.position === 'right' ? 'left' : 'right';
-
-    this.element.style.cssText = `
-      position: absolute;
-      top: 0;
-      ${position}
-      width: ${this.collapsed ? '48px' : `${this.options.width}px`};
-      height: 100%;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border-${borderSide}: 1px solid var(--designlibre-border, #3d3d3d);
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      z-index: 100;
-      transition: width 0.2s ease;
-    `;
+    const isRight = this.options.position === 'right';
+    this.element.className = `designlibre-ai-panel absolute top-0 h-full bg-surface flex flex-col text-xs text-content z-100 transition-[width] duration-200 ${isRight ? 'right-0 border-l' : 'left-0 border-r'} border-border`;
+    this.element.style.width = this.collapsed ? '48px' : `${this.options.width}px`;
   }
 
   private render(): void {
@@ -196,22 +180,10 @@ export class AIPanel {
     if (!this.element) return;
 
     const expandBtn = document.createElement('button');
-    expandBtn.className = 'designlibre-ai-expand-btn';
+    expandBtn.className = 'designlibre-ai-expand-btn w-full h-12 border-none bg-transparent cursor-pointer flex items-center justify-center text-accent hover:bg-surface-secondary';
     expandBtn.innerHTML = ICONS.ai;
     expandBtn.title = 'Open AI Chat';
-    expandBtn.style.cssText = `
-      width: 100%;
-      height: 48px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-accent, #a855f7);
-    `;
     expandBtn.addEventListener('click', () => this.toggleCollapse());
-    this.addHoverEffect(expandBtn);
 
     this.element.appendChild(expandBtn);
   }
@@ -224,15 +196,7 @@ export class AIPanel {
 
     // Messages area
     this.messagesContainer = document.createElement('div');
-    this.messagesContainer.className = 'designlibre-ai-messages';
-    this.messagesContainer.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    `;
+    this.messagesContainer.className = 'designlibre-ai-messages flex-1 overflow-y-auto p-3 flex flex-col gap-3';
     this.renderMessages();
     this.element.appendChild(this.messagesContainer);
 
@@ -242,59 +206,36 @@ export class AIPanel {
 
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'designlibre-ai-header';
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-      background: var(--designlibre-bg-tertiary, #252525);
-    `;
+    header.className = 'designlibre-ai-header flex items-center justify-between p-3 border-b border-border bg-surface-tertiary';
 
     // Title with AI icon
     const titleArea = document.createElement('div');
-    titleArea.style.cssText = `display: flex; align-items: center; gap: 8px;`;
+    titleArea.className = 'flex items-center gap-2';
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.ai;
-    icon.style.cssText = `display: flex; color: var(--designlibre-accent, #a855f7);`;
+    icon.className = 'flex text-accent';
     titleArea.appendChild(icon);
 
     const title = document.createElement('span');
     title.textContent = 'AI Assistant';
-    title.style.cssText = `font-weight: 600; font-size: var(--designlibre-sidebar-font-size, 13px);`;
+    title.className = 'font-semibold text-[13px]';
     titleArea.appendChild(title);
 
     // Status indicator
     const status = document.createElement('span');
-    status.className = 'ai-status-indicator';
-    status.style.cssText = `
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--designlibre-text-muted, #6a6a6a);
-      margin-left: 8px;
-    `;
+    status.className = 'ai-status-indicator w-2 h-2 rounded-full bg-content-muted ml-2';
     titleArea.appendChild(status);
 
     header.appendChild(titleArea);
 
     // Actions
     const actions = document.createElement('div');
-    actions.style.cssText = `display: flex; gap: 4px;`;
+    actions.className = 'flex gap-1';
 
     // Provider selector
     const providerSelect = document.createElement('select');
-    providerSelect.style.cssText = `
-      padding: 4px 8px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      cursor: pointer;
-    `;
+    providerSelect.className = 'py-1 px-2 bg-surface-secondary border border-border rounded text-content text-[11px] cursor-pointer';
     const providers = this.aiController.getProviderNames();
     const activeProvider = this.aiController.getProviderName();
     for (const name of providers) {
@@ -394,15 +335,11 @@ export class AIPanel {
 
     if (this.messages.length === 0) {
       const empty = document.createElement('div');
-      empty.style.cssText = `
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--designlibre-text-muted, #6a6a6a);
-      `;
+      empty.className = 'text-center py-10 px-5 text-content-muted';
       empty.innerHTML = `
-        <div style="font-size: 32px; margin-bottom: 12px;">${ICONS.ai}</div>
-        <div style="font-size: var(--designlibre-sidebar-font-size-lg, 14px); font-weight: 500; margin-bottom: 4px;">AI Design Assistant</div>
-        <div style="font-size: var(--designlibre-sidebar-font-size-sm, 12px);">Ask me to create shapes, modify elements, or help with your design.</div>
+        <div class="text-[32px] mb-3">${ICONS.ai}</div>
+        <div class="text-sm font-medium mb-1">AI Design Assistant</div>
+        <div class="text-xs">Ask me to create shapes, modify elements, or help with your design.</div>
       `;
       this.messagesContainer.appendChild(empty);
       return;
@@ -418,41 +355,20 @@ export class AIPanel {
 
   private createMessageBubble(message: ChatMessage): HTMLElement {
     const bubble = document.createElement('div');
-    bubble.className = `message-bubble ${message.role}`;
     const isUser = message.role === 'user';
-
-    bubble.style.cssText = `
-      max-width: 85%;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: ${isUser ? 'var(--designlibre-accent, #a855f7)' : 'var(--designlibre-bg-secondary, #2d2d2d)'};
-      color: ${isUser ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      align-self: ${isUser ? 'flex-end' : 'flex-start'};
-      word-wrap: break-word;
-    `;
+    bubble.className = `message-bubble ${message.role} max-w-[85%] py-2.5 px-3.5 rounded-xl break-words ${isUser ? 'bg-accent text-white self-end' : 'bg-surface-secondary text-content self-start'}`;
 
     // Attachments preview (for user messages with images)
     if (isUser && message.attachments && message.attachments.length > 0) {
       const attachmentsRow = document.createElement('div');
-      attachmentsRow.style.cssText = `
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 8px;
-      `;
+      attachmentsRow.className = 'flex flex-wrap gap-1.5 mb-2';
 
       for (const attachment of message.attachments) {
         if (attachment.type === 'image' && attachment.data) {
           const img = document.createElement('img');
           img.src = `data:${attachment.mimeType};base64,${attachment.data}`;
           img.alt = attachment.name;
-          img.style.cssText = `
-            max-width: 100px;
-            max-height: 80px;
-            border-radius: 6px;
-            object-fit: cover;
-            opacity: 0.9;
-          `;
+          img.className = 'max-w-25 max-h-20 rounded-md object-cover opacity-90';
           attachmentsRow.appendChild(img);
         }
       }
@@ -462,8 +378,7 @@ export class AIPanel {
 
     // Content
     const content = document.createElement('div');
-    content.className = 'message-content';
-    content.style.cssText = `font-size: var(--designlibre-sidebar-font-size-sm, 12px); line-height: 1.5;`;
+    content.className = 'message-content text-xs leading-normal';
 
     if (isUser) {
       // User messages: simple text
@@ -482,12 +397,7 @@ export class AIPanel {
 
     // Metadata
     const meta = document.createElement('div');
-    meta.style.cssText = `
-      font-size: 10px;
-      opacity: 0.7;
-      margin-top: 4px;
-      text-align: ${isUser ? 'right' : 'left'};
-    `;
+    meta.className = `text-[10px] opacity-70 mt-1 ${isUser ? 'text-right' : 'text-left'}`;
     const time = message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const extras: string[] = [];
     if (message.hasScreenshot) extras.push('screenshot');
@@ -679,32 +589,9 @@ export class AIPanel {
     const btn = document.createElement('button');
     btn.innerHTML = icon;
     btn.title = title;
-    btn.style.cssText = `
-      width: 28px;
-      height: 28px;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      border-radius: 4px;
-    `;
+    btn.className = 'w-7 h-7 border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary rounded hover:bg-surface-secondary hover:text-content';
     btn.addEventListener('click', onClick);
-    this.addHoverEffect(btn);
     return btn;
-  }
-
-  private addHoverEffect(button: HTMLElement): void {
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-    });
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
-    });
   }
 
   private toggleCollapse(): void {

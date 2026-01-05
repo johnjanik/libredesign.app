@@ -39,20 +39,7 @@ function copyToClipboardFallback(text: string): CopyResult {
   textarea.value = text;
 
   // Make textarea invisible but part of the document
-  textarea.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 2em;
-    height: 2em;
-    padding: 0;
-    border: none;
-    outline: none;
-    box-shadow: none;
-    background: transparent;
-    opacity: 0;
-    pointer-events: none;
-  `;
+  textarea.className = 'fixed top-0 left-0 w-8 h-8 p-0 border-none outline-none shadow-none bg-transparent opacity-0 pointer-events-none';
 
   document.body.appendChild(textarea);
 

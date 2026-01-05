@@ -75,17 +75,7 @@ export class CursorOverlay {
    */
   private createOverlayContainer(): HTMLDivElement {
     const container = document.createElement('div');
-    container.className = 'cursor-overlay';
-    container.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-      z-index: 1000;
-    `;
+    container.className = 'cursor-overlay absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-1000';
     return container;
   }
 
@@ -94,41 +84,26 @@ export class CursorOverlay {
    */
   private createCursorElement(data: CursorDisplayData): CursorElement {
     const container = document.createElement('div');
-    container.className = 'remote-cursor';
-    container.style.cssText = `
-      position: absolute;
-      pointer-events: none;
-      transition: transform 50ms linear, opacity ${this.config.fadeOutDuration}ms ease-out;
-      will-change: transform;
-    `;
+    container.className = 'remote-cursor absolute pointer-events-none will-change-transform';
+    container.style.transition = `transform 50ms linear, opacity ${this.config.fadeOutDuration}ms ease-out`;
 
     // Cursor arrow SVG
     const cursor = document.createElement('div');
     cursor.className = 'cursor-arrow';
     cursor.innerHTML = this.createCursorSVG(data.color);
-    cursor.style.cssText = `
-      width: ${this.config.cursorSize}px;
-      height: ${this.config.cursorSize}px;
-    `;
+    cursor.style.width = `${this.config.cursorSize}px`;
+    cursor.style.height = `${this.config.cursorSize}px`;
 
     // User label
     const label = document.createElement('div');
-    label.className = 'cursor-label';
+    label.className = 'cursor-label absolute font-medium rounded whitespace-nowrap shadow-md';
     label.textContent = data.userName;
-    label.style.cssText = `
-      position: absolute;
-      left: ${this.config.cursorSize + 2}px;
-      top: ${this.config.cursorSize - 4}px;
-      background-color: ${data.color};
-      color: ${this.getContrastColor(data.color)};
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: ${this.config.labelFontSize}px;
-      font-weight: 500;
-      padding: ${this.config.labelPadding}px ${this.config.labelPadding * 2}px;
-      border-radius: 4px;
-      white-space: nowrap;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    `;
+    label.style.left = `${this.config.cursorSize + 2}px`;
+    label.style.top = `${this.config.cursorSize - 4}px`;
+    label.style.backgroundColor = data.color;
+    label.style.color = this.getContrastColor(data.color);
+    label.style.fontSize = `${this.config.labelFontSize}px`;
+    label.style.padding = `${this.config.labelPadding}px ${this.config.labelPadding * 2}px`;
 
     container.appendChild(cursor);
     container.appendChild(label);

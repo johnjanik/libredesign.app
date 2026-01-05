@@ -93,17 +93,7 @@ export class SelectionOverlay {
    */
   private createOverlayContainer(): HTMLDivElement {
     const container = document.createElement('div');
-    container.className = 'selection-overlay';
-    container.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-      z-index: 999;
-    `;
+    container.className = 'selection-overlay absolute inset-0 w-full h-full pointer-events-none overflow-hidden z-999';
     return container;
   }
 
@@ -112,35 +102,16 @@ export class SelectionOverlay {
    */
   private createSelectionElement(clientId: string, color: string, userName?: string): SelectionElement {
     const container = document.createElement('div');
-    container.className = `selection-${clientId}`;
-    container.style.cssText = `
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    `;
+    container.className = `selection-${clientId} absolute inset-0 w-full h-full pointer-events-none`;
 
     let label: HTMLDivElement | null = null;
     if (this.config.showUserLabel && userName) {
       label = document.createElement('div');
-      label.className = 'selection-label';
+      label.className = 'selection-label absolute font-medium py-0.5 px-1.5 rounded-sm whitespace-nowrap opacity-0 transition-opacity duration-150 pointer-events-none';
       label.textContent = userName;
-      label.style.cssText = `
-        position: absolute;
-        background-color: ${color};
-        color: ${this.getContrastColor(color)};
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        font-size: ${this.config.labelFontSize}px;
-        font-weight: 500;
-        padding: 2px 6px;
-        border-radius: 2px;
-        white-space: nowrap;
-        opacity: 0;
-        transition: opacity 150ms ease-in-out;
-        pointer-events: none;
-      `;
+      label.style.backgroundColor = color;
+      label.style.color = this.getContrastColor(color);
+      label.style.fontSize = `${this.config.labelFontSize}px`;
       container.appendChild(label);
     }
 
@@ -159,15 +130,10 @@ export class SelectionOverlay {
    */
   private createSelectionRect(color: string): HTMLDivElement {
     const rect = document.createElement('div');
-    rect.className = 'selection-rect';
-    rect.style.cssText = `
-      position: absolute;
-      border: ${this.config.outlineWidth}px solid ${color};
-      border-radius: ${this.config.cornerRadius}px;
-      pointer-events: none;
-      box-sizing: border-box;
-      background-color: ${color}10;
-    `;
+    rect.className = 'selection-rect absolute pointer-events-none box-border';
+    rect.style.border = `${this.config.outlineWidth}px solid ${color}`;
+    rect.style.borderRadius = `${this.config.cornerRadius}px`;
+    rect.style.backgroundColor = `${color}10`;
     return rect;
   }
 

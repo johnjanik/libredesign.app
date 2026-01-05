@@ -121,8 +121,7 @@ async function initializeApp(config: AppConfig): Promise<void> {
 
   // Create app structure
   const appContainer = document.createElement('div');
-  appContainer.className = 'designlibre-app';
-  appContainer.style.cssText = 'width: 100%; height: 100%; display: flex; flex-direction: column;';
+  appContainer.className = 'designlibre-app w-full h-full flex flex-col';
 
   // Main content area (full height, no header)
   const main = document.createElement('main');
