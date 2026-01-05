@@ -145,13 +145,7 @@ export class LayerTree {
 
   private setup(): void {
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-layer-tree';
-    this.element.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
-    `;
+    this.element.className = 'designlibre-layer-tree flex flex-col h-full overflow-hidden';
 
     this.render();
     this.container.appendChild(this.element);
@@ -187,25 +181,15 @@ export class LayerTree {
 
     // Layer list
     this.listElement = document.createElement('div');
-    this.listElement.className = 'layer-tree-list';
+    this.listElement.className = 'layer-tree-list flex-1 overflow-y-auto overflow-x-hidden';
     this.listElement.setAttribute('role', 'tree');
     this.listElement.setAttribute('aria-label', 'Layer hierarchy');
-    this.listElement.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-    `;
 
     const layers = this.buildLayerTree();
     if (layers.length === 0) {
       const empty = document.createElement('div');
       empty.textContent = 'No layers yet';
-      empty.style.cssText = `
-        padding: 16px;
-        color: var(--designlibre-text-muted, #666);
-        font-size: 12px;
-        text-align: center;
-      `;
+      empty.className = 'p-4 text-content-tertiary text-xs text-center';
       this.listElement.appendChild(empty);
     } else {
       this.renderLayers(layers, this.listElement);
@@ -216,37 +200,18 @@ export class LayerTree {
 
   private renderHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.className = 'layer-tree-header';
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
-    `;
+    header.className = 'layer-tree-header flex items-center justify-between px-3 py-2 border-b border-border';
 
     const title = document.createElement('span');
     title.textContent = 'Layers';
-    title.style.cssText = `
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--designlibre-text-secondary, #888);
-    `;
+    title.className = 'text-xs font-semibold uppercase tracking-wide text-content-secondary';
     header.appendChild(title);
 
     if (this.options.showCount) {
       const count = this.getLayerCount();
       const countEl = document.createElement('span');
       countEl.textContent = String(count);
-      countEl.style.cssText = `
-        font-size: 10px;
-        color: var(--designlibre-text-muted, #666);
-        background: var(--designlibre-bg-tertiary, #161616);
-        padding: 2px 6px;
-        border-radius: 10px;
-      `;
+      countEl.className = 'text-2xs text-content-tertiary bg-surface-tertiary px-1.5 py-0.5 rounded-full';
       header.appendChild(countEl);
     }
 
@@ -255,39 +220,21 @@ export class LayerTree {
 
   private renderSearch(): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = `
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--designlibre-border, #2d2d2d);
-    `;
+    wrapper.className = 'px-3 py-2 border-b border-border';
 
     const searchBox = document.createElement('div');
-    searchBox.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      background: var(--designlibre-bg-tertiary, #161616);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-    `;
+    searchBox.className = 'flex items-center gap-1.5 px-2 py-1 bg-surface-tertiary border border-border rounded';
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.search;
-    icon.style.cssText = 'display: flex; color: var(--designlibre-text-muted, #666);';
+    icon.className = 'flex text-content-tertiary';
     searchBox.appendChild(icon);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = 'Filter layers...';
     input.value = this.searchQuery;
-    input.style.cssText = `
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
-      outline: none;
-    `;
+    input.className = 'flex-1 border-none bg-transparent text-content text-xs outline-none';
     input.addEventListener('input', (e) => {
       this.searchQuery = (e.target as HTMLInputElement).value;
       this.render();
@@ -391,50 +338,19 @@ export class LayerTree {
     const isExpanded = this.expandedIds.has(layer.id);
 
     const item = document.createElement('div');
-    item.className = 'layer-item';
+    item.className = isSelected
+      ? 'group layer-item-selected border-l-2 border-accent text-accent'
+      : 'group layer-item border-l-2 border-transparent text-content';
     item.dataset['nodeId'] = layer.id;
     item.setAttribute('role', 'treeitem');
     item.setAttribute('aria-selected', String(isSelected));
     item.setAttribute('aria-expanded', String(isExpanded));
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 8px;
-      padding-left: ${8 + layer.depth * 16}px;
-      cursor: pointer;
-      user-select: none;
-      background: ${isSelected ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${isSelected ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      border-left: 2px solid ${isSelected ? 'var(--designlibre-accent, #0d99ff)' : 'transparent'};
-      font-size: 12px;
-      transition: background-color 0.1s;
-    `;
-
-    // Hover effect
-    item.addEventListener('mouseenter', () => {
-      if (!isSelected) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-    item.addEventListener('mouseleave', () => {
-      if (!isSelected) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
+    // Dynamic padding for depth hierarchy
+    item.style.paddingLeft = `${8 + layer.depth * 16}px`;
 
     // Expand/collapse toggle
     const toggle = document.createElement('span');
-    toggle.className = 'layer-toggle';
-    toggle.style.cssText = `
-      display: flex;
-      width: 16px;
-      height: 16px;
-      align-items: center;
-      justify-content: center;
-      visibility: ${hasChildren ? 'visible' : 'hidden'};
-      color: var(--designlibre-text-secondary, #888);
-    `;
+    toggle.className = `layer-toggle flex w-4 h-4 items-center justify-center text-content-secondary ${hasChildren ? 'visible' : 'invisible'}`;
     toggle.innerHTML = isExpanded ? ICONS.chevronDown : ICONS.chevronRight;
     toggle.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -444,35 +360,19 @@ export class LayerTree {
 
     // Type icon
     const icon = document.createElement('span');
-    icon.className = 'layer-icon';
+    icon.className = `layer-icon flex ${isSelected ? 'text-accent' : 'text-content-secondary'}`;
     icon.innerHTML = TYPE_ICONS[layer.type] ?? ICONS.frame;
-    icon.style.cssText = `
-      display: flex;
-      color: ${isSelected ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-secondary, #888)'};
-    `;
     item.appendChild(icon);
 
     // Name
     const name = document.createElement('span');
-    name.className = 'layer-name';
+    name.className = 'layer-name flex-1 truncate';
     name.textContent = layer.name;
-    name.style.cssText = `
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    `;
     item.appendChild(name);
 
-    // Action buttons (visibility, lock) - show on hover
+    // Action buttons (visibility, lock) - show on hover via group-hover
     const actions = document.createElement('div');
-    actions.className = 'layer-actions';
-    actions.style.cssText = `
-      display: flex;
-      gap: 2px;
-      opacity: 0;
-      transition: opacity 0.1s;
-    `;
+    actions.className = 'layer-actions flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity';
 
     // Visibility toggle
     const visBtn = this.createActionButton(
@@ -481,8 +381,7 @@ export class LayerTree {
       () => this.toggleVisibility(layer.id, !layer.visible)
     );
     if (!layer.visible) {
-      visBtn.style.opacity = '1';
-      visBtn.style.color = 'var(--designlibre-text-muted, #666)';
+      visBtn.classList.add('opacity-100', 'text-content-tertiary');
     }
     actions.appendChild(visBtn);
 
@@ -493,20 +392,11 @@ export class LayerTree {
       () => this.toggleLock(layer.id, !layer.locked)
     );
     if (layer.locked) {
-      lockBtn.style.opacity = '1';
-      lockBtn.style.color = 'var(--designlibre-text-muted, #666)';
+      lockBtn.classList.add('opacity-100', 'text-content-tertiary');
     }
     actions.appendChild(lockBtn);
 
     item.appendChild(actions);
-
-    // Show actions on hover
-    item.addEventListener('mouseenter', () => {
-      actions.style.opacity = '1';
-    });
-    item.addEventListener('mouseleave', () => {
-      actions.style.opacity = '0';
-    });
 
     // Selection
     item.addEventListener('click', (e) => {
@@ -540,21 +430,7 @@ export class LayerTree {
     const btn = document.createElement('button');
     btn.innerHTML = icon;
     btn.title = title;
-    btn.style.cssText = `
-      display: flex;
-      padding: 2px;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-secondary, #888);
-      cursor: pointer;
-      border-radius: 2px;
-    `;
-    btn.addEventListener('mouseenter', () => {
-      btn.style.backgroundColor = 'var(--designlibre-bg-tertiary, #161616)';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.backgroundColor = 'transparent';
-    });
+    btn.className = 'flex p-0.5 border-none bg-transparent text-content-secondary cursor-pointer rounded-sm hover:bg-surface-tertiary transition-colors';
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       onClick();
@@ -619,16 +495,7 @@ export class LayerTree {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = node.name;
-    input.style.cssText = `
-      flex: 1;
-      border: 1px solid var(--designlibre-accent, #0d99ff);
-      border-radius: 2px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
-      padding: 0 4px;
-      outline: none;
-    `;
+    input.className = 'flex-1 border border-accent rounded-sm bg-surface text-content text-xs px-1 outline-none';
 
     const finishRename = () => {
       const newName = input.value.trim() || node.name;
