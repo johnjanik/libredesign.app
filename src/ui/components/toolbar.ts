@@ -53,6 +53,11 @@ const TOOL_ICONS: Record<string, string> = {
     <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
     <path d="M13 13l6 6"/>
   </svg>`,
+  frame: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <line x1="3" y1="9" x2="21" y2="9"/>
+    <line x1="9" y1="3" x2="9" y2="21"/>
+  </svg>`,
   rectangle: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <rect x="3" y="3" width="18" height="18" rx="2"/>
   </svg>`,
@@ -122,6 +127,7 @@ const DRAWING_TOOLS: ToolDefinition[] = [
  */
 const STANDALONE_TOOLS: ToolDefinition[] = [
   { id: 'select', name: 'Select', icon: TOOL_ICONS['select']!, shortcut: 'V' },
+  { id: 'frame', name: 'Frame', icon: TOOL_ICONS['frame']!, shortcut: 'F' },
   { id: 'hand', name: 'Hand', icon: TOOL_ICONS['hand']!, shortcut: 'H' },
   { id: 'text', name: 'Text', icon: TOOL_ICONS['text']!, shortcut: 'T' },
 ];

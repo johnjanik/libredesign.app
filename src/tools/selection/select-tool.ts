@@ -39,7 +39,7 @@ interface SelectToolState {
   // Move state
   moveStartPoint: Point | null;
   moveStartPositions: Map<NodeId, { x: number; y: number }> | null;
-  // Duplicate while moving (Ctrl+drag)
+  // Duplicate while moving (Alt+drag - canonical behavior)
   duplicatedNodes: boolean;
   originalSelection: NodeId[] | null;
 }
@@ -196,8 +196,8 @@ export class SelectTool extends BaseTool {
         height: newBounds.height,
       });
     } else if (this.state.mode === 'moving' && this.state.moveStartPoint && this.state.moveStartPositions) {
-      // Ctrl+drag: duplicate nodes on first move
-      if ((event.ctrlKey || event.metaKey) && !this.state.duplicatedNodes) {
+      // Alt+drag: duplicate nodes on first move (canonical behavior)
+      if (event.altKey && !this.state.duplicatedNodes) {
         this.duplicateNodesForMove(context);
         this.state.duplicatedNodes = true;
       }

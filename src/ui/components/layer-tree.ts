@@ -36,6 +36,8 @@ interface LayerNode {
   locked: boolean;
   children: LayerNode[];
   depth: number;
+  /** Auto-layout mode for frames */
+  autoLayoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL';
 }
 
 /**
@@ -106,6 +108,23 @@ const TYPE_ICONS: Record<string, string> = {
   IMAGE: ICONS.image,
   COMPONENT: ICONS.component,
   INSTANCE: ICONS.component,
+};
+
+/**
+ * Type badge labels
+ * F = Frame (no auto-layout)
+ * H = Horizontal auto-layout container
+ * V = Vertical auto-layout container
+ * G = Group
+ * C = Component
+ */
+const TYPE_BADGES: Record<string, { label: string; color: string }> = {
+  FRAME_NONE: { label: 'F', color: '#666' },
+  FRAME_HORIZONTAL: { label: 'H', color: '#0d99ff' },
+  FRAME_VERTICAL: { label: 'V', color: '#a855f7' },
+  GROUP: { label: 'G', color: '#f97316' },
+  COMPONENT: { label: 'C', color: '#22c55e' },
+  INSTANCE: { label: 'I', color: '#22c55e' },
 };
 
 /**
@@ -345,7 +364,14 @@ export class LayerTree {
         }
       }
 
-      return {
+      // Extract auto-layout mode for frames
+      let autoLayoutMode: 'NONE' | 'HORIZONTAL' | 'VERTICAL' = 'NONE';
+      if (node.type === 'FRAME' || node.type === 'COMPONENT') {
+        const frameNode = node as { autoLayout?: { mode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL' } };
+        autoLayoutMode = frameNode.autoLayout?.mode ?? 'NONE';
+      }
+
+      const result: LayerNode = {
         id: nodeId,
         name: node.name,
         type: node.type,
@@ -354,6 +380,13 @@ export class LayerTree {
         children,
         depth,
       };
+
+      // Only set autoLayoutMode for containers
+      if (node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'GROUP') {
+        result.autoLayoutMode = autoLayoutMode;
+      }
+
+      return result;
     };
 
     const childIds = getChildIds(page as { children?: NodeId[] });
@@ -452,6 +485,31 @@ export class LayerTree {
     `;
     item.appendChild(icon);
 
+    // Type badge (F/H/V/G/C/I)
+    const badgeKey = this.getBadgeKey(layer);
+    if (badgeKey && TYPE_BADGES[badgeKey]) {
+      const badgeInfo = TYPE_BADGES[badgeKey];
+      const badge = document.createElement('span');
+      badge.className = 'layer-badge';
+      badge.textContent = badgeInfo.label;
+      badge.title = this.getBadgeTooltip(badgeKey);
+      badge.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        font-size: 9px;
+        font-weight: 600;
+        color: white;
+        background: ${badgeInfo.color};
+        border-radius: 3px;
+        margin-left: 2px;
+      `;
+      item.appendChild(badge);
+    }
+
     // Name
     const name = document.createElement('span');
     name.className = 'layer-name';
@@ -464,13 +522,15 @@ export class LayerTree {
     `;
     item.appendChild(name);
 
-    // Action buttons (visibility, lock) - show on hover
+    // Action buttons (visibility, lock)
+    // Always visible when layer is hidden or locked, otherwise show on hover
+    const hasActiveState = !layer.visible || layer.locked;
     const actions = document.createElement('div');
     actions.className = 'layer-actions';
     actions.style.cssText = `
       display: flex;
       gap: 2px;
-      opacity: 0;
+      opacity: ${hasActiveState ? '1' : '0'};
       transition: opacity 0.1s;
     `;
 
@@ -481,8 +541,7 @@ export class LayerTree {
       () => this.toggleVisibility(layer.id, !layer.visible)
     );
     if (!layer.visible) {
-      visBtn.style.opacity = '1';
-      visBtn.style.color = 'var(--designlibre-text-muted, #666)';
+      visBtn.style.color = 'var(--designlibre-warning, #f59e0b)';
     }
     actions.appendChild(visBtn);
 
@@ -493,19 +552,20 @@ export class LayerTree {
       () => this.toggleLock(layer.id, !layer.locked)
     );
     if (layer.locked) {
-      lockBtn.style.opacity = '1';
-      lockBtn.style.color = 'var(--designlibre-text-muted, #666)';
+      lockBtn.style.color = 'var(--designlibre-error, #ef4444)';
     }
     actions.appendChild(lockBtn);
 
     item.appendChild(actions);
 
-    // Show actions on hover
+    // Show actions on hover, keep visible if layer has active state
     item.addEventListener('mouseenter', () => {
       actions.style.opacity = '1';
     });
     item.addEventListener('mouseleave', () => {
-      actions.style.opacity = '0';
+      if (!hasActiveState) {
+        actions.style.opacity = '0';
+      }
     });
 
     // Selection
@@ -709,10 +769,82 @@ export class LayerTree {
 
     if (!this.draggedId || !this.dropPosition) return;
 
-    // TODO: Implement actual reordering via sceneGraph
-    console.log('Drop:', this.draggedId, this.dropPosition, targetId);
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) {
+      this.handleDragEnd();
+      return;
+    }
+
+    const draggedNode = sceneGraph.getNode(this.draggedId);
+    const targetNode = sceneGraph.getNode(targetId);
+    if (!draggedNode || !targetNode) {
+      this.handleDragEnd();
+      return;
+    }
+
+    // Prevent dropping a node into itself or its descendants
+    if (this.isDescendant(this.draggedId, targetId)) {
+      this.handleDragEnd();
+      return;
+    }
+
+    const draggedParentId = draggedNode.parentId;
+    const targetParentId = targetNode.parentId;
+
+    try {
+      if (this.dropPosition === 'inside') {
+        // Move into the target (make target the new parent)
+        // Only allow if target can have children (FRAME, GROUP, COMPONENT)
+        if (targetNode.type === 'FRAME' || targetNode.type === 'GROUP' || targetNode.type === 'COMPONENT') {
+          sceneGraph.moveNode(this.draggedId, targetId, 0);
+          // Auto-expand the target so user can see the moved node
+          this.expandedIds.add(targetId);
+        }
+      } else {
+        // Move before or after the target
+        if (targetParentId) {
+          const parent = sceneGraph.getNode(targetParentId);
+          const children = (parent as { children?: NodeId[] })?.children ?? [];
+          const targetIndex = children.indexOf(targetId);
+
+          if (targetIndex >= 0) {
+            if (draggedParentId === targetParentId) {
+              // Same parent - reorder
+              const draggedIndex = children.indexOf(this.draggedId);
+              let newPosition = this.dropPosition === 'after' ? targetIndex + 1 : targetIndex;
+              // Adjust for removing the dragged item first
+              if (draggedIndex < newPosition) {
+                newPosition--;
+              }
+              sceneGraph.reorderNode(this.draggedId, newPosition);
+            } else {
+              // Different parent - move
+              const newPosition = this.dropPosition === 'after' ? targetIndex + 1 : targetIndex;
+              sceneGraph.moveNode(this.draggedId, targetParentId, newPosition);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to move layer:', error);
+    }
 
     this.handleDragEnd();
+  }
+
+  /**
+   * Check if nodeId is a descendant of potentialAncestorId
+   */
+  private isDescendant(potentialAncestorId: NodeId, nodeId: NodeId): boolean {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return false;
+
+    let current = sceneGraph.getNode(nodeId);
+    while (current && current.parentId) {
+      if (current.parentId === potentialAncestorId) return true;
+      current = sceneGraph.getNode(current.parentId);
+    }
+    return potentialAncestorId === nodeId;
   }
 
   private handleDragEnd(): void {
@@ -733,6 +865,43 @@ export class LayerTree {
   // ============================================================
   // Helpers
   // ============================================================
+
+  /**
+   * Get the badge key for a layer based on its type and auto-layout mode
+   */
+  private getBadgeKey(layer: LayerNode): string | null {
+    switch (layer.type) {
+      case 'FRAME':
+        if (layer.autoLayoutMode === 'HORIZONTAL') return 'FRAME_HORIZONTAL';
+        if (layer.autoLayoutMode === 'VERTICAL') return 'FRAME_VERTICAL';
+        return 'FRAME_NONE';
+      case 'GROUP':
+        return 'GROUP';
+      case 'COMPONENT':
+        if (layer.autoLayoutMode === 'HORIZONTAL') return 'FRAME_HORIZONTAL';
+        if (layer.autoLayoutMode === 'VERTICAL') return 'FRAME_VERTICAL';
+        return 'COMPONENT';
+      case 'INSTANCE':
+        return 'INSTANCE';
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Get the tooltip text for a badge key
+   */
+  private getBadgeTooltip(badgeKey: string): string {
+    switch (badgeKey) {
+      case 'FRAME_NONE': return 'Frame';
+      case 'FRAME_HORIZONTAL': return 'Horizontal auto-layout';
+      case 'FRAME_VERTICAL': return 'Vertical auto-layout';
+      case 'GROUP': return 'Group';
+      case 'COMPONENT': return 'Component';
+      case 'INSTANCE': return 'Component instance';
+      default: return '';
+    }
+  }
 
   private getLayerCount(): number {
     const sceneGraph = this.runtime.getSceneGraph();

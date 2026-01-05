@@ -88,6 +88,39 @@ const ICONS = {
   lock: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
   </svg>`,
+  unlock: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+  </svg>`,
+  rectangle: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+  </svg>`,
+  ellipse: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <ellipse cx="12" cy="12" rx="9" ry="9"/>
+  </svg>`,
+  group: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+  </svg>`,
+  component: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5 12,2"/>
+    <line x1="12" y1="22" x2="12" y2="15.5"/><line x1="22" y1="8.5" x2="12" y2="15.5"/>
+    <line x1="2" y1="8.5" x2="12" y2="15.5"/>
+  </svg>`,
+  image: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>
+  </svg>`,
+};
+
+/**
+ * Type badge configuration
+ */
+const TYPE_BADGES: Record<string, { label: string; color: string; tooltip: string }> = {
+  FRAME_NONE: { label: 'F', color: '#666', tooltip: 'Frame' },
+  FRAME_HORIZONTAL: { label: 'H', color: '#0d99ff', tooltip: 'Horizontal auto-layout' },
+  FRAME_VERTICAL: { label: 'V', color: '#a855f7', tooltip: 'Vertical auto-layout' },
+  GROUP: { label: 'G', color: '#f97316', tooltip: 'Group' },
+  COMPONENT: { label: 'C', color: '#22c55e', tooltip: 'Component' },
+  INSTANCE: { label: 'I', color: '#22c55e', tooltip: 'Component instance' },
 };
 
 /**
@@ -107,6 +140,10 @@ export class LeftSidebar {
   private activeLeafId = 'leaf-1';
   private leafCounter = 1;
   private expandedNodeIds: Set<string> = new Set();
+
+  // Drag-and-drop state
+  private draggedNodeId: NodeId | null = null;
+  private dropPosition: 'before' | 'after' | 'inside' | null = null;
 
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
@@ -1006,7 +1043,7 @@ export class LeftSidebar {
   }
 
   private createLayerItem(
-    node: { id: NodeId; name: string; type: string; visible?: boolean },
+    node: { id: NodeId; name: string; type: string; visible?: boolean; locked?: boolean },
     isSelected: boolean,
     depth: number,
     hasChildren: boolean = false,
@@ -1072,6 +1109,22 @@ export class LeftSidebar {
       case 'FRAME':
         icon.innerHTML = ICONS.frame;
         break;
+      case 'RECTANGLE':
+        icon.innerHTML = ICONS.rectangle;
+        break;
+      case 'ELLIPSE':
+        icon.innerHTML = ICONS.ellipse;
+        break;
+      case 'GROUP':
+        icon.innerHTML = ICONS.group;
+        break;
+      case 'COMPONENT':
+      case 'INSTANCE':
+        icon.innerHTML = ICONS.component;
+        break;
+      case 'IMAGE':
+        icon.innerHTML = ICONS.image;
+        break;
       case 'VECTOR':
         icon.innerHTML = ICONS.vector;
         break;
@@ -1080,6 +1133,30 @@ export class LeftSidebar {
         break;
       default:
         icon.innerHTML = ICONS.frame;
+    }
+
+    // Type badge (F/H/V/G/C/I)
+    const badgeKey = this.getLayerBadgeKey(node);
+    let badge: HTMLElement | null = null;
+    if (badgeKey && TYPE_BADGES[badgeKey]) {
+      const badgeInfo = TYPE_BADGES[badgeKey];
+      badge = document.createElement('span');
+      badge.textContent = badgeInfo.label;
+      badge.title = badgeInfo.tooltip;
+      badge.style.cssText = `
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 3px;
+        font-size: 9px;
+        font-weight: 600;
+        color: white;
+        background: ${badgeInfo.color};
+        border-radius: 3px;
+        flex-shrink: 0;
+      `;
     }
 
     // Name
@@ -1093,10 +1170,23 @@ export class LeftSidebar {
       text-overflow: ellipsis;
     `;
 
+    // Action buttons container
+    const actionsContainer = document.createElement('div');
+    actionsContainer.style.cssText = `
+      display: flex;
+      gap: 2px;
+      flex-shrink: 0;
+    `;
+
+    // Determine if layer has active state (hidden or locked)
+    const isHidden = node.visible === false;
+    const isLocked = node.locked === true;
+    const hasActiveState = isHidden || isLocked;
+
     // Visibility toggle
     const visibilityBtn = document.createElement('button');
-    visibilityBtn.innerHTML = node.visible !== false ? ICONS.eye : ICONS.eyeOff;
-    visibilityBtn.title = node.visible !== false ? 'Hide layer' : 'Show layer';
+    visibilityBtn.innerHTML = !isHidden ? ICONS.eye : ICONS.eyeOff;
+    visibilityBtn.title = !isHidden ? 'Hide layer' : 'Show layer';
     visibilityBtn.style.cssText = `
       width: 20px;
       height: 20px;
@@ -1106,40 +1196,78 @@ export class LeftSidebar {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--designlibre-text-muted, #6a6a6a);
+      color: ${isHidden ? 'var(--designlibre-warning, #f59e0b)' : 'var(--designlibre-text-muted, #6a6a6a)'};
       border-radius: 2px;
-      opacity: 0;
+      opacity: ${hasActiveState ? '1' : '0'};
       transition: opacity 0.15s;
       flex-shrink: 0;
     `;
 
     // Toggle visibility on click
     visibilityBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // Prevent layer selection
+      e.stopPropagation();
       const sceneGraph = this.runtime.getSceneGraph();
       if (sceneGraph) {
         const newVisible = node.visible === false;
         sceneGraph.updateNode(node.id, { visible: newVisible });
-        visibilityBtn.innerHTML = newVisible ? ICONS.eye : ICONS.eyeOff;
-        visibilityBtn.title = newVisible ? 'Hide layer' : 'Show layer';
       }
     });
 
+    // Lock toggle
+    const lockBtn = document.createElement('button');
+    lockBtn.innerHTML = isLocked ? ICONS.lock : ICONS.unlock;
+    lockBtn.title = isLocked ? 'Unlock layer' : 'Lock layer';
+    lockBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: ${isLocked ? 'var(--designlibre-error, #ef4444)' : 'var(--designlibre-text-muted, #6a6a6a)'};
+      border-radius: 2px;
+      opacity: ${hasActiveState ? '1' : '0'};
+      transition: opacity 0.15s;
+      flex-shrink: 0;
+    `;
+
+    // Toggle lock on click
+    lockBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (sceneGraph) {
+        const newLocked = !node.locked;
+        sceneGraph.updateNode(node.id, { locked: newLocked });
+      }
+    });
+
+    actionsContainer.appendChild(visibilityBtn);
+    actionsContainer.appendChild(lockBtn);
+
     item.appendChild(expandBtn);
     item.appendChild(icon);
+    if (badge) {
+      item.appendChild(badge);
+    }
     item.appendChild(name);
-    item.appendChild(visibilityBtn);
+    item.appendChild(actionsContainer);
 
-    // Show visibility button on hover
+    // Show action buttons on hover, keep visible if layer has active state
     item.addEventListener('mouseenter', () => {
       visibilityBtn.style.opacity = '1';
+      lockBtn.style.opacity = '1';
       if (!isSelected) {
         item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
       }
     });
 
     item.addEventListener('mouseleave', () => {
-      visibilityBtn.style.opacity = '0';
+      if (!hasActiveState) {
+        visibilityBtn.style.opacity = '0';
+        lockBtn.style.opacity = '0';
+      }
       if (!isSelected) {
         item.style.backgroundColor = 'transparent';
       }
@@ -1157,6 +1285,118 @@ export class LeftSidebar {
     item.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       this.renameLayer(node.id, node.name, name);
+    });
+
+    // Drag-and-drop
+    item.setAttribute('draggable', 'true');
+
+    item.addEventListener('dragstart', (e) => {
+      this.draggedNodeId = node.id;
+      e.dataTransfer?.setData('text/plain', node.id);
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+      }
+      item.style.opacity = '0.5';
+    });
+
+    item.addEventListener('dragend', () => {
+      this.draggedNodeId = null;
+      this.dropPosition = null;
+      item.style.opacity = '1';
+      // Clear all visual feedback
+      const allItems = this.element?.querySelectorAll('.designlibre-layer-item');
+      allItems?.forEach((el) => {
+        (el as HTMLElement).style.borderTop = '';
+        (el as HTMLElement).style.borderBottom = '';
+        (el as HTMLElement).style.outline = '';
+      });
+      this.renderLayersSection();
+    });
+
+    item.addEventListener('dragover', (e) => {
+      if (!this.draggedNodeId || this.draggedNodeId === node.id) return;
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'move';
+
+      // Determine drop position based on mouse Y
+      const rect = item.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const height = rect.height;
+
+      // Clear previous styles
+      item.style.borderTop = '';
+      item.style.borderBottom = '';
+      item.style.outline = '';
+
+      if (y < height * 0.25) {
+        this.dropPosition = 'before';
+        item.style.borderTop = '2px solid var(--designlibre-accent, #4dabff)';
+      } else if (y > height * 0.75) {
+        this.dropPosition = 'after';
+        item.style.borderBottom = '2px solid var(--designlibre-accent, #4dabff)';
+      } else {
+        // Only allow 'inside' for container types
+        if (node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'COMPONENT') {
+          this.dropPosition = 'inside';
+          item.style.outline = '2px solid var(--designlibre-accent, #4dabff)';
+        } else {
+          this.dropPosition = 'after';
+          item.style.borderBottom = '2px solid var(--designlibre-accent, #4dabff)';
+        }
+      }
+    });
+
+    item.addEventListener('dragleave', () => {
+      item.style.borderTop = '';
+      item.style.borderBottom = '';
+      item.style.outline = '';
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!this.draggedNodeId || !this.dropPosition) return;
+
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (!sceneGraph) return;
+
+      const draggedNode = sceneGraph.getNode(this.draggedNodeId);
+      const targetNode = sceneGraph.getNode(node.id);
+      if (!draggedNode || !targetNode) return;
+
+      // Prevent dropping into descendants
+      if (this.isDescendantOf(this.draggedNodeId, node.id, sceneGraph)) return;
+
+      try {
+        if (this.dropPosition === 'inside') {
+          // Move into the target
+          sceneGraph.moveNode(this.draggedNodeId, node.id, 0);
+          this.expandedNodeIds.add(node.id);
+        } else {
+          // Move before or after
+          const targetParentId = targetNode.parentId;
+          if (targetParentId) {
+            const parent = sceneGraph.getNode(targetParentId);
+            const children = (parent as { children?: NodeId[] })?.children ?? [];
+            const targetIndex = children.indexOf(node.id);
+
+            if (targetIndex >= 0) {
+              if (draggedNode.parentId === targetParentId) {
+                // Same parent - reorder
+                const draggedIndex = children.indexOf(this.draggedNodeId);
+                let newPosition = this.dropPosition === 'after' ? targetIndex + 1 : targetIndex;
+                if (draggedIndex < newPosition) newPosition--;
+                sceneGraph.reorderNode(this.draggedNodeId, newPosition);
+              } else {
+                // Different parent - move
+                const newPosition = this.dropPosition === 'after' ? targetIndex + 1 : targetIndex;
+                sceneGraph.moveNode(this.draggedNodeId, targetParentId, newPosition);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to move layer:', error);
+      }
     });
 
     return item;
@@ -1212,6 +1452,43 @@ export class LeftSidebar {
       const newSection = this.createLayersSection();
       section.replaceWith(newSection);
     }
+  }
+
+  /**
+   * Get the badge key for a layer based on its type and auto-layout mode
+   */
+  private getLayerBadgeKey(node: { type: string; autoLayout?: { mode?: string } }): string | null {
+    switch (node.type) {
+      case 'FRAME':
+        if (node.autoLayout?.mode === 'HORIZONTAL') return 'FRAME_HORIZONTAL';
+        if (node.autoLayout?.mode === 'VERTICAL') return 'FRAME_VERTICAL';
+        return 'FRAME_NONE';
+      case 'GROUP':
+        return 'GROUP';
+      case 'COMPONENT':
+        if (node.autoLayout?.mode === 'HORIZONTAL') return 'FRAME_HORIZONTAL';
+        if (node.autoLayout?.mode === 'VERTICAL') return 'FRAME_VERTICAL';
+        return 'COMPONENT';
+      case 'INSTANCE':
+        return 'INSTANCE';
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Check if potentialAncestor is an ancestor of nodeId
+   */
+  private isDescendantOf(potentialAncestorId: NodeId, nodeId: NodeId, sceneGraph: ReturnType<DesignLibreRuntime['getSceneGraph']>): boolean {
+    if (!sceneGraph) return false;
+    if (potentialAncestorId === nodeId) return true;
+
+    let current = sceneGraph.getNode(nodeId);
+    while (current && current.parentId) {
+      if (current.parentId === potentialAncestorId) return true;
+      current = sceneGraph.getNode(current.parentId);
+    }
+    return false;
   }
 
   private getIconButtonStyles(): string {

@@ -172,14 +172,24 @@ export class KeyboardHandler extends EventEmitter<KeyboardHandlerEvents> {
 
       // Tools
       { action: 'tool:select', key: 'v' },
-      { action: 'tool:move', key: 'm' },
+      { action: 'tool:frame', key: 'f' },
       { action: 'tool:rectangle', key: 'r' },
       { action: 'tool:ellipse', key: 'o' },
       { action: 'tool:line', key: 'l' },
       { action: 'tool:pen', key: 'p' },
       { action: 'tool:text', key: 't' },
       { action: 'tool:hand', key: 'h' },
-      { action: 'tool:zoom', key: 'z' },
+      { action: 'tool:move', key: 'm' },
+
+      // Nudge
+      { action: 'nudge:up', key: 'ArrowUp' },
+      { action: 'nudge:down', key: 'ArrowDown' },
+      { action: 'nudge:left', key: 'ArrowLeft' },
+      { action: 'nudge:right', key: 'ArrowRight' },
+      { action: 'nudge:up:large', key: 'ArrowUp', shift: true },
+      { action: 'nudge:down:large', key: 'ArrowDown', shift: true },
+      { action: 'nudge:left:large', key: 'ArrowLeft', shift: true },
+      { action: 'nudge:right:large', key: 'ArrowRight', shift: true },
 
       // View
       { action: 'zoomIn', key: '=', ctrl: true },

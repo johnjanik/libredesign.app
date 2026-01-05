@@ -11,6 +11,8 @@ export type { PenToolState, PenToolOptions } from './pen-tool';
 export { RectangleTool, createRectangleTool } from './rectangle-tool';
 export type { RectangleToolOptions } from './rectangle-tool';
 
+export { FrameTool, createFrameTool } from './frame-tool';
+
 export { EllipseTool, createEllipseTool } from './ellipse-tool';
 export type { EllipseToolOptions } from './ellipse-tool';
 

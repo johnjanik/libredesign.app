@@ -16,6 +16,7 @@ import { MoveTool, createMoveTool } from '@tools/transform/move-tool';
 import { ResizeTool, createResizeTool } from '@tools/transform/resize-tool';
 import { RotateTool, createRotateTool } from '@tools/transform/rotate-tool';
 import { RectangleTool, createRectangleTool } from '@tools/drawing/rectangle-tool';
+import { FrameTool, createFrameTool } from '@tools/drawing/frame-tool';
 import { EllipseTool, createEllipseTool } from '@tools/drawing/ellipse-tool';
 import { LineTool, createLineTool } from '@tools/drawing/line-tool';
 import { PenTool, createPenTool } from '@tools/drawing/pen-tool';
@@ -87,6 +88,14 @@ interface MMBState {
 }
 
 /**
+ * Space key temporary hand tool state
+ */
+interface SpaceHandState {
+  active: boolean;
+  previousTool: string | null;
+}
+
+/**
  * DesignLibre Runtime
  */
 export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
@@ -125,6 +134,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private resizeTool: ResizeTool | null = null;
   private rotateTool: RotateTool | null = null;
   private rectangleTool: RectangleTool | null = null;
+  private frameTool: FrameTool | null = null;
   private ellipseTool: EllipseTool | null = null;
   private lineTool: LineTool | null = null;
   private penTool: PenTool | null = null;
@@ -148,6 +158,12 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     startCanvasX: 0,
     startCanvasY: 0,
     startZoom: 1,
+  };
+
+  // Space key temporary hand tool state (canonical behavior)
+  private spaceHandState: SpaceHandState = {
+    active: false,
+    previousTool: null,
   };
 
   // Last used fill color for shapes (default: #D4D2D0)
@@ -844,6 +860,33 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
+      return nodeId;
+    });
+
+    // Frame tool (creates actual frame container)
+    this.frameTool = createFrameTool();
+    this.frameTool.setOnFrameComplete((rect) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      const nodeId = this.sceneGraph.createFrame(parentId, {
+        name: 'Frame',
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        fills: [solidPaint(rgba(1, 1, 1, 1))], // White background
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -864,6 +907,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -900,6 +947,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -971,6 +1022,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -1007,6 +1062,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -1043,6 +1102,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -1086,6 +1149,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -1112,6 +1179,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
 
       this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
       return nodeId;
     });
 
@@ -1124,6 +1195,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.resizeTool);
     this.toolManager.registerTool(this.rotateTool);
     this.toolManager.registerTool(this.rectangleTool);
+    this.toolManager.registerTool(this.frameTool);
     this.toolManager.registerTool(this.ellipseTool);
     this.toolManager.registerTool(this.lineTool);
     this.toolManager.registerTool(this.penTool);
@@ -1294,37 +1366,152 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     });
 
     this.keyboardHandler.on('keydown', (event) => {
+      // Space key for temporary hand tool (canonical behavior)
+      if (event.key === ' ' && !this.spaceHandState.active) {
+        const currentTool = this.getActiveTool();
+        if (currentTool !== 'hand') {
+          this.spaceHandState.active = true;
+          this.spaceHandState.previousTool = currentTool;
+          this.setTool('hand');
+          return; // Don't pass to tool manager
+        }
+      }
+
       this.toolManager!.handleKeyDown(event);
     });
 
     this.keyboardHandler.on('keyup', (event) => {
+      // Space key release - return to previous tool
+      if (event.key === ' ' && this.spaceHandState.active) {
+        this.spaceHandState.active = false;
+        if (this.spaceHandState.previousTool) {
+          this.setTool(this.spaceHandState.previousTool);
+        }
+        this.spaceHandState.previousTool = null;
+        return; // Don't pass to tool manager
+      }
+
       this.toolManager!.handleKeyUp(event);
     });
   }
 
   private handleShortcut(action: string): void {
     switch (action) {
+      // ========================================
+      // Edit operations
+      // ========================================
       case 'undo':
         this.undo();
         break;
       case 'redo':
         this.redo();
         break;
+      case 'delete':
+        this.deleteSelection();
+        break;
+      case 'duplicate':
+        this.duplicateSelection();
+        break;
+
+      // ========================================
+      // Selection
+      // ========================================
       case 'selectAll':
         this.selectionManager.selectAll();
         break;
       case 'deselectAll':
-        this.clearSelection();
+        // Escape key - canonical escape hatch behavior
+        this.handleEscapeKey();
         break;
-      case 'delete':
-        this.deleteSelection();
-        break;
+
+      // ========================================
+      // Tools (V is home base)
+      // ========================================
       case 'tool:select':
         this.setTool('select');
+        break;
+      case 'tool:frame':
+        this.setTool('frame');
+        break;
+      case 'tool:rectangle':
+        this.setTool('rectangle');
+        break;
+      case 'tool:ellipse':
+        this.setTool('ellipse');
+        break;
+      case 'tool:line':
+        this.setTool('line');
+        break;
+      case 'tool:pen':
+        this.setTool('pen');
+        break;
+      case 'tool:text':
+        this.setTool('text');
+        break;
+      case 'tool:hand':
+        this.setTool('hand');
         break;
       case 'tool:move':
         this.setTool('move');
         break;
+
+      // ========================================
+      // Nudge (arrow keys)
+      // ========================================
+      case 'nudge:up':
+        this.nudgeSelection(0, -1);
+        break;
+      case 'nudge:down':
+        this.nudgeSelection(0, 1);
+        break;
+      case 'nudge:left':
+        this.nudgeSelection(-1, 0);
+        break;
+      case 'nudge:right':
+        this.nudgeSelection(1, 0);
+        break;
+      case 'nudge:up:large':
+        this.nudgeSelection(0, -10);
+        break;
+      case 'nudge:down:large':
+        this.nudgeSelection(0, 10);
+        break;
+      case 'nudge:left:large':
+        this.nudgeSelection(-10, 0);
+        break;
+      case 'nudge:right:large':
+        this.nudgeSelection(10, 0);
+        break;
+
+      // ========================================
+      // Grouping
+      // ========================================
+      case 'group':
+        this.groupSelection();
+        break;
+      case 'ungroup':
+        this.ungroupSelection();
+        break;
+
+      // ========================================
+      // Z-Order
+      // ========================================
+      case 'bringToFront':
+        this.bringSelectionToFront();
+        break;
+      case 'sendToBack':
+        this.sendSelectionToBack();
+        break;
+      case 'bringForward':
+        this.bringSelectionForward();
+        break;
+      case 'sendBackward':
+        this.sendSelectionBackward();
+        break;
+
+      // ========================================
+      // View / Zoom
+      // ========================================
       case 'zoomIn':
         this.viewport?.zoomIn();
         break;
@@ -1334,6 +1521,273 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       case 'zoom100':
         this.viewport?.setZoom(1);
         break;
+      case 'zoomToFit':
+        this.zoomToFit(); // Uses public method
+        break;
+      case 'zoomToSelection':
+        this.zoomToSelectionInternal();
+        break;
+    }
+  }
+
+  // ============================================================
+  // Canonical Escape Behavior
+  // ============================================================
+
+  /**
+   * Handle Escape key with canonical priority:
+   * 1. Cancel active operation (drawing, dragging)
+   * 2. Exit text editing
+   * 3. Deselect if objects selected
+   * 4. Return to Select tool if using another tool
+   */
+  private handleEscapeKey(): void {
+    // Priority 1: Check if any tool has active operation to cancel
+    const currentTool = this.toolManager?.getActiveTool();
+    if (currentTool) {
+      // Drawing tools with active operation
+      if (this.frameTool?.isDrawing?.()) {
+        // Cancel will happen in tool's onKeyDown
+        return;
+      }
+      if (this.rectangleTool?.isDrawing?.()) {
+        return;
+      }
+      if (this.ellipseTool?.isDrawing?.()) {
+        return;
+      }
+    }
+
+    // Priority 2: Deselect if there's a selection
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length > 0) {
+      this.clearSelection();
+      return;
+    }
+
+    // Priority 3: Return to Select tool if not already there
+    const toolName = currentTool?.name;
+    if (toolName && toolName !== 'select') {
+      this.setTool('select');
+      return;
+    }
+
+    // Already at home base - do nothing
+  }
+
+  // ============================================================
+  // Nudge Selection
+  // ============================================================
+
+  private nudgeSelection(dx: number, dy: number): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (node && 'x' in node && 'y' in node) {
+        this.sceneGraph.updateNode(nodeId, {
+          x: (node.x as number) + dx,
+          y: (node.y as number) + dy,
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // Grouping
+  // ============================================================
+
+  private groupSelection(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length < 2) return;
+
+    // Find common parent
+    const firstNodeId = selectedIds[0];
+    if (!firstNodeId) return;
+    const firstNode = this.sceneGraph.getNode(firstNodeId);
+    if (!firstNode) return;
+    const parentId = firstNode.parentId;
+    if (!parentId) return;
+
+    // Create group
+    const groupId = this.sceneGraph.createNode('GROUP', parentId, -1, {
+      name: 'Group',
+    });
+
+    // Move all selected nodes into group
+    for (const nodeId of selectedIds) {
+      this.sceneGraph.moveNode(nodeId, groupId, -1);
+    }
+
+    // Select the new group
+    this.selectionManager.select([groupId], 'replace');
+  }
+
+  private ungroupSelection(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    const newSelection: NodeId[] = [];
+
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node || node.type !== 'GROUP') continue;
+
+      const parentId = node.parentId;
+      if (!parentId) continue;
+
+      // Get children before ungrouping
+      const childIds = this.sceneGraph.getChildIds(nodeId);
+
+      // Move children to parent
+      for (const childId of childIds) {
+        this.sceneGraph.moveNode(childId, parentId, -1);
+        newSelection.push(childId);
+      }
+
+      // Delete the empty group
+      this.sceneGraph.deleteNode(nodeId);
+    }
+
+    // Select the ungrouped items
+    if (newSelection.length > 0) {
+      this.selectionManager.select(newSelection, 'replace');
+    }
+  }
+
+  // ============================================================
+  // Z-Order Operations
+  // ============================================================
+
+  private bringSelectionToFront(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node?.parentId) continue;
+      const siblings = this.sceneGraph.getChildIds(node.parentId);
+      this.sceneGraph.reorderNode(nodeId, siblings.length - 1);
+    }
+  }
+
+  private sendSelectionToBack(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    for (const nodeId of selectedIds) {
+      this.sceneGraph.reorderNode(nodeId, 0);
+    }
+  }
+
+  private bringSelectionForward(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node?.parentId) continue;
+      const siblings = this.sceneGraph.getChildIds(node.parentId);
+      const currentIndex = siblings.indexOf(nodeId);
+      if (currentIndex < siblings.length - 1) {
+        this.sceneGraph.reorderNode(nodeId, currentIndex + 1);
+      }
+    }
+  }
+
+  private sendSelectionBackward(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node?.parentId) continue;
+      const siblings = this.sceneGraph.getChildIds(node.parentId);
+      const currentIndex = siblings.indexOf(nodeId);
+      if (currentIndex > 0) {
+        this.sceneGraph.reorderNode(nodeId, currentIndex - 1);
+      }
+    }
+  }
+
+  // ============================================================
+  // Duplicate
+  // ============================================================
+
+  private duplicateSelection(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    const newIds: NodeId[] = [];
+    const offset = 10; // Offset duplicates by 10px
+
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node || !node.parentId) continue;
+
+      // Clone node properties
+      const props: Record<string, unknown> = {};
+      for (const key of Object.keys(node)) {
+        if (key === 'id' || key === 'parentId' || key === 'childIds') continue;
+        const value = (node as unknown as Record<string, unknown>)[key];
+        if (value !== null && typeof value === 'object') {
+          props[key] = JSON.parse(JSON.stringify(value));
+        } else {
+          props[key] = value;
+        }
+      }
+
+      // Offset the position
+      if ('x' in props && typeof props['x'] === 'number') {
+        props['x'] = (props['x'] as number) + offset;
+      }
+      if ('y' in props && typeof props['y'] === 'number') {
+        props['y'] = (props['y'] as number) + offset;
+      }
+
+      // Update name to indicate it's a copy
+      if ('name' in props && typeof props['name'] === 'string') {
+        props['name'] = (props['name'] as string) + ' copy';
+      }
+
+      // Create the duplicate
+      const newNodeId = this.sceneGraph.createNode(
+        node.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
+        node.parentId,
+        -1,
+        props as Parameters<typeof this.sceneGraph.createNode>[3]
+      );
+
+      newIds.push(newNodeId);
+    }
+
+    // Select the duplicates
+    if (newIds.length > 0) {
+      this.selectionManager.select(newIds, 'replace');
+    }
+  }
+
+  // ============================================================
+  // Zoom Helpers
+  // ============================================================
+
+  private zoomToSelectionInternal(): void {
+    const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    // Calculate bounding box of selection
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node || !('x' in node) || !('y' in node)) continue;
+
+      const x = node.x as number;
+      const y = node.y as number;
+      const w = (node as { width?: number }).width ?? 0;
+      const h = (node as { height?: number }).height ?? 0;
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    }
+
+    if (minX !== Infinity && this.viewport) {
+      const padding = 50;
+      this.viewport.fitRect(minX - padding, minY - padding, maxX - minX + padding * 2, maxY - minY + padding * 2);
     }
   }
 
