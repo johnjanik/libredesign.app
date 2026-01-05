@@ -93,13 +93,7 @@ export class InspectorPanel {
 
     // Create main content wrapper (tabs + content)
     this.mainContent = document.createElement('div');
-    this.mainContent.className = 'designlibre-inspector-main';
-    this.mainContent.style.cssText = `
-      flex: 1;
-      display: ${this.collapsed ? 'none' : 'flex'};
-      flex-direction: column;
-      overflow: hidden;
-    `;
+    this.mainContent.className = `designlibre-inspector-main flex-1 flex-col overflow-hidden ${this.collapsed ? 'hidden' : 'flex'}`;
 
     // Create tabs
     this.tabsElement = this.createTabs();
@@ -107,12 +101,7 @@ export class InspectorPanel {
 
     // Create content area
     this.contentElement = document.createElement('div');
-    this.contentElement.className = 'designlibre-inspector-content';
-    this.contentElement.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-    `;
+    this.contentElement.className = 'designlibre-inspector-content flex-1 overflow-y-auto p-3';
     this.mainContent.appendChild(this.contentElement);
     this.element.appendChild(this.mainContent);
 
@@ -160,35 +149,13 @@ export class InspectorPanel {
 
   private createCollapseButton(): HTMLElement {
     const button = document.createElement('button');
-    button.className = 'designlibre-inspector-collapse-btn';
+    button.className = `designlibre-inspector-collapse-btn w-6 h-full border-none bg-transparent cursor-pointer flex items-center justify-center text-content-secondary flex-shrink-0 hover:bg-surface-secondary hover:text-content transition-colors ${this.collapsed ? '' : 'border-r border-border'}`;
     button.title = this.collapsed ? 'Expand panel' : 'Collapse panel';
     button.innerHTML = this.collapsed
       ? INSPECTOR_ICONS.collapseLeft
       : INSPECTOR_ICONS.collapseRight;
-    button.style.cssText = `
-      width: ${COLLAPSE_BUTTON_WIDTH}px;
-      height: 100%;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      flex-shrink: 0;
-      border-right: ${this.collapsed ? 'none' : '1px solid var(--designlibre-border, #3d3d3d)'};
-      transition: background-color 0.15s;
-    `;
 
     button.addEventListener('click', () => this.toggleCollapse());
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-    });
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'transparent';
-      button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
-    });
 
     return button;
   }
@@ -207,14 +174,23 @@ export class InspectorPanel {
       this.collapseButton.innerHTML = this.collapsed
         ? INSPECTOR_ICONS.collapseLeft
         : INSPECTOR_ICONS.collapseRight;
-      this.collapseButton.style.borderRight = this.collapsed
-        ? 'none'
-        : '1px solid var(--designlibre-border, #3d3d3d)';
+      // Toggle border class
+      if (this.collapsed) {
+        this.collapseButton.classList.remove('border-r', 'border-border');
+      } else {
+        this.collapseButton.classList.add('border-r', 'border-border');
+      }
     }
 
-    // Show/hide main content
+    // Show/hide main content via class
     if (this.mainContent) {
-      this.mainContent.style.display = this.collapsed ? 'none' : 'flex';
+      if (this.collapsed) {
+        this.mainContent.classList.add('hidden');
+        this.mainContent.classList.remove('flex');
+      } else {
+        this.mainContent.classList.remove('hidden');
+        this.mainContent.classList.add('flex');
+      }
     }
 
     // Notify callback
@@ -237,12 +213,7 @@ export class InspectorPanel {
 
   private createTabs(): HTMLElement {
     const tabs = document.createElement('div');
-    tabs.className = 'designlibre-inspector-tabs';
-    tabs.style.cssText = `
-      display: flex;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-      background: var(--designlibre-bg-tertiary, #252525);
-    `;
+    tabs.className = 'designlibre-inspector-tabs flex border-b border-border bg-surface-tertiary';
 
     const tabDefs: { id: InspectorTab; label: string }[] = [
       { id: 'design', label: 'Design' },
@@ -251,34 +222,13 @@ export class InspectorPanel {
     ];
 
     for (const tabDef of tabDefs) {
+      const isActive = tabDef.id === this.activeTab;
       const tab = document.createElement('button');
-      tab.className = 'designlibre-inspector-tab';
+      tab.className = `designlibre-inspector-tab flex-1 py-2.5 px-2 border-none text-xs font-medium cursor-pointer transition-all ${isActive ? 'bg-surface text-content border-b-2 border-accent' : 'bg-transparent text-content-secondary border-b-2 border-transparent hover:text-content'}`;
       tab.setAttribute('data-tab', tabDef.id);
       tab.textContent = tabDef.label;
-      tab.style.cssText = `
-        flex: 1;
-        padding: 10px 8px;
-        border: none;
-        background: ${tabDef.id === this.activeTab ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent'};
-        color: ${tabDef.id === this.activeTab ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
-        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.15s;
-        border-bottom: 2px solid ${tabDef.id === this.activeTab ? 'var(--designlibre-accent, #4dabff)' : 'transparent'};
-      `;
 
       tab.addEventListener('click', () => this.switchTab(tabDef.id));
-      tab.addEventListener('mouseenter', () => {
-        if (tabDef.id !== this.activeTab) {
-          tab.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
-        }
-      });
-      tab.addEventListener('mouseleave', () => {
-        if (tabDef.id !== this.activeTab) {
-          tab.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
-        }
-      });
 
       tabs.appendChild(tab);
     }
@@ -289,15 +239,19 @@ export class InspectorPanel {
   private switchTab(tab: InspectorTab): void {
     this.activeTab = tab;
 
-    // Update tab styles
+    // Update tab styles via class toggling
     if (this.tabsElement) {
       const tabs = this.tabsElement.querySelectorAll('.designlibre-inspector-tab');
       tabs.forEach((t) => {
         const tabEl = t as HTMLElement;
         const isActive = tabEl.getAttribute('data-tab') === tab;
-        tabEl.style.background = isActive ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent';
-        tabEl.style.color = isActive ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)';
-        tabEl.style.borderBottom = isActive ? '2px solid var(--designlibre-accent, #4dabff)' : '2px solid transparent';
+        if (isActive) {
+          tabEl.classList.remove('bg-transparent', 'text-content-secondary', 'border-transparent', 'hover:text-content');
+          tabEl.classList.add('bg-surface', 'text-content', 'border-accent');
+        } else {
+          tabEl.classList.remove('bg-surface', 'text-content', 'border-accent');
+          tabEl.classList.add('bg-transparent', 'text-content-secondary', 'border-transparent', 'hover:text-content');
+        }
       });
     }
 
@@ -341,11 +295,7 @@ export class InspectorPanel {
     if (!this.contentElement) return;
 
     const empty = document.createElement('div');
-    empty.style.cssText = `
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      text-align: center;
-      padding: 40px 20px;
-    `;
+    empty.className = 'text-content-secondary text-center py-10 px-5';
     empty.textContent = 'Select an element to inspect';
     this.contentElement.appendChild(empty);
   }
@@ -1908,37 +1858,15 @@ export class InspectorPanel {
 
   private createCodeBlock(code: string, _language: string): HTMLElement {
     const container = document.createElement('div');
-    container.style.cssText = `position: relative;`;
+    container.className = 'relative';
 
     const pre = document.createElement('pre');
-    pre.style.cssText = `
-      margin: 0;
-      padding: 12px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border-radius: 6px;
-      font-family: 'SF Mono', Monaco, 'Fira Code', monospace;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      line-height: 1.5;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-break: break-word;
-    `;
+    pre.className = 'code-block m-0 p-3 bg-surface-secondary rounded-md font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap break-words';
     pre.textContent = code;
     container.appendChild(pre);
 
     const copyBtn = document.createElement('button');
-    copyBtn.style.cssText = `
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      padding: 4px 8px;
-      background: var(--designlibre-bg-tertiary, #252525);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      font-size: 10px;
-      cursor: pointer;
-    `;
+    copyBtn.className = 'absolute top-2 right-2 py-1 px-2 bg-surface-tertiary border border-border rounded text-content-secondary text-[10px] cursor-pointer';
     copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', async () => {
       const result = await copyToClipboard(code);
@@ -1951,19 +1879,15 @@ export class InspectorPanel {
 
   private createMeasurementRow(label: string, value: string): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-    `;
+    row.className = 'flex justify-between py-1';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary, #a0a0a0);`;
+    labelEl.className = 'text-content-secondary';
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
     const valueEl = document.createElement('span');
-    valueEl.style.cssText = `font-family: 'SF Mono', monospace; font-size: var(--designlibre-sidebar-font-size-xs, 11px);`;
+    valueEl.className = 'font-mono text-xs';
     valueEl.textContent = value;
     row.appendChild(valueEl);
 
@@ -1976,17 +1900,10 @@ export class InspectorPanel {
 
   private createSection(title: string): HTMLElement {
     const section = document.createElement('div');
-    section.style.cssText = `margin-bottom: 20px;`;
+    section.className = 'mb-5';
 
     const header = document.createElement('div');
-    header.style.cssText = `
-      font-weight: 600;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      margin-bottom: 10px;
-    `;
+    header.className = 'font-semibold text-xs uppercase tracking-wide text-content-secondary mb-2.5';
     header.textContent = title;
     section.appendChild(header);
 
@@ -1995,40 +1912,29 @@ export class InspectorPanel {
 
   private createPropertyRow(): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+    row.className = 'flex items-center gap-2 mb-2';
     return row;
   }
 
   private createPropertyRow2Col(): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; gap: 8px; margin-bottom: 8px;`;
+    row.className = 'flex gap-2 mb-2';
     return row;
   }
 
   private createNumberField(label: string, value: number, onChange: (v: number) => void): HTMLElement {
     const container = document.createElement('div');
-    container.style.cssText = `flex: 1; display: flex; align-items: center; gap: 4px;`;
+    container.className = 'flex-1 flex items-center gap-1';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 14px;`;
+    labelEl.className = 'text-content-secondary text-xs w-3.5';
     labelEl.textContent = label;
     container.appendChild(labelEl);
 
     const input = document.createElement('input');
     input.type = 'number';
     input.value = String(Math.round(value * 100) / 100);
-    input.style.cssText = `
-      flex: 1;
-      width: 100%;
-      height: 26px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-family: 'SF Mono', monospace;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-    `;
+    input.className = 'flex-1 w-full h-6.5 px-1.5 border border-border rounded bg-surface-secondary text-content font-mono text-xs';
     input.addEventListener('change', () => {
       const v = parseFloat(input.value);
       if (!isNaN(v)) onChange(v);
@@ -2040,31 +1946,20 @@ export class InspectorPanel {
 
   private createLabeledNumberField(label: string, value: number, unit: string, onChange: (v: number) => void): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
+    row.className = 'flex items-center justify-between mb-2';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
+    labelEl.className = 'text-content-secondary text-sm';
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
     const inputWrap = document.createElement('div');
-    inputWrap.style.cssText = `display: flex; align-items: center; gap: 4px;`;
+    inputWrap.className = 'flex items-center gap-1';
 
     const input = document.createElement('input');
     input.type = 'number';
     input.value = String(Math.round(value * 100) / 100);
-    input.style.cssText = `
-      width: 60px;
-      height: 26px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-family: 'SF Mono', monospace;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      text-align: right;
-    `;
+    input.className = 'w-15 h-6.5 px-1.5 border border-border rounded bg-surface-secondary text-content font-mono text-xs text-right';
     input.addEventListener('change', () => {
       const v = parseFloat(input.value);
       if (!isNaN(v)) onChange(v);
@@ -2073,7 +1968,7 @@ export class InspectorPanel {
 
     if (unit) {
       const unitEl = document.createElement('span');
-      unitEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px);`;
+      unitEl.className = 'text-content-secondary text-xs';
       unitEl.textContent = unit;
       inputWrap.appendChild(unitEl);
     }
@@ -2084,25 +1979,15 @@ export class InspectorPanel {
 
   private createLabeledDropdown(label: string, value: string, options: string[], onChange: (v: string) => void): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
+    row.className = 'flex items-center justify-between mb-2';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
+    labelEl.className = 'text-content-secondary text-sm';
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
     const select = document.createElement('select');
-    select.style.cssText = `
-      width: 100px;
-      height: 26px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      cursor: pointer;
-    `;
+    select.className = 'w-25 h-6.5 px-1.5 border border-border rounded bg-surface-secondary text-content text-xs cursor-pointer';
     for (const opt of options) {
       const optEl = document.createElement('option');
       optEl.value = opt;
@@ -2118,21 +2003,14 @@ export class InspectorPanel {
 
   private createColorField(color: RGBA, onChange: (c: RGBA) => void): HTMLElement {
     const container = document.createElement('div');
-    container.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+    container.className = 'flex items-center gap-2 mb-2';
 
     const hex = rgbaToHex(color);
 
     const swatch = document.createElement('input');
     swatch.type = 'color';
     swatch.value = hex.slice(0, 7);
-    swatch.style.cssText = `
-      width: 32px;
-      height: 26px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      cursor: pointer;
-      padding: 0;
-    `;
+    swatch.className = 'w-8 h-6.5 border border-border rounded cursor-pointer p-0';
     swatch.addEventListener('change', () => {
       const h = swatch.value;
       const r = parseInt(h.slice(1, 3), 16) / 255;
@@ -2145,17 +2023,7 @@ export class InspectorPanel {
     const hexInput = document.createElement('input');
     hexInput.type = 'text';
     hexInput.value = hex;
-    hexInput.style.cssText = `
-      flex: 1;
-      height: 26px;
-      padding: 0 6px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-family: 'SF Mono', monospace;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-    `;
+    hexInput.className = 'flex-1 h-6.5 px-1.5 border border-border rounded bg-surface-secondary text-content font-mono text-xs';
     container.appendChild(hexInput);
 
     return container;
@@ -2163,10 +2031,10 @@ export class InspectorPanel {
 
   private createSliderField(label: string, value: number, min: number, max: number, unit: string, onChange: (v: number) => void): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+    row.className = 'flex items-center gap-2 mb-2';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 50px;`;
+    labelEl.className = 'text-content-secondary text-xs w-12.5';
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
@@ -2175,11 +2043,11 @@ export class InspectorPanel {
     slider.min = String(min);
     slider.max = String(max);
     slider.value = String(value);
-    slider.style.cssText = `flex: 1; accent-color: var(--designlibre-accent, #4dabff);`;
+    slider.className = 'flex-1 accent-accent';
     row.appendChild(slider);
 
     const valueEl = document.createElement('span');
-    valueEl.style.cssText = `font-size: var(--designlibre-sidebar-font-size-xs, 11px); width: 40px; text-align: right;`;
+    valueEl.className = 'text-xs w-10 text-right';
     valueEl.textContent = `${Math.round(value)}${unit}`;
     row.appendChild(valueEl);
 
@@ -2194,22 +2062,17 @@ export class InspectorPanel {
 
   private createToggleWithFields(label: string, enabled: boolean, onChange: (enabled: boolean) => void): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;`;
+    row.className = 'flex items-center justify-between mb-2';
 
     const labelEl = document.createElement('span');
-    labelEl.style.cssText = `color: var(--designlibre-text-primary); font-size: var(--designlibre-sidebar-font-size-sm, 12px);`;
+    labelEl.className = 'text-content text-sm';
     labelEl.textContent = label;
     row.appendChild(labelEl);
 
     const toggle = document.createElement('input');
     toggle.type = 'checkbox';
     toggle.checked = enabled;
-    toggle.style.cssText = `
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: var(--designlibre-accent, #4dabff);
-    `;
+    toggle.className = 'w-4 h-4 cursor-pointer accent-accent';
     toggle.addEventListener('change', () => onChange(toggle.checked));
     row.appendChild(toggle);
 
@@ -2218,27 +2081,9 @@ export class InspectorPanel {
 
   private createButton(text: string, onClick: () => void): HTMLElement {
     const btn = document.createElement('button');
-    btn.style.cssText = `
-      width: 100%;
-      padding: 8px;
-      background: transparent;
-      border: 1px dashed var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      cursor: pointer;
-      transition: all 0.15s;
-    `;
+    btn.className = 'w-full p-2 bg-transparent border border-dashed border-border rounded text-content-secondary text-xs cursor-pointer transition-all hover:border-accent hover:text-accent';
     btn.textContent = text;
     btn.addEventListener('click', onClick);
-    btn.addEventListener('mouseenter', () => {
-      btn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
-      btn.style.color = 'var(--designlibre-accent, #4dabff)';
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-      btn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
-    });
     return btn;
   }
 
