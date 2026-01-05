@@ -544,19 +544,11 @@ export class SettingsModal {
 
     // Reset all button
     const headerRow = document.createElement('div');
-    headerRow.style.cssText = 'display: flex; justify-content: flex-end; margin-bottom: 16px;';
+    headerRow.className = 'flex justify-end mb-4';
 
     const resetAllBtn = document.createElement('button');
     resetAllBtn.textContent = 'Reset All to Defaults';
-    resetAllBtn.style.cssText = `
-      padding: 6px 12px;
-      background: transparent;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      color: var(--designlibre-text-secondary, #888);
-      font-size: 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    `;
+    resetAllBtn.className = 'px-3 py-1.5 bg-transparent border border-border text-content-secondary text-xs rounded cursor-pointer hover:bg-surface-secondary transition-colors';
     resetAllBtn.addEventListener('click', () => {
       hotkeyManager.resetAllShortcuts();
       container.innerHTML = '';
@@ -600,50 +592,20 @@ export class SettingsModal {
     const isCustom = hotkeyManager.hasCustomShortcut(action.id);
 
     const row = document.createElement('div');
-    row.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--designlibre-border-light, #252525);
-    `;
+    row.className = 'flex justify-between items-center py-2.5 border-b border-surface-tertiary';
 
     const actionEl = document.createElement('span');
     actionEl.textContent = action.name;
-    actionEl.style.cssText = `
-      font-size: 13px;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
+    actionEl.className = 'text-sm text-content';
     row.appendChild(actionEl);
 
     const controlsWrapper = document.createElement('div');
-    controlsWrapper.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+    controlsWrapper.className = 'flex items-center gap-2';
 
     // Shortcut button (clickable to edit)
     const shortcutBtn = document.createElement('button');
-    shortcutBtn.className = 'hotkey-shortcut-btn';
     shortcutBtn.textContent = currentShortcut || 'Click to set';
-    shortcutBtn.style.cssText = `
-      padding: 6px 12px;
-      min-width: 80px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      color: ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-secondary, #888)'};
-      cursor: pointer;
-      transition: all 0.15s;
-    `;
-
-    shortcutBtn.addEventListener('mouseenter', () => {
-      shortcutBtn.style.borderColor = 'var(--designlibre-accent, #0d99ff)';
-    });
-    shortcutBtn.addEventListener('mouseleave', () => {
-      if (!shortcutBtn.classList.contains('recording')) {
-        shortcutBtn.style.borderColor = isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)';
-      }
-    });
+    shortcutBtn.className = `hotkey-shortcut-btn px-3 py-1.5 min-w-20 bg-surface-secondary rounded font-mono text-xs cursor-pointer transition-all border ${isCustom ? 'border-accent text-accent' : 'border-border text-content-secondary'} hover:border-accent`;
 
     shortcutBtn.addEventListener('click', () => {
       this.startRecordingHotkey(shortcutBtn, action, container);
@@ -656,16 +618,7 @@ export class SettingsModal {
       const resetBtn = document.createElement('button');
       resetBtn.innerHTML = '↺';
       resetBtn.title = `Reset to default (${action.defaultShortcut})`;
-      resetBtn.style.cssText = `
-        width: 24px;
-        height: 24px;
-        border: none;
-        background: transparent;
-        color: var(--designlibre-text-secondary, #888);
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 4px;
-      `;
+      resetBtn.className = 'w-6 h-6 border-none bg-transparent text-content-secondary text-sm cursor-pointer rounded hover:bg-surface-secondary hover:text-content transition-colors';
       resetBtn.addEventListener('click', () => {
         hotkeyManager.resetShortcut(action.id);
         container.innerHTML = '';
@@ -812,38 +765,24 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): void {
     const row = document.createElement('div');
-    row.style.cssText = `
-      padding: 16px;
-      background: var(--designlibre-bg-tertiary, #252525);
-      border-radius: 8px;
-      margin-bottom: 12px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    row.className = 'p-4 bg-surface-tertiary rounded-lg mb-3 border border-border';
 
     // Header row with toggle
     const headerRow = document.createElement('div');
-    headerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;';
+    headerRow.className = 'flex justify-between items-center mb-3';
 
     const nameEl = document.createElement('div');
-    nameEl.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+    nameEl.className = 'flex items-center gap-3';
 
     const title = document.createElement('span');
     title.textContent = displayName;
-    title.style.cssText = 'font-weight: 600; font-size: 14px; color: var(--designlibre-text-primary, #e4e4e4);';
+    title.className = 'font-semibold text-sm text-content';
     nameEl.appendChild(title);
 
     if (configManager.getConfig().activeProvider === provider) {
       const badge = document.createElement('span');
       badge.textContent = 'Active';
-      badge.style.cssText = `
-        padding: 2px 8px;
-        background: var(--designlibre-accent, #4dabff);
-        color: white;
-        font-size: 10px;
-        font-weight: 600;
-        border-radius: 10px;
-        text-transform: uppercase;
-      `;
+      badge.className = 'px-2 py-0.5 bg-accent text-white text-[10px] font-semibold rounded-full uppercase';
       nameEl.appendChild(badge);
     }
 
@@ -862,7 +801,7 @@ export class SettingsModal {
     // Provider details (only if enabled)
     if (providerConfig.enabled) {
       const details = document.createElement('div');
-      details.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+      details.className = 'flex flex-col gap-3';
 
       // API Key for cloud providers
       if (provider === 'anthropic' || provider === 'openai') {
@@ -893,23 +832,15 @@ export class SettingsModal {
         const models = AVAILABLE_MODELS[provider] ?? [];
         if (models.length > 0) {
           const modelRow = document.createElement('div');
-          modelRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+          modelRow.className = 'flex flex-col gap-1';
 
           const label = document.createElement('label');
           label.textContent = 'Model';
-          label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+          label.className = 'text-xs font-medium text-content-secondary';
           modelRow.appendChild(label);
 
           const select = document.createElement('select');
-          select.style.cssText = `
-            padding: 8px 12px;
-            border: 1px solid var(--designlibre-border, #3d3d3d);
-            border-radius: 6px;
-            background: var(--designlibre-bg-secondary, #2d2d2d);
-            color: var(--designlibre-text-primary, #e4e4e4);
-            font-size: 13px;
-            outline: none;
-          `;
+          select.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
 
           for (const model of models) {
             const option = document.createElement('option');
@@ -930,15 +861,15 @@ export class SettingsModal {
 
       // Temperature slider
       const tempRow = document.createElement('div');
-      tempRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      tempRow.className = 'flex flex-col gap-1';
 
       const tempLabel = document.createElement('label');
       tempLabel.textContent = 'Temperature';
-      tempLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tempLabel.className = 'text-xs font-medium text-content-secondary';
       tempRow.appendChild(tempLabel);
 
       const tempSliderWrapper = document.createElement('div');
-      tempSliderWrapper.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+      tempSliderWrapper.className = 'flex items-center gap-3';
 
       const tempSlider = document.createElement('input');
       tempSlider.type = 'range';
@@ -946,25 +877,11 @@ export class SettingsModal {
       tempSlider.max = '1';
       tempSlider.step = '0.05';
       tempSlider.value = String(providerConfig.temperature);
-      tempSlider.style.cssText = `
-        flex: 1;
-        height: 4px;
-        -webkit-appearance: none;
-        background: #444;
-        border-radius: 2px;
-        outline: none;
-        cursor: pointer;
-      `;
+      tempSlider.className = 'flex-1 h-1 appearance-none bg-surface-tertiary rounded-sm outline-none cursor-pointer';
 
       const tempValue = document.createElement('span');
       tempValue.textContent = providerConfig.temperature.toFixed(2);
-      tempValue.style.cssText = `
-        font-size: 13px;
-        color: var(--designlibre-accent, #0d99ff);
-        font-weight: 500;
-        min-width: 40px;
-        text-align: right;
-      `;
+      tempValue.className = 'text-sm text-accent font-medium min-w-10 text-right';
 
       tempSlider.addEventListener('input', () => {
         const val = parseFloat(tempSlider.value);
@@ -979,11 +896,11 @@ export class SettingsModal {
 
       // Max Tokens input
       const tokensRow = document.createElement('div');
-      tokensRow.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+      tokensRow.className = 'flex flex-col gap-1';
 
       const tokensLabel = document.createElement('label');
       tokensLabel.textContent = 'Max Tokens';
-      tokensLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tokensLabel.className = 'text-xs font-medium text-content-secondary';
       tokensRow.appendChild(tokensLabel);
 
       const tokensInput = document.createElement('input');
@@ -991,16 +908,7 @@ export class SettingsModal {
       tokensInput.value = String(providerConfig.maxTokens);
       tokensInput.min = '1';
       tokensInput.max = '128000';
-      tokensInput.style.cssText = `
-        padding: 8px 12px;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        border-radius: 6px;
-        background: var(--designlibre-bg-secondary, #2d2d2d);
-        color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 13px;
-        outline: none;
-        width: 120px;
-      `;
+      tokensInput.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none w-30';
 
       tokensInput.addEventListener('blur', () => {
         const val = parseInt(tokensInput.value, 10);
@@ -1014,25 +922,14 @@ export class SettingsModal {
 
       // Test connection button
       const testRow = document.createElement('div');
-      testRow.style.cssText = 'display: flex; align-items: center; gap: 12px;';
+      testRow.className = 'flex items-center gap-3';
 
       const testBtn = document.createElement('button');
       testBtn.innerHTML = `${ICONS['refresh'] ?? ''} Test Connection`;
-      testBtn.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 16px;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        background: var(--designlibre-bg-secondary, #2d2d2d);
-        color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 12px;
-        border-radius: 6px;
-        cursor: pointer;
-      `;
+      testBtn.className = 'flex items-center gap-1.5 px-4 py-2 border border-border bg-surface-secondary text-content text-xs rounded-md cursor-pointer hover:bg-surface-tertiary transition-colors';
 
       const statusSpan = document.createElement('span');
-      statusSpan.style.cssText = 'font-size: 12px;';
+      statusSpan.className = 'text-xs';
 
       testBtn.addEventListener('click', async () => {
         testBtn.disabled = true;
@@ -1071,39 +968,32 @@ export class SettingsModal {
 
   private createAIToggle(checked: boolean, onChange: (checked: boolean) => void): HTMLElement {
     const toggle = document.createElement('label');
-    toggle.style.cssText = 'position: relative; width: 44px; height: 24px; cursor: pointer;';
+    toggle.className = 'relative w-11 h-6 cursor-pointer';
 
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = checked;
-    input.style.cssText = 'opacity: 0; width: 0; height: 0;';
+    input.className = 'opacity-0 w-0 h-0';
     input.addEventListener('change', () => onChange(input.checked));
     toggle.appendChild(input);
 
     const slider = document.createElement('span');
-    slider.style.cssText = `
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: ${checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)'};
-      border-radius: 12px;
-      transition: all 0.2s;
-    `;
+    slider.className = `absolute inset-0 rounded-xl transition-all ${checked ? 'bg-accent' : 'bg-surface-secondary'}`;
 
     const knob = document.createElement('span');
-    knob.style.cssText = `
-      position: absolute;
-      width: 18px; height: 18px;
-      left: ${checked ? '23px' : '3px'};
-      top: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: all 0.2s;
-    `;
+    knob.className = 'absolute w-4.5 h-4.5 top-[3px] bg-white rounded-full transition-all';
+    knob.style.left = checked ? '23px' : '3px';
     slider.appendChild(knob);
     toggle.appendChild(slider);
 
     input.addEventListener('change', () => {
-      slider.style.background = input.checked ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-bg-secondary, #3d3d3d)';
+      if (input.checked) {
+        slider.classList.remove('bg-surface-secondary');
+        slider.classList.add('bg-accent');
+      } else {
+        slider.classList.remove('bg-accent');
+        slider.classList.add('bg-surface-secondary');
+      }
       knob.style.left = input.checked ? '23px' : '3px';
     });
 
@@ -1116,31 +1006,21 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    row.className = 'flex flex-col gap-1';
 
     const label = document.createElement('label');
     label.textContent = 'API Key';
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.className = 'text-xs font-medium text-content-secondary';
     row.appendChild(label);
 
     const inputWrapper = document.createElement('div');
-    inputWrapper.style.cssText = 'display: flex; gap: 8px;';
+    inputWrapper.className = 'flex gap-2';
 
     const input = document.createElement('input');
     input.type = 'password';
     input.value = apiKey;
     input.placeholder = provider === 'anthropic' ? 'sk-ant-...' : 'sk-...';
-    input.style.cssText = `
-      flex: 1;
-      padding: 8px 12px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
-      font-family: 'SF Mono', Monaco, Consolas, monospace;
-      outline: none;
-    `;
+    input.className = 'flex-1 px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm font-mono outline-none';
     input.addEventListener('blur', () => {
       configManager.setApiKey(provider, input.value);
     });
@@ -1150,17 +1030,7 @@ export class SettingsModal {
     const toggleBtn = document.createElement('button');
     toggleBtn.innerHTML = ICONS['eye'] ?? '';
     toggleBtn.title = 'Show API key';
-    toggleBtn.style.cssText = `
-      width: 36px; height: 36px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    toggleBtn.className = 'w-9 h-9 border border-border bg-surface-secondary text-content-secondary rounded-md cursor-pointer flex items-center justify-center hover:bg-surface-tertiary transition-colors';
 
     let showKey = false;
     toggleBtn.addEventListener('click', () => {
@@ -1181,25 +1051,17 @@ export class SettingsModal {
     configManager: ReturnType<typeof getConfigManager>
   ): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    row.className = 'flex flex-col gap-1';
 
     const label = document.createElement('label');
     label.textContent = 'Endpoint';
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.className = 'text-xs font-medium text-content-secondary';
     row.appendChild(label);
 
     const input = document.createElement('input');
     input.type = 'text';
     input.value = endpoint;
-    input.style.cssText = `
-      padding: 8px 12px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
-      outline: none;
-    `;
+    input.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
     input.addEventListener('blur', () => {
       configManager.updateProviderConfig(provider, { endpoint: input.value });
     });
@@ -1225,32 +1087,21 @@ export class SettingsModal {
     const configKey = isVision ? 'visionModel' : 'defaultModel';
 
     container.innerHTML = '';
-    container.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    container.className = 'flex flex-col gap-1';
 
     // Label row with refresh button
     const labelRow = document.createElement('div');
-    labelRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+    labelRow.className = 'flex justify-between items-center';
 
     const label = document.createElement('label');
-    label.innerHTML = isVision ? `<span style="display: flex; align-items: center; gap: 6px;">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.innerHTML = isVision ? `<span class="flex items-center gap-1.5">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
+    label.className = 'text-xs font-medium text-content-secondary';
     labelRow.appendChild(label);
 
     const refreshBtn = document.createElement('button');
     refreshBtn.innerHTML = ICONS['refresh'] ?? '';
     refreshBtn.title = 'Refresh models';
-    refreshBtn.style.cssText = `
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-      cursor: pointer;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    `;
+    refreshBtn.className = 'w-6 h-6 border-none bg-transparent text-content-secondary cursor-pointer rounded flex items-center justify-center hover:bg-surface-secondary hover:text-content transition-colors';
     refreshBtn.addEventListener('click', () => {
       this.loadOllamaModels(container, provider, modelType, currentModel, configManager);
     });
@@ -1259,15 +1110,7 @@ export class SettingsModal {
 
     // Select element
     const select = document.createElement('select');
-    select.style.cssText = `
-      padding: 8px 12px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
-      outline: none;
-    `;
+    select.className = 'px-3 py-2 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none';
 
     // Show loading state
     const loadingOption = document.createElement('option');
@@ -1372,12 +1215,7 @@ export class SettingsModal {
     this.addSectionHeader(container, 'Community Plugins');
 
     const placeholder = document.createElement('div');
-    placeholder.style.cssText = `
-      padding: 24px;
-      text-align: center;
-      color: var(--designlibre-text-secondary, #888);
-      font-size: 13px;
-    `;
+    placeholder.className = 'p-6 text-center text-content-secondary text-sm';
     placeholder.textContent = 'Community plugins coming soon';
     container.appendChild(placeholder);
   }
