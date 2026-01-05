@@ -86,13 +86,7 @@ export class ProjectSelector {
 
   private setup(): void {
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-project-selector';
-    this.element.style.cssText = `
-      padding: 0 12px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    `;
+    this.element.className = 'designlibre-project-selector px-3 pb-2 flex flex-col gap-1';
 
     this.render();
     this.container.appendChild(this.element);
@@ -143,11 +137,7 @@ export class ProjectSelector {
     if (!currentTrunk) {
       const placeholder = document.createElement('div');
       placeholder.textContent = 'Select a workspace first';
-      placeholder.style.cssText = `
-        color: var(--designlibre-text-muted, #666);
-        font-size: 12px;
-        padding: 8px 0;
-      `;
+      placeholder.className = 'text-content-muted text-xs py-2';
       this.element.appendChild(placeholder);
       return;
     }
@@ -191,58 +181,29 @@ export class ProjectSelector {
     renderDropdown: () => HTMLElement;
   }): HTMLElement {
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position: relative;';
+    wrapper.className = 'relative';
 
     const button = document.createElement('button');
-    button.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      width: 100%;
-      padding: 6px 8px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      background: transparent;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      cursor: pointer;
-      font-size: 12px;
-      text-align: left;
-      transition: border-color 0.15s;
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      button.style.borderColor = 'var(--designlibre-border-hover, #555)';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!config.isOpen) {
-        button.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
-      }
-    });
+    button.className = 'flex items-center gap-1.5 w-full px-2 py-1.5 border border-border rounded bg-transparent text-content cursor-pointer text-xs text-left transition-colors hover:border-border-hover';
 
     button.addEventListener('click', config.onToggle);
 
     // Icon
     const icon = document.createElement('span');
     icon.innerHTML = config.icon;
-    icon.style.cssText = 'display: flex; color: var(--designlibre-text-secondary, #888);';
+    icon.className = 'flex text-content-secondary';
     button.appendChild(icon);
 
     // Label
     const label = document.createElement('span');
     label.textContent = config.label;
-    label.style.cssText = 'flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+    label.className = 'flex-1 overflow-hidden text-ellipsis whitespace-nowrap';
     button.appendChild(label);
 
     // Chevron
     const chevron = document.createElement('span');
     chevron.innerHTML = ICONS.chevron;
-    chevron.style.cssText = `
-      display: flex;
-      color: var(--designlibre-text-secondary, #888);
-      transition: transform 0.15s;
-      ${config.isOpen ? 'transform: rotate(180deg);' : ''}
-    `;
+    chevron.className = `flex text-content-secondary transition-transform ${config.isOpen ? 'rotate-180' : ''}`;
     button.appendChild(chevron);
 
     wrapper.appendChild(button);
@@ -259,20 +220,7 @@ export class ProjectSelector {
     currentTree: Tree | undefined
   ): HTMLElement {
     const dropdown = document.createElement('div');
-    dropdown.style.cssText = `
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      margin-top: 4px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 1000;
-      max-height: 240px;
-      overflow-y: auto;
-    `;
+    dropdown.className = 'absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-md shadow-lg z-1000 max-h-60 overflow-y-auto';
 
     if (trees.length > 0) {
       for (const tree of trees) {
@@ -290,7 +238,7 @@ export class ProjectSelector {
       }
 
       const divider = document.createElement('div');
-      divider.style.cssText = 'height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 4px 0;';
+      divider.className = 'h-px bg-border my-1';
       dropdown.appendChild(divider);
     }
 
@@ -313,20 +261,7 @@ export class ProjectSelector {
     currentBranch: Branch | undefined
   ): HTMLElement {
     const dropdown = document.createElement('div');
-    dropdown.style.cssText = `
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      margin-top: 4px;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 1000;
-      max-height: 240px;
-      overflow-y: auto;
-    `;
+    dropdown.className = 'absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-md shadow-lg z-1000 max-h-60 overflow-y-auto';
 
     for (const branch of branches) {
       const item = this.createBranchItem(branch, branch.id === currentBranch?.id);
@@ -334,7 +269,7 @@ export class ProjectSelector {
     }
 
     const divider = document.createElement('div');
-    divider.style.cssText = 'height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 4px 0;';
+    divider.className = 'h-px bg-border my-1';
     dropdown.appendChild(divider);
 
     if (this.options.showCreateBranch) {
@@ -367,42 +302,18 @@ export class ProjectSelector {
     onClick: () => void;
   }): HTMLElement {
     const item = document.createElement('button');
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${config.isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${config.isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      cursor: pointer;
-      font-size: 12px;
-      text-align: left;
-    `;
-
-    item.addEventListener('mouseenter', () => {
-      if (!config.isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      if (!config.isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
+    item.className = `flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-xs text-left ${config.isActive ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
 
     item.addEventListener('click', config.onClick);
 
     const icon = document.createElement('span');
     icon.innerHTML = config.icon;
-    icon.style.cssText = 'display: flex;';
+    icon.className = 'flex';
     item.appendChild(icon);
 
     const label = document.createElement('span');
     label.textContent = config.label;
-    label.style.cssText = 'flex: 1;';
+    label.className = 'flex-1';
     item.appendChild(label);
 
     return item;
@@ -410,31 +321,7 @@ export class ProjectSelector {
 
   private createBranchItem(branch: Branch, isActive: boolean): HTMLElement {
     const item = document.createElement('button');
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px 12px;
-      border: none;
-      background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      cursor: pointer;
-      font-size: 12px;
-      text-align: left;
-    `;
-
-    item.addEventListener('mouseenter', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      if (!isActive) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
+    item.className = `group flex items-center gap-2 w-full px-3 py-2 border-none cursor-pointer text-xs text-left ${isActive ? 'bg-accent-light text-accent' : 'bg-transparent text-content hover:bg-surface-secondary'}`;
 
     item.addEventListener('click', () => {
       this.workspaceManager.switchBranch(branch.id);
@@ -444,19 +331,19 @@ export class ProjectSelector {
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.branch;
-    icon.style.cssText = 'display: flex;';
+    icon.className = 'flex';
     item.appendChild(icon);
 
     const label = document.createElement('span');
     label.textContent = branch.name;
-    label.style.cssText = 'flex: 1;';
+    label.className = 'flex-1';
     item.appendChild(label);
 
     if (branch.isProtected) {
       const badge = document.createElement('span');
       badge.innerHTML = ICONS.shield;
       badge.title = 'Protected branch';
-      badge.style.cssText = 'display: flex; color: var(--designlibre-text-muted, #666);';
+      badge.className = 'flex text-content-muted';
       item.appendChild(badge);
     }
 
@@ -465,33 +352,7 @@ export class ProjectSelector {
       const deleteBtn = document.createElement('button');
       deleteBtn.innerHTML = ICONS.trash;
       deleteBtn.title = 'Delete branch';
-      deleteBtn.style.cssText = `
-        display: flex;
-        padding: 4px;
-        border: none;
-        background: transparent;
-        color: var(--designlibre-text-muted, #666);
-        cursor: pointer;
-        border-radius: 4px;
-        opacity: 0;
-        transition: opacity 0.15s;
-      `;
-
-      item.addEventListener('mouseenter', () => {
-        deleteBtn.style.opacity = '1';
-      });
-
-      item.addEventListener('mouseleave', () => {
-        deleteBtn.style.opacity = '0';
-      });
-
-      deleteBtn.addEventListener('mouseenter', () => {
-        deleteBtn.style.color = 'var(--designlibre-error, #ff6b6b)';
-      });
-
-      deleteBtn.addEventListener('mouseleave', () => {
-        deleteBtn.style.color = 'var(--designlibre-text-muted, #666)';
-      });
+      deleteBtn.className = 'flex p-1 border-none bg-transparent text-content-muted cursor-pointer rounded opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500';
 
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
