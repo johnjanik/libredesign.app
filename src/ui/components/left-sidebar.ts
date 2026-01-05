@@ -20,6 +20,7 @@ import {
 } from '@persistence/import';
 import { ComponentLibraryPanel } from './component-library-panel';
 import { HistoryPanel } from './history-panel';
+import { AssetsPanel } from './assets-panel';
 
 /**
  * Leaf (page) definition
@@ -152,6 +153,9 @@ export class LeftSidebar {
 
   // History panel (lazy-initialized)
   private historyPanel: HistoryPanel | null = null;
+
+  // Assets panel (lazy-initialized)
+  private assetsPanel: AssetsPanel | null = null;
 
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
@@ -405,8 +409,11 @@ export class LeftSidebar {
     } else if (this.activeTab === 'history') {
       // History panel: version history with undo/redo
       this.element.appendChild(this.createHistorySection());
+    } else if (this.activeTab === 'assets') {
+      // Assets panel: saved reusable compositions
+      this.element.appendChild(this.createAssetsSection());
     } else {
-      // Layers/Assets panels: show leaves and layers
+      // Layers panel: show leaves and layers
       this.element.appendChild(this.createLeavesSection());
 
       // Separator
@@ -440,6 +447,16 @@ export class LeftSidebar {
       this.historyPanel = new HistoryPanel(this.runtime);
     }
     return this.historyPanel.create();
+  }
+
+  private createAssetsSection(): HTMLElement {
+    // Lazy-initialize the assets panel
+    if (!this.assetsPanel) {
+      this.assetsPanel = new AssetsPanel({
+        runtime: this.runtime,
+      });
+    }
+    return this.assetsPanel.createElement();
   }
 
   private createHeader(): HTMLElement {

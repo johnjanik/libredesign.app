@@ -32,6 +32,8 @@ import { getPluginManager, registerBuiltInPlugins } from '@core/plugins/plugin-m
 export { getPluginManager, type Plugin } from '@core/plugins/plugin-manager';
 // Keyboard shortcuts help
 import { setupShortcutsHelpHotkey } from '@ui/components/shortcuts-help';
+// Search panel
+import { openSearchPanel } from '@ui/components/search-panel';
 // Hotkey system
 export { getHotkeyManager, type HotkeyAction, type HotkeyManager } from '@core/hotkeys/hotkey-manager';
 // History/Undo system
@@ -365,6 +367,24 @@ async function initializeApp(config: AppConfig): Promise<void> {
       }
     }
   }) as EventListener);
+
+  // Listen for search panel toggle events
+  window.addEventListener('designlibre-open-search', () => {
+    openSearchPanel(runtime);
+  });
+
+  // Add Ctrl+F keyboard shortcut for search
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
+      // Don't override browser search if in an input field
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'TEXTAREA' || activeElement.tagName === 'INPUT')) {
+        return;
+      }
+      e.preventDefault();
+      openSearchPanel(runtime);
+    }
+  });
 
   // Log initialization
   if (config.debug) {
