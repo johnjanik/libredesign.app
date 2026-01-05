@@ -18,6 +18,7 @@ import {
   type XcodeProjectImportOptions,
   type AndroidProjectImportOptions,
 } from '@persistence/import';
+import { ComponentLibraryPanel } from './component-library-panel';
 
 /**
  * Leaf (page) definition
@@ -144,6 +145,9 @@ export class LeftSidebar {
   // Drag-and-drop state
   private draggedNodeId: NodeId | null = null;
   private dropPosition: 'before' | 'after' | 'inside' | null = null;
+
+  // Component library panel (lazy-initialized)
+  private componentLibraryPanel: ComponentLibraryPanel | null = null;
 
   // Callbacks
   private onCollapseChange?: (collapsed: boolean) => void;
@@ -392,8 +396,8 @@ export class LeftSidebar {
       // Library panel: show templates
       this.element.appendChild(this.createLibrarySection());
     } else if (this.activeTab === 'components') {
-      // Components panel: placeholder
-      this.element.appendChild(this.createPlaceholderSection('Components', 'Component library coming soon'));
+      // Components panel: library of draggable UI components
+      this.element.appendChild(this.createComponentsSection());
     } else if (this.activeTab === 'history') {
       // History panel: placeholder
       this.element.appendChild(this.createPlaceholderSection('Version History', 'Version history coming soon'));
@@ -445,6 +449,16 @@ export class LeftSidebar {
     section.appendChild(messageEl);
 
     return section;
+  }
+
+  private createComponentsSection(): HTMLElement {
+    // Lazy-initialize the component library panel
+    if (!this.componentLibraryPanel) {
+      this.componentLibraryPanel = new ComponentLibraryPanel({
+        runtime: this.runtime,
+      });
+    }
+    return this.componentLibraryPanel.createElement();
   }
 
   private createHeader(): HTMLElement {

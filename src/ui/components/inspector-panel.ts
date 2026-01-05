@@ -14,6 +14,14 @@ import { rgbaToHex } from '@core/types/color';
 import { copyToClipboard, showCopyFeedback } from '@devtools/code-export/clipboard';
 import { nodeToUtilityClasses, type UtilityClassOptions } from '@persistence/export/utility-class-generator';
 import { createTokenExtractor, type TokenOutputFormat, type ExtractedTokens } from '@persistence/export/token-extractor';
+import type {
+  PrototypeInteraction,
+  InteractionTrigger,
+  InteractionAction,
+  OverlayPosition,
+  TransitionType,
+} from '@core/types/page-schema';
+import { FramePicker } from './frame-picker';
 
 /** Inspector panel options */
 export interface InspectorPanelOptions {
@@ -1265,47 +1273,990 @@ export class InspectorPanel {
 
     this.renderNodeHeader(node);
 
+    // Get interaction manager from runtime
+    const interactionManager = this.runtime.getInteractionManager?.();
+    const existingInteractions = interactionManager?.getInteractionsForNode(node.id) ?? [];
+
+    // Interactions section
     const section = this.createSection('Interactions');
 
-    // Interaction Trigger
-    section.appendChild(this.createLabeledDropdown('Trigger', 'None', ['None', 'On Click', 'On Hover', 'On Drag', 'After Delay', 'Mouse Enter', 'Mouse Leave'], (_v) => {
-      // TODO: Implement prototype interactions
-    }));
+    // Render existing interactions
+    if (existingInteractions.length > 0) {
+      for (const interaction of existingInteractions) {
+        section.appendChild(this.renderInteractionRow(node.id, interaction));
+      }
+    }
 
-    // Destination
-    section.appendChild(this.createLabeledDropdown('Destination', 'None', ['None', '(Select Frame...)'], (_v) => {
-      // TODO: Implement destination selection
-    }));
+    // Add interaction button
+    const addBtn = document.createElement('button');
+    addBtn.className = 'designlibre-add-interaction-btn';
+    addBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 10px 12px;
+      margin-top: 8px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text-muted, #888888);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+    addBtn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add interaction
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.borderColor = 'var(--designlibre-primary, #3b82f6)';
+      addBtn.style.color = 'var(--designlibre-primary, #3b82f6)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addBtn.style.color = 'var(--designlibre-text-muted, #888888)';
+    });
+    addBtn.addEventListener('click', () => {
+      this.showAddInteractionUI(node.id, section, addBtn);
+    });
 
-    // Animation
-    section.appendChild(this.createLabeledDropdown('Animation', 'Instant', ['Instant', 'Smart Animate', 'Dissolve', 'Move In', 'Move Out', 'Push', 'Slide In', 'Slide Out'], (_v) => {
-      // TODO: Implement animation type
-    }));
-
-    // Easing
-    section.appendChild(this.createLabeledDropdown('Easing', 'Ease In-Out', ['Linear', 'Ease In', 'Ease Out', 'Ease In-Out', 'Spring'], (_v) => {
-      // TODO: Implement easing
-    }));
-
-    // Duration
-    section.appendChild(this.createLabeledNumberField('Duration', 300, 'ms', (_v) => {
-      // TODO: Implement duration
-    }));
-
+    section.appendChild(addBtn);
     this.contentElement.appendChild(section);
 
-    // Placeholder message
-    const note = document.createElement('div');
-    note.style.cssText = `
-      margin-top: 16px;
+    // Prototype tips
+    if (existingInteractions.length === 0) {
+      const tip = document.createElement('div');
+      tip.style.cssText = `
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--designlibre-text-muted, #888888);
+        line-height: 1.5;
+      `;
+      tip.innerHTML = `
+        <strong style="color: var(--designlibre-text, #ffffff);">Tip:</strong>
+        Click "Add interaction" to create clickable hotspots that navigate between frames.
+      `;
+      this.contentElement.appendChild(tip);
+    }
+  }
+
+  /**
+   * Render a single interaction row
+   */
+  private renderInteractionRow(nodeId: NodeId, interaction: PrototypeInteraction): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'designlibre-interaction-row';
+    row.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       padding: 12px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
-      border-radius: 6px;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
-      color: var(--designlibre-text-secondary, #a0a0a0);
+      border-radius: 8px;
+      margin-bottom: 8px;
     `;
-    note.textContent = 'Prototype interactions will be available in a future update.';
-    this.contentElement.appendChild(note);
+
+    // Header with trigger type and delete button
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    `;
+
+    const triggerLabel = document.createElement('span');
+    triggerLabel.style.cssText = `
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--designlibre-text, #ffffff);
+    `;
+    triggerLabel.textContent = this.getTriggerDisplayName(interaction.trigger.type);
+    header.appendChild(triggerLabel);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.cssText = `
+      padding: 4px;
+      background: transparent;
+      border: none;
+      color: var(--designlibre-text-muted, #888888);
+      cursor: pointer;
+      opacity: 0.6;
+    `;
+    deleteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>`;
+    deleteBtn.addEventListener('click', () => {
+      const interactionManager = this.runtime.getInteractionManager?.();
+      interactionManager?.removeInteraction(interaction.id);
+      this.updateContent();
+    });
+    header.appendChild(deleteBtn);
+
+    row.appendChild(header);
+
+    // Render all actions (supports multiple actions per interaction)
+    const actionsContainer = document.createElement('div');
+    actionsContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    `;
+
+    for (let i = 0; i < interaction.actions.length; i++) {
+      const action = interaction.actions[i];
+      if (!action) continue;
+
+      const actionRow = this.renderActionItem(action, i, interaction.actions.length, () => {
+        // Remove this action
+        const interactionManager = this.runtime.getInteractionManager?.();
+        if (interactionManager) {
+          const newActions = [...interaction.actions];
+          newActions.splice(i, 1);
+          if (newActions.length === 0) {
+            interactionManager.removeInteraction(interaction.id);
+          } else {
+            interactionManager.updateInteraction(interaction.id, { actions: newActions });
+          }
+          this.updateContent();
+        }
+      });
+      actionsContainer.appendChild(actionRow);
+    }
+
+    row.appendChild(actionsContainer);
+
+    // Add action button (for adding more actions to this interaction)
+    const addActionBtn = document.createElement('button');
+    addActionBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-muted, #888888);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+    addActionBtn.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add action
+    `;
+    addActionBtn.addEventListener('mouseenter', () => {
+      addActionBtn.style.borderColor = 'var(--designlibre-primary, #3b82f6)';
+      addActionBtn.style.color = 'var(--designlibre-primary, #3b82f6)';
+    });
+    addActionBtn.addEventListener('mouseleave', () => {
+      addActionBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addActionBtn.style.color = 'var(--designlibre-text-muted, #888888)';
+    });
+    addActionBtn.addEventListener('click', () => {
+      this.showAddActionToInteractionUI(nodeId, interaction, row);
+    });
+
+    row.appendChild(addActionBtn);
+
+    return row;
+  }
+
+  /**
+   * Render a single action item within an interaction
+   */
+  private renderActionItem(
+    action: InteractionAction,
+    index: number,
+    total: number,
+    onRemove: () => void
+  ): HTMLElement {
+    const actionRow = document.createElement('div');
+    actionRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1a1a1a);
+      border-radius: 4px;
+    `;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    `;
+
+    // Action number indicator for multiple actions
+    const actionLabel = document.createElement('span');
+    actionLabel.style.cssText = `
+      font-size: 10px;
+      color: var(--designlibre-text-muted, #666666);
+    `;
+    actionLabel.textContent = total > 1 ? `Action ${index + 1}` : '';
+
+    const actionInfo = document.createElement('div');
+    actionInfo.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--designlibre-text, #ffffff);
+    `;
+
+    if (action.type === 'NAVIGATE' || action.type === 'OPEN_OVERLAY') {
+      const destId = action.type === 'NAVIGATE' ? action.destinationId : action.overlayId;
+      const destNode = this.runtime.getSceneGraph().getNode(destId as NodeId);
+      const label = action.type === 'NAVIGATE' ? 'Navigate' : 'Overlay';
+
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${label}: ${destNode?.name ?? 'Unknown'}
+        </span>
+      `;
+    } else if (action.type === 'CLOSE_OVERLAY') {
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span>Close overlay</span>
+      `;
+    } else if (action.type === 'BACK') {
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Go back</span>
+      `;
+    } else if (action.type === 'OPEN_URL') {
+      actionInfo.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          URL: ${action.url}
+        </span>
+      `;
+    }
+
+    if (total > 1 && actionLabel.textContent) {
+      contentDiv.appendChild(actionLabel);
+    }
+    contentDiv.appendChild(actionInfo);
+    actionRow.appendChild(contentDiv);
+
+    // Remove action button (only show if multiple actions)
+    if (total > 1) {
+      const removeBtn = document.createElement('button');
+      removeBtn.style.cssText = `
+        padding: 2px;
+        background: transparent;
+        border: none;
+        color: var(--designlibre-text-muted, #666666);
+        cursor: pointer;
+        opacity: 0.6;
+        flex-shrink: 0;
+      `;
+      removeBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>`;
+      removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onRemove();
+      });
+      actionRow.appendChild(removeBtn);
+    }
+
+    return actionRow;
+  }
+
+  /**
+   * Show UI to add another action to an existing interaction
+   */
+  private showAddActionToInteractionUI(
+    nodeId: NodeId,
+    interaction: PrototypeInteraction,
+    parentRow: HTMLElement
+  ): void {
+    // Create a mini form to add an action
+    const form = document.createElement('div');
+    form.style.cssText = `
+      padding: 10px;
+      margin-top: 8px;
+      background: var(--designlibre-bg-tertiary, #1a1a1a);
+      border: 1px solid var(--designlibre-primary, #3b82f6);
+      border-radius: 6px;
+    `;
+
+    // Action type selector
+    const actionTypeRow = document.createElement('div');
+    actionTypeRow.style.cssText = `margin-bottom: 10px;`;
+    let selectedActionType = 'NAVIGATE';
+    actionTypeRow.appendChild(this.createLabeledDropdown(
+      'Action',
+      'Navigate',
+      ['Navigate', 'Open Overlay', 'Close Overlay', 'Back', 'Open URL'],
+      (v) => {
+        const mapping: Record<string, string> = {
+          'Navigate': 'NAVIGATE',
+          'Open Overlay': 'OPEN_OVERLAY',
+          'Close Overlay': 'CLOSE_OVERLAY',
+          'Back': 'BACK',
+          'Open URL': 'OPEN_URL',
+        };
+        selectedActionType = mapping[v] ?? 'NAVIGATE';
+        updateMiniForm();
+      }
+    ));
+    form.appendChild(actionTypeRow);
+
+    // Container for action-specific options
+    const optionsContainer = document.createElement('div');
+    form.appendChild(optionsContainer);
+
+    let selectedDestId: NodeId | null = null;
+    let selectedAnimation = 'DISSOLVE';
+    let duration = 300;
+    let openUrl = '';
+    let openInNewTab = true;
+    let framePicker: FramePicker | null = null;
+
+    const updateMiniForm = () => {
+      optionsContainer.innerHTML = '';
+      framePicker?.dispose();
+      framePicker = null;
+
+      if (selectedActionType === 'NAVIGATE' || selectedActionType === 'OPEN_OVERLAY') {
+        framePicker = new FramePicker({
+          sceneGraph: this.runtime.getSceneGraph(),
+          selectedFrameId: null,
+          excludeIds: [nodeId],
+          onSelect: (frameId) => {
+            selectedDestId = frameId;
+          },
+        });
+        optionsContainer.appendChild(framePicker.createElement());
+      } else if (selectedActionType === 'OPEN_URL') {
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.placeholder = 'https://example.com';
+        urlInput.style.cssText = `
+          width: 100%;
+          padding: 6px 8px;
+          background: var(--designlibre-input-bg, #2d2d2d);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 4px;
+          color: var(--designlibre-text, #ffffff);
+          font-size: 12px;
+        `;
+        urlInput.addEventListener('input', () => {
+          openUrl = urlInput.value;
+        });
+        optionsContainer.appendChild(urlInput);
+      }
+    };
+
+    updateMiniForm();
+
+    // Button row
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = `
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    `;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      flex: 1;
+      padding: 6px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 11px;
+      cursor: pointer;
+    `;
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      framePicker?.dispose();
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add';
+    addBtn.style.cssText = `
+      flex: 1;
+      padding: 6px;
+      background: var(--designlibre-primary, #3b82f6);
+      border: none;
+      border-radius: 4px;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    addBtn.addEventListener('click', () => {
+      // Validate
+      if ((selectedActionType === 'NAVIGATE' || selectedActionType === 'OPEN_OVERLAY') && !selectedDestId) {
+        return;
+      }
+      if (selectedActionType === 'OPEN_URL' && !openUrl) {
+        return;
+      }
+
+      // Create the action
+      let newAction: InteractionAction;
+
+      if (selectedActionType === 'NAVIGATE') {
+        newAction = {
+          type: 'NAVIGATE',
+          destinationId: selectedDestId as string,
+          transition: { type: selectedAnimation as TransitionType, duration, easing: 'EASE_OUT' },
+        };
+      } else if (selectedActionType === 'OPEN_OVERLAY') {
+        newAction = {
+          type: 'OPEN_OVERLAY',
+          overlayId: selectedDestId as string,
+          transition: { type: selectedAnimation as TransitionType, duration, easing: 'EASE_OUT' },
+          closeOnClickOutside: true,
+          position: { type: 'CENTER' },
+        };
+      } else if (selectedActionType === 'CLOSE_OVERLAY') {
+        newAction = {
+          type: 'CLOSE_OVERLAY',
+          transition: { type: 'DISSOLVE', duration: 200, easing: 'EASE_OUT' },
+        };
+      } else if (selectedActionType === 'BACK') {
+        newAction = {
+          type: 'BACK',
+          transition: { type: 'DISSOLVE', duration: 200, easing: 'EASE_OUT' },
+        };
+      } else {
+        newAction = {
+          type: 'OPEN_URL',
+          url: openUrl,
+          openInNewTab,
+        };
+      }
+
+      // Add to interaction
+      const interactionManager = this.runtime.getInteractionManager?.();
+      if (interactionManager) {
+        const newActions = [...interaction.actions, newAction];
+        interactionManager.updateInteraction(interaction.id, { actions: newActions });
+      }
+
+      form.remove();
+      framePicker?.dispose();
+      this.updateContent();
+    });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(addBtn);
+    form.appendChild(btnRow);
+
+    parentRow.appendChild(form);
+  }
+
+  /**
+   * Show UI to add a new interaction
+   */
+  private showAddInteractionUI(nodeId: NodeId, section: HTMLElement, addBtn: HTMLElement): void {
+    // Hide the add button temporarily
+    addBtn.style.display = 'none';
+
+    // Create inline form
+    const form = document.createElement('div');
+    form.className = 'designlibre-add-interaction-form';
+    form.style.cssText = `
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-primary, #3b82f6);
+      border-radius: 8px;
+      margin-top: 8px;
+    `;
+
+    // Trigger selector
+    const triggerRow = document.createElement('div');
+    triggerRow.style.cssText = `margin-bottom: 12px;`;
+    triggerRow.appendChild(this.createLabeledDropdown(
+      'Trigger',
+      'On Click',
+      ['On Click', 'On Hover', 'On Drag', 'Mouse Enter', 'Mouse Leave', 'Mouse Down', 'Mouse Up', 'After Delay', 'Key Press'],
+      () => {}
+    ));
+    form.appendChild(triggerRow);
+
+    // Action type selector
+    const actionTypeRow = document.createElement('div');
+    actionTypeRow.style.cssText = `margin-bottom: 12px;`;
+    let selectedActionType = 'NAVIGATE';
+    actionTypeRow.appendChild(this.createLabeledDropdown(
+      'Action',
+      'Navigate',
+      ['Navigate', 'Open Overlay', 'Close Overlay', 'Back', 'Open URL'],
+      (v) => {
+        const mapping: Record<string, string> = {
+          'Navigate': 'NAVIGATE',
+          'Open Overlay': 'OPEN_OVERLAY',
+          'Close Overlay': 'CLOSE_OVERLAY',
+          'Back': 'BACK',
+          'Open URL': 'OPEN_URL',
+        };
+        selectedActionType = mapping[v] ?? 'NAVIGATE';
+        updateFormForActionType();
+      }
+    ));
+    form.appendChild(actionTypeRow);
+
+    // Container for dynamic action options
+    const actionOptionsContainer = document.createElement('div');
+    actionOptionsContainer.className = 'action-options';
+    form.appendChild(actionOptionsContainer);
+
+    // State for form values
+    let selectedDestId: NodeId | null = null;
+    let selectedAnimation = 'DISSOLVE';
+    let duration = 300;
+    let overlayPosition = 'CENTER';
+    let overlayBackdrop = 'DIM';
+    let closeOnClickOutside = true;
+    let openUrl = '';
+    let openInNewTab = true;
+    let framePicker: FramePicker | null = null;
+
+    const updateFormForActionType = () => {
+      actionOptionsContainer.innerHTML = '';
+      framePicker?.dispose();
+      framePicker = null;
+
+      if (selectedActionType === 'NAVIGATE' || selectedActionType === 'OPEN_OVERLAY') {
+        // Frame picker for destination
+        const destLabel = document.createElement('label');
+        destLabel.style.cssText = `
+          display: block;
+          margin-bottom: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--designlibre-text-muted, #888888);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        `;
+        destLabel.textContent = selectedActionType === 'NAVIGATE' ? 'Navigate to' : 'Open overlay';
+        actionOptionsContainer.appendChild(destLabel);
+
+        framePicker = new FramePicker({
+          sceneGraph: this.runtime.getSceneGraph(),
+          selectedFrameId: selectedDestId,
+          excludeIds: [nodeId],
+          onSelect: (frameId) => {
+            selectedDestId = frameId;
+          },
+        });
+        actionOptionsContainer.appendChild(framePicker.createElement());
+
+        // Overlay-specific options
+        if (selectedActionType === 'OPEN_OVERLAY') {
+          // Position selector
+          const posRow = document.createElement('div');
+          posRow.style.cssText = `margin-top: 12px;`;
+          posRow.appendChild(this.createLabeledDropdown(
+            'Position',
+            'Center',
+            ['Center', 'Top Left', 'Top Center', 'Top Right', 'Bottom Left', 'Bottom Center', 'Bottom Right'],
+            (v) => {
+              const mapping: Record<string, string> = {
+                'Center': 'CENTER',
+                'Top Left': 'TOP_LEFT',
+                'Top Center': 'TOP_CENTER',
+                'Top Right': 'TOP_RIGHT',
+                'Bottom Left': 'BOTTOM_LEFT',
+                'Bottom Center': 'BOTTOM_CENTER',
+                'Bottom Right': 'BOTTOM_RIGHT',
+              };
+              overlayPosition = mapping[v] ?? 'CENTER';
+            }
+          ));
+          actionOptionsContainer.appendChild(posRow);
+
+          // Backdrop selector
+          const backdropRow = document.createElement('div');
+          backdropRow.style.cssText = `margin-top: 12px;`;
+          backdropRow.appendChild(this.createLabeledDropdown(
+            'Backdrop',
+            'Dim',
+            ['None', 'Dim', 'Blur'],
+            (v) => {
+              overlayBackdrop = v.toUpperCase();
+            }
+          ));
+          actionOptionsContainer.appendChild(backdropRow);
+
+          // Close on click outside checkbox
+          const closeRow = document.createElement('div');
+          closeRow.style.cssText = `
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          `;
+          const closeCheckbox = document.createElement('input');
+          closeCheckbox.type = 'checkbox';
+          closeCheckbox.id = 'close-on-outside';
+          closeCheckbox.checked = closeOnClickOutside;
+          closeCheckbox.addEventListener('change', () => {
+            closeOnClickOutside = closeCheckbox.checked;
+          });
+          const closeLabel = document.createElement('label');
+          closeLabel.htmlFor = 'close-on-outside';
+          closeLabel.style.cssText = `
+            font-size: 12px;
+            color: var(--designlibre-text, #ffffff);
+            cursor: pointer;
+          `;
+          closeLabel.textContent = 'Close on click outside';
+          closeRow.appendChild(closeCheckbox);
+          closeRow.appendChild(closeLabel);
+          actionOptionsContainer.appendChild(closeRow);
+        }
+
+        // Animation selector
+        const animRow = document.createElement('div');
+        animRow.style.cssText = `margin-top: 12px;`;
+        const animations = selectedActionType === 'OPEN_OVERLAY'
+          ? ['Instant', 'Dissolve', 'Move In', 'Slide In']
+          : ['Instant', 'Dissolve', 'Smart Animate', 'Slide In', 'Slide Out', 'Push', 'Move In', 'Move Out'];
+        animRow.appendChild(this.createLabeledDropdown(
+          'Animation',
+          'Dissolve',
+          animations,
+          (v) => {
+            const mapping: Record<string, string> = {
+              'Instant': 'INSTANT',
+              'Dissolve': 'DISSOLVE',
+              'Smart Animate': 'SMART_ANIMATE',
+              'Slide In': 'SLIDE_IN',
+              'Slide Out': 'SLIDE_OUT',
+              'Push': 'PUSH',
+              'Move In': 'MOVE_IN',
+              'Move Out': 'MOVE_OUT',
+            };
+            selectedAnimation = mapping[v] ?? 'DISSOLVE';
+          }
+        ));
+        actionOptionsContainer.appendChild(animRow);
+
+        // Duration
+        const durationRow = document.createElement('div');
+        durationRow.style.cssText = `margin-top: 12px;`;
+        durationRow.appendChild(this.createLabeledNumberField('Duration', 300, 'ms', (v) => {
+          duration = v;
+        }));
+        actionOptionsContainer.appendChild(durationRow);
+
+      } else if (selectedActionType === 'CLOSE_OVERLAY' || selectedActionType === 'BACK') {
+        // Animation selector for close/back
+        const animRow = document.createElement('div');
+        animRow.style.cssText = `margin-top: 12px;`;
+        animRow.appendChild(this.createLabeledDropdown(
+          'Animation',
+          'Dissolve',
+          ['Instant', 'Dissolve', 'Slide Out', 'Move Out'],
+          (v) => {
+            const mapping: Record<string, string> = {
+              'Instant': 'INSTANT',
+              'Dissolve': 'DISSOLVE',
+              'Slide Out': 'SLIDE_OUT',
+              'Move Out': 'MOVE_OUT',
+            };
+            selectedAnimation = mapping[v] ?? 'DISSOLVE';
+          }
+        ));
+        actionOptionsContainer.appendChild(animRow);
+
+        // Duration
+        const durationRow = document.createElement('div');
+        durationRow.style.cssText = `margin-top: 12px;`;
+        durationRow.appendChild(this.createLabeledNumberField('Duration', 300, 'ms', (v) => {
+          duration = v;
+        }));
+        actionOptionsContainer.appendChild(durationRow);
+
+        // Info text
+        const infoText = document.createElement('div');
+        infoText.style.cssText = `
+          margin-top: 12px;
+          padding: 8px;
+          background: var(--designlibre-bg-tertiary, #1a1a1a);
+          border-radius: 4px;
+          font-size: 11px;
+          color: var(--designlibre-text-muted, #888888);
+        `;
+        infoText.textContent = selectedActionType === 'CLOSE_OVERLAY'
+          ? 'Closes the topmost overlay'
+          : 'Navigates to the previous frame in history';
+        actionOptionsContainer.appendChild(infoText);
+
+      } else if (selectedActionType === 'OPEN_URL') {
+        // URL input
+        const urlRow = document.createElement('div');
+        urlRow.style.cssText = `margin-bottom: 12px;`;
+        const urlLabel = document.createElement('label');
+        urlLabel.style.cssText = `
+          display: block;
+          margin-bottom: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          color: var(--designlibre-text-muted, #888888);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        `;
+        urlLabel.textContent = 'URL';
+        urlRow.appendChild(urlLabel);
+
+        const urlInput = document.createElement('input');
+        urlInput.type = 'url';
+        urlInput.placeholder = 'https://example.com';
+        urlInput.style.cssText = `
+          width: 100%;
+          padding: 8px 12px;
+          background: var(--designlibre-input-bg, #1a1a1a);
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 6px;
+          color: var(--designlibre-text, #ffffff);
+          font-size: 13px;
+        `;
+        urlInput.addEventListener('input', () => {
+          openUrl = urlInput.value;
+        });
+        urlRow.appendChild(urlInput);
+        actionOptionsContainer.appendChild(urlRow);
+
+        // New tab checkbox
+        const newTabRow = document.createElement('div');
+        newTabRow.style.cssText = `
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        `;
+        const newTabCheckbox = document.createElement('input');
+        newTabCheckbox.type = 'checkbox';
+        newTabCheckbox.id = 'open-new-tab';
+        newTabCheckbox.checked = openInNewTab;
+        newTabCheckbox.addEventListener('change', () => {
+          openInNewTab = newTabCheckbox.checked;
+        });
+        const newTabLabel = document.createElement('label');
+        newTabLabel.htmlFor = 'open-new-tab';
+        newTabLabel.style.cssText = `
+          font-size: 12px;
+          color: var(--designlibre-text, #ffffff);
+          cursor: pointer;
+        `;
+        newTabLabel.textContent = 'Open in new tab';
+        newTabRow.appendChild(newTabCheckbox);
+        newTabRow.appendChild(newTabLabel);
+        actionOptionsContainer.appendChild(newTabRow);
+      }
+    };
+
+    // Initialize form for default action type
+    updateFormForActionType();
+
+    // Buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = `
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    `;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      flex: 1;
+      padding: 8px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 13px;
+      cursor: pointer;
+    `;
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      addBtn.style.display = 'flex';
+      framePicker?.dispose();
+    });
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Add';
+    saveBtn.style.cssText = `
+      flex: 1;
+      padding: 8px;
+      background: var(--designlibre-primary, #3b82f6);
+      border: none;
+      border-radius: 6px;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    saveBtn.addEventListener('click', () => {
+      // Validate based on action type
+      if ((selectedActionType === 'NAVIGATE' || selectedActionType === 'OPEN_OVERLAY') && !selectedDestId) {
+        return;
+      }
+      if (selectedActionType === 'OPEN_URL' && !openUrl) {
+        return;
+      }
+
+      // Create the interaction
+      const interactionManager = this.runtime.getInteractionManager?.();
+      if (interactionManager) {
+        const triggerSelect = triggerRow.querySelector('select') as HTMLSelectElement;
+        const triggerValue = triggerSelect?.value ?? 'On Click';
+        const triggerType = this.getTriggerType(triggerValue);
+
+        let action: InteractionAction;
+
+        if (selectedActionType === 'NAVIGATE') {
+          action = {
+            type: 'NAVIGATE',
+            destinationId: selectedDestId as string,
+            transition: {
+              type: selectedAnimation as TransitionType,
+              duration,
+              easing: 'EASE_OUT',
+            },
+          };
+        } else if (selectedActionType === 'OPEN_OVERLAY') {
+          const overlayAction: InteractionAction = {
+            type: 'OPEN_OVERLAY',
+            overlayId: selectedDestId as string,
+            transition: {
+              type: selectedAnimation as TransitionType,
+              duration,
+              easing: 'EASE_OUT',
+            },
+            closeOnClickOutside,
+            position: { type: overlayPosition } as OverlayPosition,
+          };
+          // Only add overlayBackground if not NONE
+          if (overlayBackdrop === 'DIM') {
+            (overlayAction as { overlayBackground: RGBA }).overlayBackground = { r: 0, g: 0, b: 0, a: 0.5 };
+          } else if (overlayBackdrop === 'BLUR') {
+            (overlayAction as { overlayBackground: RGBA }).overlayBackground = { r: 0, g: 0, b: 0, a: 0.3 };
+          }
+          action = overlayAction;
+        } else if (selectedActionType === 'CLOSE_OVERLAY') {
+          action = {
+            type: 'CLOSE_OVERLAY',
+            transition: {
+              type: selectedAnimation as TransitionType,
+              duration,
+              easing: 'EASE_OUT',
+            },
+          };
+        } else if (selectedActionType === 'BACK') {
+          action = {
+            type: 'BACK',
+            transition: {
+              type: selectedAnimation as TransitionType,
+              duration,
+              easing: 'EASE_OUT',
+            },
+          };
+        } else {
+          action = {
+            type: 'OPEN_URL',
+            url: openUrl,
+            openInNewTab,
+          };
+        }
+
+        const interaction: PrototypeInteraction = {
+          id: `interaction_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+          triggerNodeId: nodeId as string,
+          trigger: { type: triggerType } as InteractionTrigger,
+          actions: [action],
+        };
+
+        interactionManager.addInteraction(interaction);
+      }
+
+      form.remove();
+      framePicker?.dispose();
+      this.updateContent();
+    });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(saveBtn);
+    form.appendChild(btnRow);
+
+    section.appendChild(form);
+  }
+
+  /**
+   * Get trigger display name
+   */
+  private getTriggerDisplayName(type: string): string {
+    const names: Record<string, string> = {
+      'ON_CLICK': 'On Click',
+      'ON_TAP': 'On Tap',
+      'ON_HOVER': 'On Hover',
+      'ON_DRAG': 'On Drag',
+      'MOUSE_ENTER': 'Mouse Enter',
+      'MOUSE_LEAVE': 'Mouse Leave',
+      'MOUSE_DOWN': 'Mouse Down',
+      'MOUSE_UP': 'Mouse Up',
+      'AFTER_TIMEOUT': 'After Delay',
+      'ON_KEY_DOWN': 'Key Press',
+    };
+    return names[type] ?? type;
+  }
+
+  /**
+   * Get trigger type from display name
+   */
+  private getTriggerType(displayName: string): InteractionTrigger['type'] {
+    const types: Record<string, InteractionTrigger['type']> = {
+      'On Click': 'ON_CLICK',
+      'On Hover': 'ON_HOVER',
+      'On Drag': 'ON_DRAG',
+      'Mouse Enter': 'MOUSE_ENTER',
+      'Mouse Leave': 'MOUSE_LEAVE',
+      'Mouse Down': 'MOUSE_DOWN',
+      'Mouse Up': 'MOUSE_UP',
+      'After Delay': 'AFTER_TIMEOUT',
+      'Key Press': 'ON_KEY_DOWN',
+    };
+    return types[displayName] ?? 'ON_CLICK';
   }
 
   // =========================================================================

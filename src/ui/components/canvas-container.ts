@@ -141,8 +141,73 @@ export class CanvasContainer {
     };
     window.addEventListener('designlibre-settings-changed', this.settingsHandler);
 
+    // Set up drag-drop for library components
+    this.setupLibraryDragDrop();
+
     // Start render loop
     this.startRenderLoop();
+  }
+
+  /**
+   * Set up drag-drop handling for library components
+   */
+  private setupLibraryDragDrop(): void {
+    // Drag over - allow drop
+    this.container.addEventListener('dragover', (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('application/x-designlibre-library-component')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        this.container.style.outline = '2px solid #3b82f6';
+        this.container.style.outlineOffset = '-2px';
+      }
+    });
+
+    // Drag leave - reset visual
+    this.container.addEventListener('dragleave', (e: DragEvent) => {
+      // Only reset if leaving the container, not entering a child
+      if (e.relatedTarget && this.container.contains(e.relatedTarget as Node)) {
+        return;
+      }
+      this.container.style.outline = '';
+      this.container.style.outlineOffset = '';
+    });
+
+    // Drop - create component instance
+    this.container.addEventListener('drop', (e: DragEvent) => {
+      this.container.style.outline = '';
+      this.container.style.outlineOffset = '';
+
+      const componentId = e.dataTransfer?.getData('application/x-designlibre-library-component');
+      if (!componentId) return;
+
+      e.preventDefault();
+
+      // Get drop position in canvas coordinates (CSS pixels relative to container)
+      const rect = this.container.getBoundingClientRect();
+      const cssX = e.clientX - rect.left;
+      const cssY = e.clientY - rect.top;
+
+      // Convert CSS pixels to canvas pixels (multiply by device pixel ratio)
+      const dpr = window.devicePixelRatio || 1;
+      const canvasX = cssX * dpr;
+      const canvasY = cssY * dpr;
+
+      // Convert to world coordinates using the viewport
+      const viewport = this.runtime.getViewport();
+      if (!viewport) return;
+      const worldPos = viewport.canvasToWorld(canvasX, canvasY);
+
+      // Emit event for runtime to handle component creation
+      window.dispatchEvent(new CustomEvent('designlibre-library-drop', {
+        detail: {
+          componentId,
+          x: worldPos.x,
+          y: worldPos.y,
+          canvasX,
+          canvasY,
+        },
+      }));
+    });
   }
 
   /**

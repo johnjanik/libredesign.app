@@ -47,3 +47,13 @@ export type {
   PrototypePlayerEventListener,
   PrototypePlayerOptions,
 } from './prototype-player';
+
+// Interaction Manager
+export {
+  InteractionManager,
+  createInteractionManager,
+} from './interaction-manager';
+export type {
+  InteractionManagerEvents,
+  EditableInteraction,
+} from './interaction-manager';

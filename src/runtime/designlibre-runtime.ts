@@ -7,7 +7,7 @@
 import type { NodeId } from '@core/types/common';
 import type { VectorPath, PathCommand } from '@core/types/geometry';
 import { EventEmitter } from '@core/events/event-emitter';
-import { SceneGraph } from '@scene/graph/scene-graph';
+import { SceneGraph, type CreateNodeOptions } from '@scene/graph/scene-graph';
 import { Renderer, createRenderer } from '@renderer/core/renderer';
 import { Viewport } from '@renderer/core/viewport';
 import { ToolManager, createToolManager } from '@tools/base/tool-manager';
@@ -42,6 +42,17 @@ import { rgba } from '@core/types/color';
 import { StyleManager, createStyleManager } from '@core/styles/style-manager';
 import { KeyboardManager, createKeyboardManager } from '@ui/keyboard';
 import { ContextMenu, createContextMenu } from '@ui/components/context-menu';
+import {
+  LibraryComponentRegistry,
+  createLibraryComponentRegistry,
+  type LibraryComponent,
+  type LibraryNodeStructure,
+} from '@scene/components/library-component-registry';
+import { getAllLibraryComponents } from '@scene/components/library';
+import {
+  InteractionManager,
+  createInteractionManager,
+} from '@prototype/interaction-manager';
 
 /**
  * Runtime events
@@ -108,6 +119,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private layoutEngine: LayoutEngine;
   private undoManager: UndoManager;
   private styleManager: StyleManager;
+  private libraryRegistry: LibraryComponentRegistry;
+  private interactionManager: InteractionManager;
 
   // Input handlers
   private pointerHandler: PointerHandler | null = null;
@@ -183,6 +196,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.undoManager = createUndoManager({ maxHistory: 100 });
     this.styleManager = createStyleManager();
 
+    // Initialize library component registry with core components
+    this.libraryRegistry = createLibraryComponentRegistry();
+    this.libraryRegistry.registerAll(getAllLibraryComponents());
+
+    // Initialize interaction manager for prototyping
+    this.interactionManager = createInteractionManager();
+
     // Initialize persistence
     this.serializer = createDocumentSerializer();
     this.storage = createIndexedDBStorage();
@@ -252,6 +272,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       // Wire input to tools
       this.wireInputHandlers();
+
+      // Set up library component drop handler
+      this.setupLibraryDropHandler();
 
       // Initialize storage
       await this.storage.initialize();
@@ -684,6 +707,20 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
    */
   getStyleManager(): StyleManager {
     return this.styleManager;
+  }
+
+  /**
+   * Get the library component registry.
+   */
+  getLibraryRegistry(): LibraryComponentRegistry {
+    return this.libraryRegistry;
+  }
+
+  /**
+   * Get the interaction manager.
+   */
+  getInteractionManager(): InteractionManager {
+    return this.interactionManager;
   }
 
   /**
@@ -1393,6 +1430,139 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       this.toolManager!.handleKeyUp(event);
     });
+  }
+
+  /**
+   * Set up handler for library component drops
+   */
+  private setupLibraryDropHandler(): void {
+    window.addEventListener('designlibre-library-drop', ((e: CustomEvent) => {
+      const { componentId, x, y } = e.detail as {
+        componentId: string;
+        x: number;
+        y: number;
+      };
+
+      // Get the library component definition
+      const component = this.libraryRegistry.get(componentId);
+      if (!component) {
+        console.warn(`Library component not found: ${componentId}`);
+        return;
+      }
+
+      // Create the component nodes on the canvas
+      this.createLibraryComponentInstance(component, x, y);
+    }) as EventListener);
+  }
+
+  /**
+   * Create an instance of a library component at the specified position
+   */
+  private createLibraryComponentInstance(
+    component: LibraryComponent,
+    x: number,
+    y: number
+  ): NodeId | null {
+    // Get the current page as parent
+    const pageId = this.getCurrentPageId();
+    if (!pageId) {
+      console.warn('No current page to place component');
+      return null;
+    }
+
+    // Create the root frame for this component
+    const rootNode = this.createNodeFromStructure(
+      component.structure,
+      pageId,
+      x,
+      y,
+      component.name
+    );
+
+    if (rootNode) {
+      // Select the newly created component
+      this.selectionManager.select([rootNode]);
+    }
+
+    return rootNode;
+  }
+
+  /**
+   * Recursively create nodes from a library component structure
+   */
+  private createNodeFromStructure(
+    structure: LibraryNodeStructure,
+    parentId: NodeId,
+    x: number,
+    y: number,
+    rootName?: string
+  ): NodeId | null {
+    const props = structure.properties || {};
+
+    // Determine node type and create
+    let nodeId: NodeId;
+
+    switch (structure.type) {
+      case 'FRAME':
+      case 'RECTANGLE':
+      case 'ELLIPSE': {
+        // RECTANGLE and ELLIPSE are implemented as FRAME nodes with fills/strokes
+        nodeId = this.sceneGraph.createNode('FRAME', parentId, -1, {
+          name: rootName ?? structure.name,
+          x,
+          y,
+          width: (props['width'] as number) ?? 100,
+          height: (props['height'] as number) ?? 40,
+          fills: (props['fills'] as unknown[]) ?? [],
+          strokes: (props['strokes'] as unknown[]) ?? [],
+          strokeWeight: (props['strokeWeight'] as number) ?? 0,
+          cornerRadius: (props['cornerRadius'] as number) ?? 0,
+          clipsContent: (props['clipsContent'] as boolean) ?? false,
+          effects: (props['effects'] as unknown[]) ?? [],
+          autoLayoutMode: props['autoLayoutMode'] as string | undefined,
+          autoLayoutGap: (props['autoLayoutGap'] as number) ?? 0,
+          autoLayoutPadding: props['autoLayoutPadding'] as { top: number; right: number; bottom: number; left: number } | undefined,
+          primaryAxisAlign: props['primaryAxisAlign'] as string | undefined,
+          counterAxisAlign: props['counterAxisAlign'] as string | undefined,
+          primaryAxisSizing: props['primaryAxisSizing'] as string | undefined,
+          counterAxisSizing: props['counterAxisSizing'] as string | undefined,
+        } as CreateNodeOptions);
+        break;
+      }
+
+      case 'TEXT': {
+        nodeId = this.sceneGraph.createNode('TEXT', parentId, -1, {
+          name: rootName ?? structure.name,
+          x,
+          y,
+          width: (props['width'] as number) ?? 100,
+          height: (props['height'] as number) ?? 20,
+          characters: (props['characters'] as string) ?? 'Text',
+          fills: (props['fills'] as unknown[]) ?? [],
+          fontFamily: (props['fontFamily'] as string) ?? 'Inter',
+          fontWeight: (props['fontWeight'] as number) ?? 400,
+          fontSize: (props['fontSize'] as number) ?? 14,
+          textAlignHorizontal: (props['textAlignHorizontal'] as string) ?? 'LEFT',
+          textAlignVertical: (props['textAlignVertical'] as string) ?? 'TOP',
+        } as CreateNodeOptions);
+        break;
+      }
+
+      default:
+        console.warn(`Unsupported node type: ${structure.type}`);
+        return null;
+    }
+
+    // Create children
+    if (structure.children) {
+      let childY = 0;
+      for (const childStructure of structure.children) {
+        this.createNodeFromStructure(childStructure, nodeId, 0, childY);
+        childY += 30; // Basic vertical stacking for children
+      }
+    }
+
+    return nodeId;
   }
 
   private handleShortcut(action: string): void {
