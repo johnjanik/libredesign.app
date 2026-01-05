@@ -56,8 +56,7 @@ export class CodePanel {
   private setup(): void {
     // Create panel element
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-code-panel';
-    this.element.style.cssText = this.getPanelStyles();
+    this.element.className = this.getPanelClasses();
 
     // Header with tabs
     const header = this.createHeader();
@@ -65,38 +64,12 @@ export class CodePanel {
 
     // Code display area
     this.codeElement = document.createElement('pre');
-    this.codeElement.className = 'designlibre-code-content';
-    this.codeElement.style.cssText = `
-      flex: 1;
-      margin: 0;
-      padding: 12px;
-      overflow: auto;
-      background: var(--designlibre-bg-secondary, #f5f5f5);
-      font-family: 'SF Mono', Monaco, 'Fira Code', Consolas, monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      tab-size: 2;
-      white-space: pre-wrap;
-      word-break: break-word;
-    `;
+    this.codeElement.className = 'code-block flex-1 m-0 p-3 overflow-auto bg-surface-secondary';
     this.element.appendChild(this.codeElement);
 
     // Copy button
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'designlibre-code-copy-btn';
-    copyBtn.style.cssText = `
-      position: absolute;
-      top: 48px;
-      right: 12px;
-      padding: 6px 12px;
-      background: var(--designlibre-accent, #0066ff);
-      color: white;
-      border: none;
-      border-radius: var(--designlibre-radius-sm, 4px);
-      cursor: pointer;
-      font-size: 11px;
-      font-weight: 500;
-    `;
+    copyBtn.className = 'btn-primary absolute top-12 right-3 py-1.5 px-3 text-xs font-medium';
     copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', async () => {
       if (this.codeElement) {
@@ -128,29 +101,18 @@ export class CodePanel {
     this.updateCode();
   }
 
-  private getPanelStyles(): string {
-    return `
-      position: absolute;
-      top: 0;
-      ${this.options.position}: 0;
-      width: ${this.options.width}px;
-      height: 100%;
-      background: var(--designlibre-bg-primary, #ffffff);
-      border-${this.options.position === 'right' ? 'left' : 'right'}: 1px solid var(--designlibre-border, #e0e0e0);
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      z-index: 100;
-      box-shadow: var(--designlibre-shadow, 0 2px 8px rgba(0, 0, 0, 0.1));
-    `;
+  private getPanelClasses(): string {
+    const base = 'absolute top-0 h-full bg-surface flex flex-col font-sans z-100 shadow-panel';
+    const position = this.options.position === 'right'
+      ? 'right-0 border-l border-border'
+      : 'left-0 border-r border-border';
+    // Width needs inline style since it's dynamic
+    return `${base} ${position} w-[${this.options.width}px]`;
   }
 
   private createHeader(): HTMLElement {
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      border-bottom: 1px solid var(--designlibre-border, #e0e0e0);
-    `;
+    header.className = 'flex border-b border-border';
 
     const tabs: { format: CodeFormat; label: string }[] = [
       { format: 'css', label: 'CSS' },
@@ -160,29 +122,16 @@ export class CodePanel {
 
     for (const tab of tabs) {
       const tabBtn = document.createElement('button');
-      tabBtn.className = `designlibre-code-tab ${tab.format === this.currentFormat ? 'active' : ''}`;
-      tabBtn.style.cssText = `
-        flex: 1;
-        padding: 12px;
-        background: ${tab.format === this.currentFormat ? 'var(--designlibre-bg-primary, #ffffff)' : 'var(--designlibre-bg-secondary, #f5f5f5)'};
-        border: none;
-        border-bottom: ${tab.format === this.currentFormat ? '2px solid var(--designlibre-accent, #0066ff)' : '2px solid transparent'};
-        cursor: pointer;
-        font-size: 12px;
-        font-weight: ${tab.format === this.currentFormat ? '600' : '400'};
-        color: ${tab.format === this.currentFormat ? 'var(--designlibre-accent, #0066ff)' : 'var(--designlibre-text-secondary, #666666)'};
-      `;
+      const isActive = tab.format === this.currentFormat;
+      tabBtn.className = isActive ? 'view-tab-active' : 'view-tab';
       tabBtn.textContent = tab.label;
       tabBtn.addEventListener('click', () => {
         this.setFormat(tab.format);
-        // Update all tab styles
+        // Update all tab classes
         const allTabs = header.querySelectorAll('button');
         allTabs.forEach((btn, index) => {
-          const isActive = tabs[index]?.format === this.currentFormat;
-          btn.style.background = isActive ? 'var(--designlibre-bg-primary, #ffffff)' : 'var(--designlibre-bg-secondary, #f5f5f5)';
-          btn.style.borderBottom = isActive ? '2px solid var(--designlibre-accent, #0066ff)' : '2px solid transparent';
-          btn.style.fontWeight = isActive ? '600' : '400';
-          btn.style.color = isActive ? 'var(--designlibre-accent, #0066ff)' : 'var(--designlibre-text-secondary, #666666)';
+          const active = tabs[index]?.format === this.currentFormat;
+          btn.className = active ? 'view-tab-active' : 'view-tab';
         });
       });
       header.appendChild(tabBtn);
