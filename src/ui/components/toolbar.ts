@@ -179,8 +179,7 @@ export class Toolbar {
   private setup(): void {
     // Create toolbar element
     this.element = document.createElement('div');
-    this.element.className = 'designlibre-toolbar';
-    this.element.style.cssText = this.getToolbarStyles();
+    this.element.className = this.getToolbarClasses();
 
     // Add standalone tools first (Select, Hand)
     for (const tool of STANDALONE_TOOLS.slice(0, 2)) {
@@ -204,8 +203,7 @@ export class Toolbar {
 
     // Add separator
     const separator = document.createElement('div');
-    separator.className = 'designlibre-toolbar-separator';
-    separator.style.cssText = this.getSeparatorStyles();
+    separator.className = this.getSeparatorClasses();
     this.element.appendChild(separator);
 
     // Add action buttons
@@ -232,71 +230,35 @@ export class Toolbar {
     });
   }
 
-  private getToolbarStyles(): string {
-    const base = `
-      display: flex;
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      padding: 4px;
-      gap: 2px;
-      box-shadow: var(--designlibre-shadow, 0 4px 12px rgba(0, 0, 0, 0.4));
-      z-index: 100;
-    `;
+  private getToolbarClasses(): string {
+    const base = 'toolbar absolute z-100';
 
     switch (this.options.position) {
       case 'top':
-        return `${base} position: absolute; top: 12px; left: 50%; transform: translateX(-50%); flex-direction: row;`;
+        return `${base} flex-row top-3 left-1/2 -translate-x-1/2`;
       case 'right':
-        return `${base} position: absolute; right: 12px; top: 50%; transform: translateY(-50%); flex-direction: column;`;
+        return `${base} flex-col right-3 top-1/2 -translate-y-1/2`;
       case 'bottom':
-        return `${base} position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); flex-direction: row;`;
+        return `${base} flex-row bottom-3 left-1/2 -translate-x-1/2`;
       case 'left':
       default:
-        return `${base} position: absolute; left: 12px; top: 50%; transform: translateY(-50%); flex-direction: column;`;
+        return `${base} flex-col left-3 top-1/2 -translate-y-1/2`;
     }
   }
 
-  private getSeparatorStyles(): string {
+  private getSeparatorClasses(): string {
     return this.options.position === 'top' || this.options.position === 'bottom'
-      ? 'width: 1px; height: 24px; background: var(--designlibre-border, #3d3d3d); margin: 0 4px;'
-      : 'width: 24px; height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 4px 0;';
+      ? 'w-px h-6 bg-border mx-1'
+      : 'h-px w-6 bg-border my-1';
   }
 
   private createToolButton(tool: ToolDefinition): HTMLButtonElement {
     const button = document.createElement('button');
-    button.className = 'designlibre-toolbar-button';
+    button.className = 'toolbar-btn';
     button.title = `${tool.name} (${tool.shortcut})`;
     button.innerHTML = this.options.showLabels
       ? `<span class="icon">${tool.icon}</span><span class="label">${tool.name}</span>`
       : tool.icon;
-
-    button.style.cssText = `
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.15s;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'transparent';
-      }
-    });
 
     button.addEventListener('click', () => {
       this.runtime.setTool(tool.id);
@@ -307,32 +269,16 @@ export class Toolbar {
 
   private createToolGroupButton(group: ToolGroup): HTMLElement {
     const container = document.createElement('div');
-    container.className = 'designlibre-toolbar-group';
-    container.style.cssText = 'position: relative;';
+    container.className = 'relative';
 
     const selectedToolId = this.selectedGroupTools.get(group.id)!;
     const selectedTool = group.tools.find(t => t.id === selectedToolId)!;
 
     // Main button
     const button = document.createElement('button');
-    button.className = 'designlibre-toolbar-button';
+    button.className = 'toolbar-btn relative';
     button.dataset['groupId'] = group.id;
     button.title = `${selectedTool.name} (${selectedTool.shortcut}) - Click and hold for more`;
-    button.style.cssText = `
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.15s;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      position: relative;
-    `;
 
     // Icon container
     const iconContainer = document.createElement('span');
@@ -342,29 +288,11 @@ export class Toolbar {
 
     // Dropdown indicator
     const dropdown = document.createElement('span');
-    dropdown.className = 'dropdown-indicator';
+    dropdown.className = 'absolute bottom-0.5 right-0.5 opacity-60';
     dropdown.innerHTML = TOOL_ICONS['dropdown']!;
-    dropdown.style.cssText = `
-      position: absolute;
-      bottom: 2px;
-      right: 2px;
-      opacity: 0.6;
-    `;
     button.appendChild(dropdown);
 
     this.buttons.set(group.id, button);
-
-    button.addEventListener('mouseenter', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    button.addEventListener('mouseleave', () => {
-      if (!button.classList.contains('active')) {
-        button.style.backgroundColor = 'transparent';
-      }
-    });
 
     // Click activates the selected tool
     button.addEventListener('click', (e) => {
@@ -417,25 +345,12 @@ export class Toolbar {
 
   private createPopupMenu(group: ToolGroup, _container: HTMLElement): HTMLElement {
     const popup = document.createElement('div');
-    popup.className = 'designlibre-toolbar-popup';
-
     const isHorizontal = this.options.position === 'top' || this.options.position === 'bottom';
-    const popupPosition = isHorizontal ? 'bottom: 100%; left: 0; margin-bottom: 4px;' : 'left: 100%; top: 0; margin-left: 4px;';
 
-    popup.style.cssText = `
-      position: absolute;
-      ${popupPosition}
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 8px;
-      padding: 4px;
-      box-shadow: var(--designlibre-shadow, 0 4px 12px rgba(0, 0, 0, 0.4));
-      z-index: 200;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 140px;
-    `;
+    // Base classes + position-dependent classes
+    popup.className = `panel shadow-panel absolute flex flex-col gap-0.5 p-1 min-w-35 z-200 ${
+      isHorizontal ? 'bottom-full left-0 mb-1' : 'left-full top-0 ml-1'
+    }`;
 
     for (const tool of group.tools) {
       const item = this.createPopupMenuItem(tool, group);
@@ -453,52 +368,28 @@ export class Toolbar {
 
   private createPopupMenuItem(tool: ToolDefinition, group: ToolGroup): HTMLElement {
     const item = document.createElement('button');
-    item.className = 'designlibre-popup-item';
-
     const isSelected = this.selectedGroupTools.get(group.id) === tool.id;
 
-    item.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      padding: 8px;
-      border: none;
-      border-radius: 4px;
-      background: ${isSelected ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-      color: ${isSelected ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      cursor: pointer;
-      font-size: 12px;
-      text-align: left;
-    `;
+    // Use context-menu-item as base + selected state
+    item.className = isSelected
+      ? 'flex items-center gap-2 w-full p-2 border-none rounded bg-accent-light text-accent cursor-pointer text-xs text-left'
+      : 'flex items-center gap-2 w-full p-2 border-none rounded bg-transparent text-content cursor-pointer text-xs text-left hover:bg-surface-secondary';
 
     const icon = document.createElement('span');
     icon.innerHTML = tool.icon;
-    icon.style.cssText = 'display: flex; align-items: center;';
+    icon.className = 'flex items-center';
 
     const name = document.createElement('span');
     name.textContent = tool.name;
-    name.style.cssText = 'flex: 1;';
+    name.className = 'flex-1';
 
     const shortcut = document.createElement('span');
     shortcut.textContent = tool.shortcut;
-    shortcut.style.cssText = 'font-size: 10px; color: var(--designlibre-text-muted, #6a6a6a);';
+    shortcut.className = 'text-[10px] text-content-muted';
 
     item.appendChild(icon);
     item.appendChild(name);
     item.appendChild(shortcut);
-
-    item.addEventListener('mouseenter', () => {
-      if (!isSelected) {
-        item.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-      }
-    });
-
-    item.addEventListener('mouseleave', () => {
-      if (!isSelected) {
-        item.style.backgroundColor = 'transparent';
-      }
-    });
 
     item.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -510,14 +401,7 @@ export class Toolbar {
 
   private createToolOptionsRow(tool: ToolDefinition): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 4px 8px 8px 36px;
-      font-size: 11px;
-      color: var(--designlibre-text-secondary, #a0a0a0);
-    `;
+    row.className = 'flex items-center gap-2 py-1 px-2 pb-2 pl-9 text-xs text-content-secondary';
 
     const options = this.toolOptions.get(tool.id) ?? tool.options!;
 
@@ -530,15 +414,7 @@ export class Toolbar {
       input.min = '3';
       input.max = '12';
       input.value = String(options.sides ?? 5);
-      input.style.cssText = `
-        width: 50px;
-        padding: 4px;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        border-radius: 4px;
-        background: var(--designlibre-bg-secondary, #2d2d2d);
-        color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 11px;
-      `;
+      input.className = 'w-12 p-1 border border-border rounded bg-surface-secondary text-content text-xs';
 
       input.addEventListener('change', () => {
         const sides = Math.max(3, Math.min(12, parseInt(input.value) || 5));
@@ -564,15 +440,7 @@ export class Toolbar {
       pointsInput.min = '3';
       pointsInput.max = '12';
       pointsInput.value = String(options.points ?? 5);
-      pointsInput.style.cssText = `
-        width: 40px;
-        padding: 4px;
-        border: 1px solid var(--designlibre-border, #3d3d3d);
-        border-radius: 4px;
-        background: var(--designlibre-bg-secondary, #2d2d2d);
-        color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 11px;
-      `;
+      pointsInput.className = 'w-10 p-1 border border-border rounded bg-surface-secondary text-content text-xs';
 
       pointsInput.addEventListener('change', () => {
         const points = Math.max(3, Math.min(12, parseInt(pointsInput.value) || 5));
@@ -682,31 +550,9 @@ export class Toolbar {
     onClick: () => void
   ): HTMLButtonElement {
     const button = document.createElement('button');
-    button.className = 'designlibre-toolbar-action';
+    button.className = 'toolbar-btn';
     button.title = title;
     button.innerHTML = icon;
-    button.style.cssText = `
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background-color 0.15s;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
-
-    button.addEventListener('mouseenter', () => {
-      button.style.backgroundColor = 'var(--designlibre-bg-secondary, #2d2d2d)';
-    });
-
-    button.addEventListener('mouseleave', () => {
-      button.style.backgroundColor = 'transparent';
-    });
 
     button.addEventListener('click', onClick);
 
@@ -728,13 +574,9 @@ export class Toolbar {
       const button = this.buttons.get(tool.id);
       if (button) {
         if (tool.id === toolId) {
-          button.classList.add('active');
-          button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-          button.style.color = 'var(--designlibre-accent, #4dabff)';
+          button.className = 'toolbar-btn-active';
         } else {
-          button.classList.remove('active');
-          button.style.backgroundColor = 'transparent';
-          button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+          button.className = 'toolbar-btn';
         }
       }
     }
@@ -744,13 +586,9 @@ export class Toolbar {
       const button = this.buttons.get(group.id);
       if (button) {
         if (group.id === groupId) {
-          button.classList.add('active');
-          button.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
-          button.style.color = 'var(--designlibre-accent, #4dabff)';
+          button.className = 'toolbar-btn-active relative';
         } else {
-          button.classList.remove('active');
-          button.style.backgroundColor = 'transparent';
-          button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+          button.className = 'toolbar-btn relative';
         }
       }
     }
