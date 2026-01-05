@@ -77,18 +77,7 @@ export class ShortcutsHelpDialog {
   private render(): void {
     // Create overlay
     this.overlay = document.createElement('div');
-    this.overlay.className = 'designlibre-shortcuts-overlay';
-    this.overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    `;
+    this.overlay.className = 'designlibre-shortcuts-overlay fixed inset-0 bg-black/70 flex items-center justify-center z-10000 opacity-0 transition-opacity';
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.close();
@@ -97,38 +86,15 @@ export class ShortcutsHelpDialog {
 
     // Create modal
     this.modal = document.createElement('div');
-    this.modal.className = 'designlibre-shortcuts-modal';
-    this.modal.style.cssText = `
-      width: 600px;
-      max-width: calc(100vw - 64px);
-      max-height: calc(100vh - 64px);
-      background: var(--designlibre-bg-primary, #1e1e1e);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 12px;
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    `;
+    this.modal.className = 'designlibre-shortcuts-modal w-150 max-w-[calc(100vw-64px)] max-h-[calc(100vh-64px)] bg-surface border border-border rounded-xl shadow-2xl flex flex-col overflow-hidden';
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--designlibre-border, #3d3d3d);
-    `;
+    header.className = 'flex items-center justify-between px-5 py-4 border-b border-border';
 
     const title = document.createElement('h2');
     title.textContent = 'Keyboard Shortcuts';
-    title.style.cssText = `
-      margin: 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--designlibre-text-primary, #e4e4e4);
-    `;
+    title.className = 'm-0 text-lg font-semibold text-content';
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
@@ -136,15 +102,7 @@ export class ShortcutsHelpDialog {
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>`;
     closeBtn.title = 'Close (Escape)';
-    closeBtn.style.cssText = `
-      display: flex;
-      padding: 6px;
-      border: none;
-      background: transparent;
-      color: var(--designlibre-text-secondary, #888);
-      cursor: pointer;
-      border-radius: 4px;
-    `;
+    closeBtn.className = 'flex p-1.5 border-none bg-transparent text-content-secondary cursor-pointer rounded hover:bg-surface-secondary hover:text-content transition-colors';
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
 
@@ -152,22 +110,12 @@ export class ShortcutsHelpDialog {
 
     // Search bar
     const searchBar = document.createElement('div');
-    searchBar.style.cssText = 'padding: 12px 20px; border-bottom: 1px solid var(--designlibre-border, #3d3d3d);';
+    searchBar.className = 'px-5 py-3 border-b border-border';
 
     this.searchInput = document.createElement('input');
     this.searchInput.type = 'text';
     this.searchInput.placeholder = 'Search shortcuts...';
-    this.searchInput.style.cssText = `
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 6px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 14px;
-      outline: none;
-      box-sizing: border-box;
-    `;
+    this.searchInput.className = 'w-full px-3.5 py-2.5 border border-border rounded-md bg-surface-secondary text-content text-sm outline-none box-border focus:border-accent';
     this.searchInput.addEventListener('input', () => {
       this.searchQuery = this.searchInput?.value.toLowerCase() ?? '';
       this.renderShortcuts();
@@ -177,40 +125,22 @@ export class ShortcutsHelpDialog {
 
     // Content
     this.contentContainer = document.createElement('div');
-    this.contentContainer.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-    `;
+    this.contentContainer.className = 'flex-1 overflow-y-auto p-5';
     this.renderShortcuts();
     this.modal.appendChild(this.contentContainer);
 
     // Footer
     const footer = document.createElement('div');
-    footer.style.cssText = `
-      padding: 12px 20px;
-      border-top: 1px solid var(--designlibre-border, #3d3d3d);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    `;
+    footer.className = 'px-5 py-3 border-t border-border flex justify-between items-center';
 
     const hint = document.createElement('span');
     hint.textContent = 'Press ? to show this dialog';
-    hint.style.cssText = 'font-size: 12px; color: var(--designlibre-text-muted, #6a6a6a);';
+    hint.className = 'text-xs text-content-muted';
     footer.appendChild(hint);
 
     const customizeBtn = document.createElement('button');
     customizeBtn.textContent = 'Customize Shortcuts';
-    customizeBtn.style.cssText = `
-      padding: 8px 16px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      background: transparent;
-      color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
-      border-radius: 4px;
-      cursor: pointer;
-    `;
+    customizeBtn.className = 'px-4 py-2 border border-border bg-transparent text-content text-xs rounded cursor-pointer hover:bg-surface-secondary transition-colors';
     customizeBtn.addEventListener('click', () => {
       this.close();
       // Open settings modal to hotkeys tab
@@ -276,22 +206,13 @@ export class ShortcutsHelpDialog {
 
       // Category header
       const categoryHeader = document.createElement('div');
-      categoryHeader.style.cssText = `
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--designlibre-text-secondary, #888);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: 12px 0 8px;
-        margin-top: ${this.contentContainer.children.length > 0 ? '16px' : '0'};
-        border-bottom: 1px solid var(--designlibre-border-light, #252525);
-      `;
+      categoryHeader.className = `text-xs font-semibold text-content-secondary uppercase tracking-wide py-3 pb-2 border-b border-surface-tertiary ${this.contentContainer.children.length > 0 ? 'mt-4' : ''}`;
       categoryHeader.textContent = CATEGORY_NAMES[category];
       this.contentContainer.appendChild(categoryHeader);
 
       // Shortcuts list
       const list = document.createElement('div');
-      list.style.cssText = 'display: flex; flex-direction: column;';
+      list.className = 'flex flex-col';
 
       for (const action of actions) {
         const row = this.createShortcutRow(action, hotkeyManager.getShortcut(action.id));
@@ -304,11 +225,7 @@ export class ShortcutsHelpDialog {
     // No results message
     if (!hasResults) {
       const noResults = document.createElement('div');
-      noResults.style.cssText = `
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--designlibre-text-muted, #6a6a6a);
-      `;
+      noResults.className = 'text-center py-10 px-5 text-content-muted';
       noResults.textContent = this.searchQuery
         ? 'No shortcuts match your search'
         : 'No shortcuts available';
@@ -318,30 +235,16 @@ export class ShortcutsHelpDialog {
 
   private createShortcutRow(action: HotkeyAction, shortcut: string): HTMLElement {
     const row = document.createElement('div');
-    row.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--designlibre-border-light, #202020);
-    `;
+    row.className = 'flex justify-between items-center py-2.5 border-b border-surface-tertiary';
 
     const name = document.createElement('span');
     name.textContent = action.name;
-    name.style.cssText = 'font-size: 13px; color: var(--designlibre-text-primary, #e4e4e4);';
+    name.className = 'text-sm text-content';
     row.appendChild(name);
 
     const kbd = document.createElement('kbd');
     kbd.textContent = this.formatShortcut(shortcut);
-    kbd.style.cssText = `
-      padding: 4px 8px;
-      background: var(--designlibre-bg-secondary, #2d2d2d);
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      font-family: 'SF Mono', Monaco, Consolas, monospace;
-      font-size: 11px;
-      color: var(--designlibre-text-secondary, #888);
-    `;
+    kbd.className = 'px-2 py-1 bg-surface-secondary border border-border rounded font-mono text-[11px] text-content-secondary';
     row.appendChild(kbd);
 
     return row;
