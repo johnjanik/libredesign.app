@@ -60,5 +60,31 @@ export default defineConfig({
     hmr: {
       overlay: false, // Disable error overlay if causing issues
     },
+    proxy: {
+      // Proxy Anthropic API requests to bypass CORS in development
+      '/api/anthropic': {
+        target: 'https://api.anthropic.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            // Forward all headers from the original request
+            const headers = req.headers;
+            if (headers['x-api-key']) {
+              proxyReq.setHeader('x-api-key', headers['x-api-key'] as string);
+            }
+            if (headers['anthropic-version']) {
+              proxyReq.setHeader('anthropic-version', headers['anthropic-version'] as string);
+            }
+          });
+        },
+      },
+      // Proxy OpenAI API requests
+      '/api/openai': {
+        target: 'https://api.openai.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openai/, ''),
+      },
+    },
   },
 });

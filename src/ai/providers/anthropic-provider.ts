@@ -14,6 +14,7 @@ import type {
   AIProviderConfig,
   AIToolCall,
 } from './ai-provider';
+import { tauriFetch } from '../utils/tauri-fetch';
 
 /**
  * Anthropic-specific configuration
@@ -123,7 +124,7 @@ export class AnthropicProvider implements AIProvider {
     // Validate credentials by making a minimal request
     try {
       const headers = await this.getHeaders();
-      const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
+      const response = await tauriFetch(`${this.config.baseUrl}/v1/messages`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -191,7 +192,7 @@ export class AnthropicProvider implements AIProvider {
     }
 
     const headers = await this.getHeaders();
-    const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
+    const response = await tauriFetch(`${this.config.baseUrl}/v1/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -241,7 +242,7 @@ export class AnthropicProvider implements AIProvider {
     }
 
     const headers = await this.getHeaders();
-    const response = await fetch(`${this.config.baseUrl}/v1/messages`, {
+    const response = await tauriFetch(`${this.config.baseUrl}/v1/messages`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -327,6 +328,8 @@ export class AnthropicProvider implements AIProvider {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'anthropic-version': '2023-06-01',
+      // Required for direct browser access (dev mode, Tauri, etc.)
+      'anthropic-dangerous-direct-browser-access': 'true',
     };
 
     // Use OAuth token if available, otherwise use API key

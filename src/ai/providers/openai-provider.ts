@@ -16,6 +16,7 @@ import type {
   AIToolCall,
   ContentPart,
 } from './ai-provider';
+import { tauriFetch } from '../utils/tauri-fetch';
 
 /**
  * OpenAI-specific configuration
@@ -153,7 +154,7 @@ export class OpenAIProvider implements AIProvider {
   async connect(): Promise<void> {
     try {
       // Validate API key by listing models
-      const response = await fetch(`${this.config.baseUrl}/models`, {
+      const response = await tauriFetch(`${this.config.baseUrl}/models`, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -210,7 +211,7 @@ export class OpenAIProvider implements AIProvider {
       body['tools'] = openaiTools;
     }
 
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+    const response = await tauriFetch(`${this.config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(body),
@@ -254,7 +255,7 @@ export class OpenAIProvider implements AIProvider {
       body['tools'] = openaiTools;
     }
 
-    const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+    const response = await tauriFetch(`${this.config.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(body),
@@ -524,7 +525,7 @@ export class OpenAIProvider implements AIProvider {
    * List available models
    */
   async listModels(): Promise<string[]> {
-    const response = await fetch(`${this.config.baseUrl}/models`, {
+    const response = await tauriFetch(`${this.config.baseUrl}/models`, {
       method: 'GET',
       headers: this.getHeaders(),
     });
