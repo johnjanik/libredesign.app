@@ -256,29 +256,69 @@ export function getToolPriority(toolName: string): number {
 
 /**
  * Tools known to be implemented (based on tool-executor.ts)
+ * Updated: All 172 tools now implemented
  */
 export const IMPLEMENTED_TOOLS: Set<string> = new Set([
-  // Selection
+  // Selection (10)
   'select_all',
   'select_by_name',
   'select_by_type',
   'deselect_all',
   'get_selection',
-  // Creation
+  'select_children',
+  'select_parent',
+  'select_siblings',
+  'select_similar',
+  'invert_selection',
+
+  // Creation (10)
   'create_rectangle',
   'create_ellipse',
   'create_line',
   'create_frame',
   'create_text',
-  // Styling
+  'create_polygon',
+  'create_star',
+  'create_arrow',
+  'import_image_as_leaf',
+
+  // Layer Management (10)
+  'group_layers',
+  'ungroup_layers',
+  'lock_layer',
+  'unlock_layer',
+  'hide_layer',
+  'show_layer',
+  'delete_selection',
+  'rename_layer',
+  'duplicate_layer',
+  'rename_layers_bulk',
+  'flatten_layers',
+  'reorder_layers',
+
+  // Styling (20)
   'set_fill_color',
   'set_stroke_color',
   'set_stroke_width',
   'set_opacity',
   'set_corner_radius',
   'set_blend_mode',
+  'set_fill_gradient',
+  'remove_fill',
+  'remove_stroke',
+  'swap_fill_stroke',
+  'copy_style',
+  'paste_style',
+  'set_individual_corners',
+  'get_selection_colors',
+  'replace_color',
+
+  // Effects (3)
   'add_drop_shadow',
-  // Layout
+  'add_blur',
+  'remove_effects',
+
+  // Transform & Layout (15)
   'align_left',
   'align_right',
   'align_center_h',
@@ -290,24 +330,152 @@ export const IMPLEMENTED_TOOLS: Set<string> = new Set([
   'rotate',
   'move_by',
   'scale',
-  // Layer Management
-  'group_layers',
-  'ungroup_layers',
-  'lock_layer',
-  'unlock_layer',
-  'hide_layer',
-  'show_layer',
-  'delete_selection',
-  'rename_layer',
-  // Viewport
+  'flip_horizontal',
+  'flip_vertical',
+  'distribute_horizontal',
+  'distribute_vertical',
+  'tidy_up',
+
+  // Typography (7)
+  'set_font_family',
+  'set_font_size',
+  'set_font_weight',
+  'set_text_alignment',
+  'set_line_height',
+  'set_letter_spacing',
+  'replace_text',
+
+  // Auto Layout (5)
+  'add_auto_layout',
+  'remove_auto_layout',
+  'set_layout_direction',
+  'set_layout_gap',
+  'set_layout_padding',
+
+  // Components (12)
+  'create_component',
+  'create_component_set',
+  'create_instance',
+  'detach_instance',
+  'reset_instance',
+  'swap_component',
+  'go_to_main_component',
+  'list_component_instances',
+  'add_component_property',
+  'set_component_description',
+  'push_overrides_to_main',
+
+  // Styles (7)
+  'create_color_style',
+  'create_text_style',
+  'create_effect_style',
+  'apply_style',
+  'detach_style',
+  'list_local_styles',
+  'find_unused_styles',
+
+  // Variables (5)
+  'create_variable',
+  'set_variable_value',
+  'bind_to_variable',
+  'list_variables',
+  'switch_variable_mode',
+
+  // Prototyping (7)
+  'add_interaction',
+  'remove_interactions',
+  'set_transition',
+  'list_all_interactions',
+  'set_starting_frame',
+  'set_device_frame',
+  'preview_prototype',
+
+  // Code Export (9)
+  'export_png',
+  'export_svg',
+  'generate_css',
+  'generate_tailwind',
+  'generate_swift',
+  'generate_android',
+  'generate_react',
+  'generate_html',
+  'copy_as_code',
+  'export_to_json',
+  'inspect_properties',
+
+  // Page Management (7)
+  'create_page',
+  'rename_page',
+  'delete_page',
+  'duplicate_page',
+  'go_to_page',
+  'list_pages',
+  'set_page_background',
+
+  // File Operations (4)
+  'get_file_info',
+  'get_version_history',
+  'save_version',
+  'get_file_stats',
+
+  // Collaboration (4)
+  'add_comment',
+  'reply_to_comment',
+  'resolve_comment',
+  'list_comments',
+
+  // Analysis (8)
+  'accessibility_audit',
+  'contrast_check',
+  'consistency_audit',
+  'find_detached_styles',
+  'spell_check',
+  'list_fonts_used',
+  'find_missing_fonts',
+  'replace_font',
+
+  // Batch Operations (4)
+  'batch_rename',
+  'batch_resize',
+  'batch_export',
+  'apply_to_all',
+
+  // AI-Powered (7)
+  'generate_image',
+  'remove_background',
+  'generate_copy',
+  'rewrite_text',
+  'translate_text',
+  'suggest_layout',
+  'auto_rename_layers',
+
+  // Viewport (7)
   'zoom_to_selection',
   'zoom_to_fit',
   'set_zoom',
   'look_at',
-  // Query
+  'zoom_to_100',
+  'zoom_in',
+  'zoom_out',
+
+  // UI Toggle (6)
+  'toggle_rulers',
+  'toggle_grid',
+  'toggle_guides',
+  'toggle_outlines',
+  'collapse_all_layers',
+  'expand_all_layers',
+
+  // Clipboard (5)
+  'copy',
+  'paste',
+  'paste_here',
+  'undo',
+  'redo',
+
+  // Query (2)
   'get_layer_properties',
   'get_canvas_state',
-  'import_image_as_leaf',
 ]);
 
 /**

@@ -59,6 +59,8 @@ import {
   ConversationManager,
   createConversationManager,
 } from './context/conversation-manager';
+import { SchemaValidator } from './parser/schema-validator';
+import { createDefaultRegistry, type ToolSchemaRegistry } from './parser/schema-registry';
 
 /**
  * AI Controller events
@@ -139,6 +141,8 @@ export class AIController extends EventEmitter<AIControllerEvents> {
   private contextBuilder: ContextBuilder;
   private conversationManager: ConversationManager;
   private advancedParser: AIOutputParser | null = null;
+  private schemaValidator: SchemaValidator;
+  private schemaRegistry: ToolSchemaRegistry;
   private config: AIControllerConfig;
   private status: AIStatus = 'idle';
   private cursorPosition: Point = { x: 0, y: 0 };
@@ -164,6 +168,17 @@ export class AIController extends EventEmitter<AIControllerEvents> {
     this.calibrator = createCoordinateCalibrator(runtime);
     this.contextBuilder = createContextBuilder(runtime, this.calibrator);
     this.conversationManager = createConversationManager();
+
+    // Initialize schema validator for tool parameter validation
+    this.schemaRegistry = createDefaultRegistry();
+    this.schemaValidator = new SchemaValidator({
+      fuzzyToolMatching: true,
+      fuzzyParamMatching: true,
+      enableCoercion: true,
+      strictMode: false,
+      allowExtraParams: true,
+      useDefaults: true,
+    });
 
     // Forward cursor events
     this.actionExecutor.on('cursor:move', ({ x, y }) => {
@@ -448,6 +463,7 @@ export class AIController extends EventEmitter<AIControllerEvents> {
 
   /**
    * Execute tool calls from the AI response using the ToolExecutor.
+   * Includes parameter validation before execution.
    */
   private async executeToolCalls(
     toolCalls: AIToolCall[],
@@ -459,10 +475,29 @@ export class AIController extends EventEmitter<AIControllerEvents> {
     for (const toolCall of toolCalls) {
       this.emit('ai:tool:start', { toolCall });
 
-      // Convert AIToolCall to ToolCall format
+      // Validate parameters against schema
+      const validationResult = this.schemaValidator.validate(
+        { tool: toolCall.name, arguments: toolCall.arguments },
+        this.schemaRegistry
+      );
+
+      // Use validated/normalized args if available, otherwise fall back to original
+      const validatedArgs = validationResult.normalizedData?.arguments ?? toolCall.arguments;
+
+      // Log validation warnings
+      if (validationResult.warnings.length > 0) {
+        console.info(`Tool "${toolCall.name}" validation warnings:`, validationResult.warnings);
+      }
+
+      // Log validation errors but still attempt execution (non-strict mode)
+      if (!validationResult.isValid && validationResult.errors.length > 0) {
+        console.warn(`Tool "${toolCall.name}" validation errors:`, validationResult.errors);
+      }
+
+      // Convert AIToolCall to ToolCall format with validated args
       const call: ToolCall = {
-        tool: toolCall.name,
-        args: toolCall.arguments,
+        tool: validationResult.normalizedData?.tool ?? toolCall.name,
+        args: validatedArgs,
       };
 
       // Execute through the ToolExecutor
@@ -470,8 +505,8 @@ export class AIController extends EventEmitter<AIControllerEvents> {
 
       // Handle cursor movement for look_at tool
       if (toolCall.name === 'look_at' && result.success) {
-        const x = toolCall.arguments['x'] as number;
-        const y = toolCall.arguments['y'] as number;
+        const x = validatedArgs['x'] as number;
+        const y = validatedArgs['y'] as number;
         this.cursorPosition = { x, y };
         this.emit('ai:cursor:move', { x, y });
       }
