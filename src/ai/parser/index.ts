@@ -239,3 +239,17 @@ export {
   parseAIOutputSync,
   canParseOutput,
 } from './ai-output-parser';
+
+// =============================================================================
+// Streaming Parser
+// =============================================================================
+
+export type { StreamingParserConfig, PartialToolCall } from './streaming-parser';
+
+export {
+  IncrementalJSONParser,
+  StreamingParser,
+  createStreamingParser,
+  parseTokenStream,
+  arrayToStream,
+} from './streaming-parser';
