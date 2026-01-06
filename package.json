@@ -11,9 +11,15 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:debug": "tauri build --debug",
+    "tauri:icons": "tauri icon"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.9.1",
     "@types/jszip": "^3.4.1",
     "harfbuzzjs": "^0.3.6",
     "jszip": "^3.10.1",
@@ -21,6 +27,7 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.82",
+    "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^20.10.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
