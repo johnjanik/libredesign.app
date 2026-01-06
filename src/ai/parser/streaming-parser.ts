@@ -7,7 +7,6 @@
  */
 
 import type {
-  ParseState,
   ParseProgress,
   ParsingUpdate,
   ParsingResult,
@@ -65,7 +64,6 @@ export class IncrementalJSONParser {
   private inString: boolean = false;
   private escapeNext: boolean = false;
   private completedObjects: unknown[] = [];
-  private lastCompleteEnd: number = 0;
 
   /**
    * Reset parser state
@@ -76,7 +74,6 @@ export class IncrementalJSONParser {
     this.inString = false;
     this.escapeNext = false;
     this.completedObjects = [];
-    this.lastCompleteEnd = 0;
   }
 
   /**
@@ -119,7 +116,6 @@ export class IncrementalJSONParser {
         if (jsonPortion) {
           const parsed = JSON.parse(jsonPortion);
           this.completedObjects.push(parsed);
-          this.lastCompleteEnd = this.buffer.length;
 
           return {
             state: 'complete',
@@ -275,7 +271,6 @@ export class StreamingParser {
   private parser: AIOutputParser;
   private incrementalParser: IncrementalJSONParser;
   private modelType: ModelType;
-  private lastParseTime: number = 0;
   private partialToolCalls: PartialToolCall[] = [];
 
   constructor(
@@ -293,7 +288,6 @@ export class StreamingParser {
    */
   reset(): void {
     this.incrementalParser.reset();
-    this.lastParseTime = 0;
     this.partialToolCalls = [];
   }
 
@@ -497,14 +491,16 @@ export class StreamingParser {
             tc.parameters = { ...tc.parameters, ...parsed };
           } catch {
             // Can't parse yet, try key-value extraction
-            const kvPattern = /"(\w+)"\s*:\s*("[^"]*"|\d+\.?\d*|true|false|null)/g;
-            let kvMatch;
-            while ((kvMatch = kvPattern.exec(match[1])) !== null) {
-              try {
-                tc.parameters = tc.parameters || {};
-                tc.parameters[kvMatch[1]!] = JSON.parse(kvMatch[2]!);
-              } catch {
-                // Skip unparseable value
+            if (match[1]) {
+              const kvPattern = /"(\w+)"\s*:\s*("[^"]*"|\d+\.?\d*|true|false|null)/g;
+              let kvMatch;
+              while ((kvMatch = kvPattern.exec(match[1])) !== null) {
+                try {
+                  tc.parameters = tc.parameters || {};
+                  tc.parameters[kvMatch[1]!] = JSON.parse(kvMatch[2]!);
+                } catch {
+                  // Skip unparseable value
+                }
               }
             }
           }

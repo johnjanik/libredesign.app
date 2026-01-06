@@ -14,7 +14,25 @@ import {
   createMetricsCollector,
   withCaching,
 } from '../../../src/ai/parser/performance';
-import type { ParsingResult } from '../../../src/ai/parser/types';
+import type { ParsingResult, ParsingSuccess } from '../../../src/ai/parser/types';
+
+// Helper to create a complete mock ParsingResult
+function createMockResult(overrides?: Partial<ParsingSuccess>): ParsingResult {
+  return {
+    success: true,
+    toolCalls: [],
+    metadata: {
+      parsingTime: 10,
+      extractionMethod: 'ast_balanced' as const,
+      format: 'custom_structured' as const,
+      confidence: 0.9,
+      coercions: {},
+      warnings: [],
+      rawOutputSnippet: '...',
+    },
+    ...overrides,
+  } as ParsingResult;
+}
 
 // =============================================================================
 // LRUParserCache Tests
@@ -48,11 +66,7 @@ describe('LRUParserCache', () => {
   });
 
   describe('get/set', () => {
-    const mockResult: ParsingResult = {
-      success: true,
-      toolCalls: [],
-      metadata: { parsingTime: 10 },
-    };
+    const mockResult = createMockResult();
 
     it('stores and retrieves values', () => {
       cache.set('key1', mockResult, 'claude');
@@ -78,11 +92,7 @@ describe('LRUParserCache', () => {
   });
 
   describe('LRU eviction', () => {
-    const mockResult: ParsingResult = {
-      success: true,
-      toolCalls: [],
-      metadata: { parsingTime: 10 },
-    };
+    const mockResult = createMockResult();
 
     it('evicts oldest entry when at capacity', () => {
       // Fill cache
@@ -121,11 +131,7 @@ describe('LRUParserCache', () => {
   describe('TTL expiration', () => {
     it('expires entries after TTL', async () => {
       const shortTTLCache = new LRUParserCache({ maxSize: 10, ttlMs: 50 });
-      const mockResult: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const mockResult = createMockResult();
 
       shortTTLCache.set('key1', mockResult, 'claude');
       expect(shortTTLCache.get('key1')).not.toBeNull();
@@ -138,11 +144,7 @@ describe('LRUParserCache', () => {
   });
 
   describe('statistics', () => {
-    const mockResult: ParsingResult = {
-      success: true,
-      toolCalls: [],
-      metadata: { parsingTime: 10 },
-    };
+    const mockResult = createMockResult();
 
     it('tracks hits and misses', () => {
       cache.set('key1', mockResult, 'claude');
@@ -181,11 +183,7 @@ describe('LRUParserCache', () => {
 
   describe('clear', () => {
     it('removes all entries', () => {
-      const mockResult: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const mockResult = createMockResult();
 
       cache.set('key1', mockResult, 'claude');
       cache.set('key2', mockResult, 'claude');
@@ -271,11 +269,7 @@ describe('PerformanceCollector', () => {
 
   describe('recordParse', () => {
     it('records successful parses', () => {
-      const result: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const result = createMockResult();
 
       collector.recordParse(result, 50, 'claude', false);
 
@@ -285,11 +279,7 @@ describe('PerformanceCollector', () => {
     });
 
     it('tracks fallback success separately', () => {
-      const result: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const result = createMockResult();
 
       collector.recordParse(result, 50, 'claude', false);
       collector.recordParse(result, 50, 'claude', true);
@@ -316,11 +306,7 @@ describe('PerformanceCollector', () => {
     });
 
     it('tracks per-model success rates', () => {
-      const success: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const success = createMockResult();
       const failure: ParsingResult = {
         success: false,
         error: 'Failed',
@@ -341,11 +327,7 @@ describe('PerformanceCollector', () => {
 
   describe('timing statistics', () => {
     it('computes percentiles correctly', () => {
-      const result: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const result = createMockResult();
 
       // Add samples with known distribution
       for (let i = 1; i <= 100; i++) {
@@ -366,11 +348,7 @@ describe('PerformanceCollector', () => {
 
   describe('reset', () => {
     it('clears all metrics', () => {
-      const result: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const result = createMockResult();
 
       collector.recordParse(result, 50, 'claude', false);
       collector.reset();
@@ -387,11 +365,7 @@ describe('PerformanceCollector', () => {
         autoResetAfter: 5,
       });
 
-      const result: ParsingResult = {
-        success: true,
-        toolCalls: [],
-        metadata: { parsingTime: 10 },
-      };
+      const result = createMockResult();
 
       for (let i = 0; i < 6; i++) {
         autoResetCollector.recordParse(result, 50, 'claude', false);
@@ -414,12 +388,20 @@ describe('CachedParser', () => {
   beforeEach(() => {
     parseCallCount = 0;
     mockParser = {
-      parse: async (raw: string) => {
+      parse: async (_raw: string) => {
         parseCallCount++;
         return {
           success: true,
           toolCalls: [{ id: '1', tool: 'test', parameters: {}, confidence: 1, sourceFormat: 'unknown' as const, rawData: null, metadata: { model: 'test', timestamp: new Date(), parsingMethod: 'test', sourceFormat: 'unknown' as const, extractionMethod: 'ast_balanced' as const } }],
-          metadata: { parsingTime: 10 },
+          metadata: {
+            parsingTime: 10,
+            extractionMethod: 'ast_balanced' as const,
+            format: 'custom_structured' as const,
+            confidence: 0.9,
+            coercions: {},
+            warnings: [],
+            rawOutputSnippet: '...',
+          },
         };
       },
     };
@@ -521,7 +503,7 @@ describe('Convenience Functions', () => {
       const parser = {
         parse: async () => {
           callCount++;
-          return { success: true, toolCalls: [], metadata: { parsingTime: 10 } } as ParsingResult;
+          return createMockResult();
         },
       };
 

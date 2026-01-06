@@ -37,6 +37,16 @@ import { setGlobalBridge } from './tools/runtime-bridge';
 
 import { CanvasCapture, createCanvasCapture } from './vision/canvas-capture';
 import type { CaptureResult } from './vision/canvas-capture';
+import { parseTextToolCalls } from './tools/text-tool-parser';
+
+// Advanced parser for fault-tolerant JSON parsing from local models
+import {
+  AIOutputParser,
+  createParser,
+  type ParserConfig,
+  type NormalizedToolCall,
+  type ModelType,
+} from './parser';
 
 import {
   CoordinateCalibrator,
@@ -88,6 +98,15 @@ export interface AIControllerConfig {
   autoConnect?: boolean;
   /** Include scene graph in context */
   includeSceneGraph?: boolean;
+  /** Advanced parser configuration */
+  parser?: {
+    /** Enable the advanced fault-tolerant parser (default: true) */
+    enabled?: boolean;
+    /** Parser config overrides */
+    config?: Partial<ParserConfig>;
+    /** Use simple parser as fallback if advanced fails */
+    fallbackToSimple?: boolean;
+  };
 }
 
 /**
@@ -119,6 +138,7 @@ export class AIController extends EventEmitter<AIControllerEvents> {
   private calibrator: CoordinateCalibrator;
   private contextBuilder: ContextBuilder;
   private conversationManager: ConversationManager;
+  private advancedParser: AIOutputParser | null = null;
   private config: AIControllerConfig;
   private status: AIStatus = 'idle';
   private cursorPosition: Point = { x: 0, y: 0 };
@@ -153,6 +173,17 @@ export class AIController extends EventEmitter<AIControllerEvents> {
 
     // Register providers
     this.registerProviders(config.providers);
+
+    // Initialize advanced parser (enabled by default)
+    if (config.parser?.enabled !== false) {
+      this.advancedParser = createParser({
+        strictMode: false,
+        enableJson5: true,
+        fuzzyToolMatching: true,
+        semanticParamMapping: true,
+        ...config.parser?.config,
+      });
+    }
   }
 
   /**
@@ -261,12 +292,23 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       // Add assistant response to conversation
       this.conversationManager.addAssistantMessage(response.content);
 
-      // Execute tool calls
-      if (response.toolCalls.length > 0) {
+      // Execute tool calls - either from native function calling or parsed from text
+      let toolCallsToExecute = response.toolCalls;
+
+      // If no native tool calls, try to parse JSON tool calls from text
+      // This is needed for local models that don't support function calling
+      if (toolCallsToExecute.length === 0 && response.content) {
+        const parsedToolCalls = await this.parseToolCallsFromText(response.content);
+        if (parsedToolCalls.length > 0) {
+          toolCallsToExecute = parsedToolCalls;
+        }
+      }
+
+      if (toolCallsToExecute.length > 0) {
         this.setStatus('executing');
         // Extract attached images from user message for tool context
         const messageContext = this.extractMessageContext(userMessage);
-        await this.executeToolCalls(response.toolCalls, messageContext);
+        await this.executeToolCalls(toolCallsToExecute, messageContext);
       }
 
       this.setStatus('idle');
@@ -372,12 +414,23 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       // Add to conversation
       this.conversationManager.addAssistantMessage(fullContent);
 
-      // Execute tool calls
-      if (toolCalls.length > 0) {
+      // Execute tool calls - either from native function calling or parsed from text
+      let toolCallsToExecute = toolCalls;
+
+      // If no native tool calls, try to parse JSON tool calls from text
+      // This is needed for local models that don't support function calling
+      if (toolCallsToExecute.length === 0 && fullContent) {
+        const parsedToolCalls = await this.parseToolCallsFromText(fullContent);
+        if (parsedToolCalls.length > 0) {
+          toolCallsToExecute = parsedToolCalls;
+        }
+      }
+
+      if (toolCallsToExecute.length > 0) {
         this.setStatus('executing');
         // Extract attached images from user message for tool context
         const messageContext = this.extractMessageContext(userMessage);
-        await this.executeToolCalls(toolCalls, messageContext);
+        await this.executeToolCalls(toolCallsToExecute, messageContext);
       }
 
       this.setStatus('idle');
@@ -456,6 +509,81 @@ export class AIController extends EventEmitter<AIControllerEvents> {
     }
 
     return { attachedImages };
+  }
+
+  /**
+   * Parse tool calls from text using the advanced parser.
+   * Falls back to simple parser if advanced fails or is disabled.
+   */
+  private async parseToolCallsFromText(text: string): Promise<AIToolCall[]> {
+    // Try advanced parser first if enabled
+    if (this.advancedParser) {
+      try {
+        // Determine model type from active provider
+        const providerName = this.providerManager.getActiveProviderName();
+        const modelType = this.getModelTypeFromProvider(providerName);
+
+        const result = await this.advancedParser.parse(text, { modelType });
+
+        if (result.success && result.toolCalls.length > 0) {
+          console.log(
+            `Advanced parser found ${result.toolCalls.length} tool call(s) ` +
+            `(format: ${result.metadata.format}, confidence: ${result.metadata.confidence.toFixed(2)})`
+          );
+
+          // Log any warnings
+          if (result.metadata.warnings.length > 0) {
+            for (const warning of result.metadata.warnings) {
+              console.warn(`Parser warning: ${warning.message}`);
+            }
+          }
+
+          // Convert NormalizedToolCall to AIToolCall
+          return result.toolCalls.map((tc) => this.normalizedToAIToolCall(tc));
+        }
+      } catch (error) {
+        console.warn('Advanced parser failed:', error);
+        // Fall through to simple parser if fallback is enabled
+      }
+    }
+
+    // Use simple parser as fallback (or if advanced is disabled)
+    if (!this.advancedParser || this.config.parser?.fallbackToSimple !== false) {
+      const parsedToolCalls = parseTextToolCalls(text);
+      if (parsedToolCalls.length > 0) {
+        console.log(`Simple parser found ${parsedToolCalls.length} tool call(s) from text response`);
+        return parsedToolCalls;
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * Convert NormalizedToolCall from advanced parser to AIToolCall.
+   */
+  private normalizedToAIToolCall(tc: NormalizedToolCall): AIToolCall {
+    return {
+      id: tc.id,
+      name: tc.tool,
+      arguments: tc.parameters,
+    };
+  }
+
+  /**
+   * Map provider name to model type for the parser.
+   */
+  private getModelTypeFromProvider(providerName: string | null): ModelType {
+    if (!providerName) return 'unknown';
+
+    const lower = providerName.toLowerCase();
+    if (lower.includes('anthropic') || lower.includes('claude')) return 'claude';
+    if (lower.includes('openai') || lower.includes('gpt')) return 'openai';
+    if (lower.includes('ollama')) return 'ollama';
+    if (lower.includes('llama')) return 'llama';
+    if (lower.includes('qwen')) return 'qwen';
+    if (lower.includes('mistral')) return 'mistral';
+    return 'unknown';
   }
 
   // =========================================================================
