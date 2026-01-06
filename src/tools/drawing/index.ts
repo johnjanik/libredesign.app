@@ -30,3 +30,6 @@ export type { PencilToolOptions, FreehandData } from './pencil-tool';
 
 export { ImageTool, createImageTool } from './image-tool';
 export type { ImageToolOptions, ImagePlacementData } from './image-tool';
+
+export { TextTool, createTextTool } from './text-tool';
+export type { TextToolOptions } from './text-tool';

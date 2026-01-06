@@ -422,8 +422,14 @@ export class AIController extends EventEmitter<AIControllerEvents> {
         }
 
         if (chunk.type === 'tool_call_end' && chunk.toolCall) {
+          console.log(`[AIController] Received tool call: ${chunk.toolCall.name}`);
           toolCalls.push(chunk.toolCall as AIToolCall);
         }
+      }
+
+      console.log(`[AIController] Total tool calls received: ${toolCalls.length}`);
+      if (toolCalls.length > 0) {
+        console.log(`[AIController] Tool calls:`, toolCalls.map(t => `${t.name}(${JSON.stringify(t.arguments).slice(0, 100)})`).join(', '));
       }
 
       // Add to conversation

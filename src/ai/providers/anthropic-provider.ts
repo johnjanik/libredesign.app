@@ -261,6 +261,8 @@ export class AnthropicProvider implements AIProvider {
     const decoder = new TextDecoder();
     let buffer = '';
     const currentToolCalls: Map<number, Partial<AIToolCall>> = new Map();
+    // Accumulate JSON fragments for each tool call index
+    const jsonAccumulators: Map<number, string> = new Map();
 
     try {
       while (true) {
@@ -291,26 +293,53 @@ export class AnthropicProvider implements AIProvider {
                   };
                   const idx = event.index ?? 0;
                   currentToolCalls.set(idx, toolCall);
+                  jsonAccumulators.set(idx, '');
+                  console.log(`[Anthropic] Tool call start: ${toolCall.name} (index ${idx})`);
                   yield { type: 'tool_call_start', toolCall, index: idx };
                 }
               } else if (event.type === 'content_block_delta') {
                 if (event.delta?.type === 'text_delta' && event.delta.text) {
                   yield { type: 'text', text: event.delta.text };
                 } else if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
+                  const idx = event.index ?? 0;
+                  // Accumulate the JSON fragment
+                  const current = jsonAccumulators.get(idx) ?? '';
+                  jsonAccumulators.set(idx, current + event.delta.partial_json);
                   yield {
                     type: 'tool_call_delta',
                     text: event.delta.partial_json,
-                    index: event.index ?? 0,
+                    index: idx,
                   };
                 }
               } else if (event.type === 'content_block_stop') {
                 const idx = event.index ?? 0;
                 const toolCall = currentToolCalls.get(idx);
                 if (toolCall) {
+                  // Parse the accumulated JSON into arguments
+                  const accumulatedJson = jsonAccumulators.get(idx) ?? '';
+                  if (accumulatedJson) {
+                    try {
+                      toolCall.arguments = JSON.parse(accumulatedJson);
+                      console.log(`[Anthropic] Tool call end: ${toolCall.name} with args:`, JSON.stringify(toolCall.arguments).slice(0, 200));
+                    } catch (parseError) {
+                      console.warn(`[Anthropic] Failed to parse tool call arguments for ${toolCall.name}: ${parseError}`);
+                      console.warn(`[Anthropic] Raw JSON was: ${accumulatedJson.slice(0, 500)}`);
+                      toolCall.arguments = {};
+                    }
+                  } else {
+                    console.warn(`[Anthropic] Tool call ${toolCall.name} had no JSON arguments`);
+                  }
                   yield { type: 'tool_call_end', toolCall, index: idx };
                   currentToolCalls.delete(idx);
+                  jsonAccumulators.delete(idx);
+                }
+              } else if (event.type === 'message_delta') {
+                // Log stop reason if present
+                if (event.delta && 'stop_reason' in event.delta) {
+                  console.log(`[Anthropic] Message stop_reason: ${event.delta.stop_reason}`);
                 }
               } else if (event.type === 'message_stop') {
+                console.log(`[Anthropic] Stream complete. Total tool calls: ${currentToolCalls.size}`);
                 yield { type: 'done' };
               }
             } catch {

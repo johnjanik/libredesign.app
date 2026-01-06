@@ -2101,22 +2101,28 @@ export class ToolExecutor {
   private normalizeColor(color: unknown): ColorValue | undefined {
     if (!color) return undefined;
 
+    console.log('[ToolExecutor] normalizeColor input:', JSON.stringify(color));
+
     // Already a ColorValue object
     if (typeof color === 'object' && 'r' in (color as object)) {
       const c = color as ColorValue;
-      return {
-        r: c.r,
-        g: c.g,
-        b: c.b,
-        a: c.a ?? 1,
-      };
+      // Check if values are in 0-255 range and normalize to 0-1
+      const r = c.r > 1 ? c.r / 255 : c.r;
+      const g = c.g > 1 ? c.g / 255 : c.g;
+      const b = c.b > 1 ? c.b / 255 : c.b;
+      const result = { r, g, b, a: c.a ?? 1 };
+      console.log('[ToolExecutor] normalizeColor output:', JSON.stringify(result));
+      return result;
     }
 
     // Hex string
     if (typeof color === 'string') {
-      return parseHexColor(color);
+      const result = parseHexColor(color);
+      console.log('[ToolExecutor] normalizeColor (hex) output:', JSON.stringify(result));
+      return result;
     }
 
+    console.warn('[ToolExecutor] normalizeColor: unrecognized format', color);
     return undefined;
   }
 

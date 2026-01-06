@@ -24,6 +24,7 @@ import { PolygonTool, createPolygonTool } from '@tools/drawing/polygon-tool';
 import { StarTool, createStarTool } from '@tools/drawing/star-tool';
 import { PencilTool, createPencilTool } from '@tools/drawing/pencil-tool';
 import { ImageTool, createImageTool } from '@tools/drawing/image-tool';
+import { TextTool, createTextTool } from '@tools/drawing/text-tool';
 import { HandTool, createHandTool } from '@tools/navigation/hand-tool';
 import { PointerHandler, createPointerHandler } from '@tools/input/pointer-handler';
 import { KeyboardHandler, createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -177,6 +178,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private starTool: StarTool | null = null;
   private pencilTool: PencilTool | null = null;
   private imageTool: ImageTool | null = null;
+  private textTool: TextTool | null = null;
   private handTool: HandTool | null = null;
 
   // State
@@ -1410,6 +1412,33 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Text tool
+    this.textTool = createTextTool();
+    this.textTool.setOnTextComplete((position, width) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      const nodeId = this.sceneGraph.createText(parentId, {
+        name: 'Text',
+        x: position.x,
+        y: position.y,
+        width: width ?? 100,
+        characters: 'Text',
+      });
+
+      // Set default fill (black text)
+      this.sceneGraph.updateNode(nodeId, {
+        fills: [solidPaint(rgba(0, 0, 0, 1))],
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+
+      // Canonical behavior: return to Select tool after creating object
+      this.setTool('select');
+
+      return nodeId;
+    });
+
     // Hand tool for panning
     this.handTool = createHandTool();
 
@@ -1427,6 +1456,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.starTool);
     this.toolManager.registerTool(this.pencilTool);
     this.toolManager.registerTool(this.imageTool);
+    this.toolManager.registerTool(this.textTool);
     this.toolManager.registerTool(this.handTool);
 
     // Set default tool
