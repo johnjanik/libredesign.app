@@ -31,7 +31,14 @@ export type MessageType =
   // Encryption-related messages
   | 'ENCRYPTED'
   | 'KEY_EXCHANGE'
-  | 'KEY_REQUEST';
+  | 'KEY_REQUEST'
+  // Locking messages
+  | 'LOCK_REQUEST'
+  | 'LOCK_GRANTED'
+  | 'LOCK_DENIED'
+  | 'LOCK_RELEASE'
+  | 'LOCK_RELEASED'
+  | 'LOCK_STATE';
 
 /**
  * Hello message - sent when connecting
@@ -237,7 +244,13 @@ export type SyncMessage =
   | PongMessage
   | EncryptedMessage
   | KeyExchangeMessage
-  | KeyRequestMessage;
+  | KeyRequestMessage
+  | LockRequestMessage
+  | LockGrantedMessage
+  | LockDeniedMessage
+  | LockReleaseMessage
+  | LockReleasedMessage
+  | LockStateMessage;
 
 /**
  * Messages that should be encrypted
@@ -247,7 +260,13 @@ export type EncryptableSyncMessage =
   | SyncResponseMessage
   | OperationMessage
   | OperationAckMessage
-  | PresenceMessage;
+  | PresenceMessage
+  | LockRequestMessage
+  | LockGrantedMessage
+  | LockDeniedMessage
+  | LockReleaseMessage
+  | LockReleasedMessage
+  | LockStateMessage;
 
 /**
  * Messages that are sent in plaintext (handshake, encryption, keepalive)
@@ -378,7 +397,13 @@ export function shouldEncryptMessage(message: SyncMessage): message is Encryptab
     message.type === 'SYNC_RESPONSE' ||
     message.type === 'OPERATION' ||
     message.type === 'OPERATION_ACK' ||
-    message.type === 'PRESENCE'
+    message.type === 'PRESENCE' ||
+    message.type === 'LOCK_REQUEST' ||
+    message.type === 'LOCK_GRANTED' ||
+    message.type === 'LOCK_DENIED' ||
+    message.type === 'LOCK_RELEASE' ||
+    message.type === 'LOCK_RELEASED' ||
+    message.type === 'LOCK_STATE'
   );
 }
 
@@ -417,5 +442,141 @@ export function createKeyRequestMessage(
     documentId,
     requesterId,
     requesterPublicKey,
+  };
+}
+
+// =============================================================================
+// Locking Messages
+// =============================================================================
+
+/**
+ * Element lock information
+ */
+export interface LockInfo {
+  readonly nodeId: string;
+  readonly userId: string;
+  readonly userName?: string;
+  readonly acquiredAt: number;
+  readonly expiresAt?: number;
+}
+
+/**
+ * Lock request message - request exclusive edit lock on element(s)
+ */
+export interface LockRequestMessage extends BaseMessage {
+  readonly type: 'LOCK_REQUEST';
+  readonly documentId: string;
+  readonly requesterId: string;
+  readonly nodeIds: readonly string[];
+  /** Requested lock duration in ms */
+  readonly duration?: number;
+}
+
+/**
+ * Lock granted message - lock has been acquired
+ */
+export interface LockGrantedMessage extends BaseMessage {
+  readonly type: 'LOCK_GRANTED';
+  readonly documentId: string;
+  readonly locks: readonly LockInfo[];
+}
+
+/**
+ * Lock denied message - lock request was rejected
+ */
+export interface LockDeniedMessage extends BaseMessage {
+  readonly type: 'LOCK_DENIED';
+  readonly documentId: string;
+  readonly nodeIds: readonly string[];
+  readonly reason: string;
+  /** Current lock holder info */
+  readonly heldBy?: LockInfo;
+}
+
+/**
+ * Lock release message - release locks on element(s)
+ */
+export interface LockReleaseMessage extends BaseMessage {
+  readonly type: 'LOCK_RELEASE';
+  readonly documentId: string;
+  readonly releaserId: string;
+  readonly nodeIds: readonly string[];
+}
+
+/**
+ * Lock released message - broadcast that locks were released
+ */
+export interface LockReleasedMessage extends BaseMessage {
+  readonly type: 'LOCK_RELEASED';
+  readonly documentId: string;
+  readonly nodeIds: readonly string[];
+  readonly releasedBy: string;
+}
+
+/**
+ * Lock state message - broadcast current lock state
+ */
+export interface LockStateMessage extends BaseMessage {
+  readonly type: 'LOCK_STATE';
+  readonly documentId: string;
+  readonly locks: readonly LockInfo[];
+}
+
+/**
+ * Check if a message is a lock-related message.
+ */
+export function isLockMessage(
+  message: SyncMessage
+): message is
+  | LockRequestMessage
+  | LockGrantedMessage
+  | LockDeniedMessage
+  | LockReleaseMessage
+  | LockReleasedMessage
+  | LockStateMessage {
+  return (
+    message.type === 'LOCK_REQUEST' ||
+    message.type === 'LOCK_GRANTED' ||
+    message.type === 'LOCK_DENIED' ||
+    message.type === 'LOCK_RELEASE' ||
+    message.type === 'LOCK_RELEASED' ||
+    message.type === 'LOCK_STATE'
+  );
+}
+
+/**
+ * Create a LOCK_REQUEST message.
+ */
+export function createLockRequestMessage(
+  documentId: string,
+  requesterId: string,
+  nodeIds: readonly string[],
+  duration?: number
+): LockRequestMessage {
+  const msg: LockRequestMessage = {
+    type: 'LOCK_REQUEST',
+    documentId,
+    requesterId,
+    nodeIds,
+  };
+  if (duration !== undefined) {
+    return { ...msg, duration };
+  }
+  return msg;
+}
+
+/**
+ * Create a LOCK_RELEASE message.
+ */
+export function createLockReleaseMessage(
+  documentId: string,
+  releaserId: string,
+  nodeIds: readonly string[]
+): LockReleaseMessage {
+  return {
+    type: 'LOCK_RELEASE',
+    documentId,
+    releaserId,
+    nodeIds,
   };
 }

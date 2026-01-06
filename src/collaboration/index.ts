@@ -99,3 +99,49 @@ export {
   type SecureCollaborationOptions,
   type SecureCollaborationEvents,
 } from './encryption';
+
+// Phase 2: Permission-aware CRDT and conflict resolution
+export {
+  PermissionAwareCRDTBridge,
+  createPermissionAwareCRDTBridge,
+  type PermissionAwareCRDTOptions,
+  type PermissionAwareCRDTEvents,
+  type ElementLock,
+  type LockRequest,
+} from './realtime/permission-aware-crdt';
+
+export {
+  ConflictResolver,
+  createConflictResolver,
+  type ConflictResolverOptions,
+  type ConflictResolverEvents,
+  type ConflictResolutionStrategy,
+  type MergeResult,
+} from './realtime/conflict-resolver';
+
+// Phase 2: Share links
+export {
+  ShareLinkManager,
+  createShareLinkManager,
+  type ShareLinkOptions,
+  type ShareLink,
+  type ShareLinkValidation,
+  type ShareLinkRedemption,
+  type ShareLinkManagerEvents,
+} from './sharing';
+
+// Phase 2: Security/Watermarking
+export {
+  WatermarkManager,
+  createWatermarkManager,
+  type WatermarkConfig,
+  type WatermarkOptions,
+  type TextWatermarkOptions,
+  type PatternWatermarkOptions,
+  type SteganographicOptions,
+  type WatermarkMetadata,
+  type WatermarkManagerEvents,
+  VIEWER_WATERMARK_CONFIG,
+  COMMENTER_WATERMARK_CONFIG,
+  DEVELOPER_WATERMARK_CONFIG,
+} from './security';
