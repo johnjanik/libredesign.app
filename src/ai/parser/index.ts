@@ -253,3 +253,26 @@ export {
   parseTokenStream,
   arrayToStream,
 } from './streaming-parser';
+
+// =============================================================================
+// Performance & Caching
+// =============================================================================
+
+export type {
+  CacheConfig,
+  CachedParse,
+  CacheStats,
+  RepairPattern,
+  MetricsConfig,
+  CachedParserConfig,
+} from './performance';
+
+export {
+  LRUParserCache,
+  RepairPatternCache,
+  PerformanceCollector,
+  CachedParser,
+  createCache,
+  createMetricsCollector,
+  withCaching,
+} from './performance';
