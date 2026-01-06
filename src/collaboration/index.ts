@@ -145,3 +145,97 @@ export {
   COMMENTER_WATERMARK_CONFIG,
   DEVELOPER_WATERMARK_CONFIG,
 } from './security';
+
+// Phase 3: ABAC (Attribute-Based Access Control)
+export {
+  PolicyEngine,
+  createPolicyEngine,
+  createDefaultEnterprisePolicies,
+  type AccessRequest,
+  type Policy,
+  type PolicyRule,
+  type PolicyCondition,
+  type PolicyDecision,
+  type PolicyEngineEvents,
+  type SubjectAttributes,
+  type ResourceAttributes,
+  type ActionAttributes,
+  type EnvironmentAttributes,
+} from './abac';
+
+export {
+  ElementPermissionManager,
+  createElementPermissionManager,
+  type ElementPermission,
+  type ResolvedPermissions,
+  type InheritanceMode,
+} from './abac';
+
+export {
+  ElevationManager,
+  createElevationManager,
+  type ElevationRequest,
+  type ElevationGrant,
+  type EmergencyAccess,
+  type ElevationManagerEvents,
+} from './abac';
+
+// Phase 3: Audit & Compliance
+export {
+  AuditLogger,
+  createAuditLogger,
+  AuditActions,
+  type AuditEvent,
+  type AuditActor,
+  type AuditTarget,
+  type AuditContext,
+  type AuditCategory,
+  type AuditSeverity,
+  type AuditOutcome,
+  type AuditQueryOptions,
+  type AuditStatistics,
+} from './audit';
+
+export {
+  ComplianceReporter,
+  createComplianceReporter,
+  type ComplianceFramework,
+  type ComplianceReport,
+  type ComplianceSummary,
+  type ComplianceFinding,
+  type ControlEvaluation,
+} from './audit';
+
+export {
+  LegalHoldManager,
+  createLegalHoldManager,
+  type LegalMatter,
+  type LegalHold,
+  type Custodian,
+  type PreservedItem,
+  type DiscoveryExport,
+} from './audit';
+
+// Phase 3: Post-Quantum Cryptography
+export {
+  HybridCryptoManager,
+  createHybridCryptoManager,
+  type HybridKeyPair,
+  type HybridEncrypted,
+  type HybridSignature,
+  type PQCAlgorithm,
+  type PQCProvider,
+} from './pqc';
+
+// Phase 3: Multi-Region Infrastructure
+export {
+  MultiRegionManager,
+  createMultiRegionManager,
+  type Region,
+  type RegionStatus,
+  type RegionConfig,
+  type DocumentReplication,
+  type FailoverEvent,
+  type BackupRecord,
+  type RestoreRequest,
+} from './infrastructure';
