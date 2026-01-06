@@ -96,11 +96,11 @@ const CATEGORY_ICONS: Record<ComponentCategory, string> = {
 export class ComponentLibraryPanel {
   private _runtime: DesignLibreRuntime;
   private registry: LibraryComponentRegistry;
-  private element: HTMLElement | null = null;
+  private scrollContainer: HTMLElement | null = null;
 
   // State
   private searchQuery = '';
-  private expandedCategories: Set<ComponentCategory> = new Set(['buttons', 'layout', 'forms']);
+  private expandedCategories: Set<ComponentCategory> = new Set(['layout']);
   private currentDragComponent: LibraryComponent | null = null;
 
   constructor(options: ComponentLibraryPanelOptions) {
@@ -129,18 +129,19 @@ export class ComponentLibraryPanel {
     panel.appendChild(this.createSearchBar());
 
     // Scrollable category list
-    const scrollContainer = document.createElement('div');
-    scrollContainer.style.cssText = `
+    this.scrollContainer = document.createElement('div');
+    this.scrollContainer.className = 'component-library-scroll';
+    this.scrollContainer.style.cssText = `
       flex: 1;
+      display: block;
       overflow-y: auto;
       overflow-x: hidden;
     `;
 
     // Render categories
-    this.renderCategories(scrollContainer);
-    panel.appendChild(scrollContainer);
+    this.renderCategories(this.scrollContainer);
+    panel.appendChild(this.scrollContainer);
 
-    this.element = panel;
     return panel;
   }
 
@@ -233,6 +234,10 @@ export class ComponentLibraryPanel {
   private createCategorySection(category: ComponentCategory): HTMLElement {
     const section = document.createElement('div');
     section.className = 'component-library-category';
+    section.style.cssText = `
+      display: block;
+      width: 100%;
+    `;
 
     const info = CATEGORY_INFO[category];
     const isExpanded = this.expandedCategories.has(category);
@@ -475,11 +480,8 @@ export class ComponentLibraryPanel {
    * Refresh the panel
    */
   private refresh(): void {
-    if (this.element) {
-      const scrollContainer = this.element.querySelector('div:last-child');
-      if (scrollContainer) {
-        this.renderCategories(scrollContainer as HTMLElement);
-      }
+    if (this.scrollContainer) {
+      this.renderCategories(this.scrollContainer);
     }
   }
 

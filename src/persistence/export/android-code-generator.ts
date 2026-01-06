@@ -28,6 +28,10 @@ export interface AndroidCodeGeneratorOptions {
   generateColorsXml?: boolean | undefined;
   /** Include comments (default: true) */
   includeComments?: boolean | undefined;
+  /** Use design tokens instead of hardcoded values (default: false) */
+  useTokens?: boolean | undefined;
+  /** Token object name for generated references (default: 'AppTokens') */
+  tokenPrefix?: string | undefined;
 }
 
 /**
@@ -57,6 +61,8 @@ export class AndroidCodeGenerator {
   private dimenIndex = 0;
   private extractedColors: Map<string, { name: string; rgba: RGBA }> = new Map();
   private extractedDimens: Map<number, string> = new Map();
+  private useTokens = false;
+  private tokenPrefix = 'AppTokens';
 
   constructor(sceneGraph: SceneGraph) {
     this.sceneGraph = sceneGraph;
@@ -73,6 +79,10 @@ export class AndroidCodeGenerator {
     const includePreview = options.includePreview ?? true;
     const generateColorsXml = options.generateColorsXml ?? true;
     const includeComments = options.includeComments ?? true;
+
+    // Store token options for use in helper methods
+    this.useTokens = options.useTokens ?? false;
+    this.tokenPrefix = options.tokenPrefix ?? 'AppTokens';
 
     // Reset extraction state
     this.colorIndex = 0;
@@ -253,30 +263,69 @@ export class AndroidCodeGenerator {
     const isHorizontal = node.autoLayout?.mode === 'HORIZONTAL';
     const isVertical = node.autoLayout?.mode === 'VERTICAL';
 
-    // Build modifier chain
+    // Build modifier chain (includes padding)
     const modifiers = this.generateComposeModifiers(node, indent + 4);
+
+    // Get alignment properties
+    const primaryAlign = node.autoLayout?.primaryAxisAlignItems;
+    const counterAlign = node.autoLayout?.counterAxisAlignItems;
+    const spacing = node.autoLayout?.itemSpacing ?? 0;
+    const isSpaceBetween = primaryAlign === 'SPACE_BETWEEN';
 
     if (hasChildren) {
       if (isHorizontal) {
-        const spacing = node.autoLayout?.itemSpacing ?? 0;
+        // Get arrangement and alignment for Row
+        const arrangement = this.getComposeHorizontalArrangement(primaryAlign, spacing);
+        const alignment = this.getComposeVerticalAlignment(counterAlign);
         parts.push(`${spaces}Row(`);
         parts.push(`${spaces}    modifier = ${modifiers},`);
-        parts.push(`${spaces}    horizontalArrangement = Arrangement.spacedBy(${spacing}.dp)`);
+        parts.push(`${spaces}    horizontalArrangement = ${arrangement},`);
+        parts.push(`${spaces}    verticalAlignment = ${alignment}`);
         parts.push(`${spaces}) {`);
+
+        // Handle SPACE_BETWEEN with weights if needed
+        if (isSpaceBetween && childIds.length > 1) {
+          for (let i = 0; i < childIds.length; i++) {
+            parts.push(this.generateComposeBody(childIds[i]!, indent + 4));
+            if (i < childIds.length - 1) {
+              parts.push(`${spaces}    Spacer(modifier = Modifier.weight(1f))`);
+            }
+          }
+        } else {
+          for (const childId of childIds) {
+            parts.push(this.generateComposeBody(childId, indent + 4));
+          }
+        }
       } else if (isVertical) {
-        const spacing = node.autoLayout?.itemSpacing ?? 0;
+        // Get arrangement and alignment for Column
+        const arrangement = this.getComposeVerticalArrangement(primaryAlign, spacing);
+        const alignment = this.getComposeHorizontalAlignment(counterAlign);
         parts.push(`${spaces}Column(`);
         parts.push(`${spaces}    modifier = ${modifiers},`);
-        parts.push(`${spaces}    verticalArrangement = Arrangement.spacedBy(${spacing}.dp)`);
+        parts.push(`${spaces}    verticalArrangement = ${arrangement},`);
+        parts.push(`${spaces}    horizontalAlignment = ${alignment}`);
         parts.push(`${spaces}) {`);
+
+        // Handle SPACE_BETWEEN with weights if needed
+        if (isSpaceBetween && childIds.length > 1) {
+          for (let i = 0; i < childIds.length; i++) {
+            parts.push(this.generateComposeBody(childIds[i]!, indent + 4));
+            if (i < childIds.length - 1) {
+              parts.push(`${spaces}    Spacer(modifier = Modifier.weight(1f))`);
+            }
+          }
+        } else {
+          for (const childId of childIds) {
+            parts.push(this.generateComposeBody(childId, indent + 4));
+          }
+        }
       } else {
         parts.push(`${spaces}Box(`);
         parts.push(`${spaces}    modifier = ${modifiers}`);
         parts.push(`${spaces}) {`);
-      }
-
-      for (const childId of childIds) {
-        parts.push(this.generateComposeBody(childId, indent + 4));
+        for (const childId of childIds) {
+          parts.push(this.generateComposeBody(childId, indent + 4));
+        }
       }
 
       parts.push(`${spaces}}`);
@@ -287,6 +336,86 @@ export class AndroidCodeGenerator {
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Get Compose horizontal arrangement for Row based on primary axis alignment.
+   */
+  private getComposeHorizontalArrangement(
+    align: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN' | undefined,
+    spacing: number
+  ): string {
+    switch (align) {
+      case 'MIN':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.Start)` : 'Arrangement.Start';
+      case 'CENTER':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.CenterHorizontally)` : 'Arrangement.Center';
+      case 'MAX':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.End)` : 'Arrangement.End';
+      case 'SPACE_BETWEEN':
+        return 'Arrangement.SpaceBetween';
+      default:
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp)` : 'Arrangement.Start';
+    }
+  }
+
+  /**
+   * Get Compose vertical arrangement for Column based on primary axis alignment.
+   */
+  private getComposeVerticalArrangement(
+    align: 'MIN' | 'CENTER' | 'MAX' | 'SPACE_BETWEEN' | undefined,
+    spacing: number
+  ): string {
+    switch (align) {
+      case 'MIN':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.Top)` : 'Arrangement.Top';
+      case 'CENTER':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.CenterVertically)` : 'Arrangement.Center';
+      case 'MAX':
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp, Alignment.Bottom)` : 'Arrangement.Bottom';
+      case 'SPACE_BETWEEN':
+        return 'Arrangement.SpaceBetween';
+      default:
+        return spacing > 0 ? `Arrangement.spacedBy(${spacing}.dp)` : 'Arrangement.Top';
+    }
+  }
+
+  /**
+   * Get Compose vertical alignment for Row (counter axis).
+   */
+  private getComposeVerticalAlignment(
+    align: 'MIN' | 'CENTER' | 'MAX' | 'BASELINE' | undefined
+  ): string {
+    switch (align) {
+      case 'MIN':
+        return 'Alignment.Top';
+      case 'CENTER':
+        return 'Alignment.CenterVertically';
+      case 'MAX':
+        return 'Alignment.Bottom';
+      case 'BASELINE':
+        return 'Alignment.Bottom'; // Compose doesn't have baseline alignment for Row
+      default:
+        return 'Alignment.CenterVertically';
+    }
+  }
+
+  /**
+   * Get Compose horizontal alignment for Column (counter axis).
+   */
+  private getComposeHorizontalAlignment(
+    align: 'MIN' | 'CENTER' | 'MAX' | 'BASELINE' | undefined
+  ): string {
+    switch (align) {
+      case 'MIN':
+        return 'Alignment.Start';
+      case 'CENTER':
+        return 'Alignment.CenterHorizontally';
+      case 'MAX':
+        return 'Alignment.End';
+      default:
+        return 'Alignment.Start';
+    }
   }
 
   private generateComposeVector(node: VectorNodeData, indent: number): string {
@@ -371,10 +500,72 @@ export class AndroidCodeGenerator {
   private generateComposeModifiers(node: NodeData, indent: number): string {
     const parts: string[] = ['Modifier'];
 
-    // Size
+    // Padding from auto-layout (before size to match design intent)
+    if ('autoLayout' in node) {
+      const frameNode = node as FrameNodeData;
+      const pt = frameNode.autoLayout?.paddingTop ?? 0;
+      const pr = frameNode.autoLayout?.paddingRight ?? 0;
+      const pb = frameNode.autoLayout?.paddingBottom ?? 0;
+      const pl = frameNode.autoLayout?.paddingLeft ?? 0;
+
+      if (pt > 0 || pr > 0 || pb > 0 || pl > 0) {
+        // Check for symmetric padding
+        if (pt === pb && pl === pr) {
+          if (pt === pl && pt > 0) {
+            // All sides equal
+            parts.push(`.padding(${pt}.dp)`);
+          } else {
+            // Horizontal and vertical padding
+            if (pl > 0) parts.push(`.padding(horizontal = ${pl}.dp)`);
+            if (pt > 0) parts.push(`.padding(vertical = ${pt}.dp)`);
+          }
+        } else {
+          // Asymmetric padding
+          parts.push(`.padding(start = ${pl}.dp, end = ${pr}.dp, top = ${pt}.dp, bottom = ${pb}.dp)`);
+        }
+      }
+    }
+
+    // Size - respect sizing modes for auto-layout frames
     if ('width' in node && 'height' in node) {
       const n = node as { width: number; height: number };
-      parts.push(`.size(${formatNum(n.width)}.dp, ${formatNum(n.height)}.dp)`);
+      const frameNode = node as FrameNodeData;
+      const autoLayout = frameNode.autoLayout;
+
+      if (autoLayout && autoLayout.mode !== 'NONE') {
+        // Auto-layout frame - check sizing modes
+        const isHorizontal = autoLayout.mode === 'HORIZONTAL';
+        const primaryAuto = autoLayout.primaryAxisSizingMode === 'AUTO';
+        const counterAuto = autoLayout.counterAxisSizingMode === 'AUTO';
+
+        // Determine which dimensions to set
+        const setWidth = isHorizontal ? !primaryAuto : !counterAuto;
+        const setHeight = isHorizontal ? !counterAuto : !primaryAuto;
+
+        if (setWidth && setHeight) {
+          parts.push(`.size(${formatNum(n.width)}.dp, ${formatNum(n.height)}.dp)`);
+        } else if (setWidth) {
+          parts.push(`.width(${formatNum(n.width)}.dp)`);
+        } else if (setHeight) {
+          parts.push(`.height(${formatNum(n.height)}.dp)`);
+        }
+        // If both AUTO, use wrapContent
+        if (primaryAuto || counterAuto) {
+          if (primaryAuto && isHorizontal) {
+            parts.push('.wrapContentWidth()');
+          } else if (primaryAuto && !isHorizontal) {
+            parts.push('.wrapContentHeight()');
+          }
+          if (counterAuto && isHorizontal) {
+            parts.push('.wrapContentHeight()');
+          } else if (counterAuto && !isHorizontal) {
+            parts.push('.wrapContentWidth()');
+          }
+        }
+      } else {
+        // Non-auto-layout frame - always set explicit size
+        parts.push(`.size(${formatNum(n.width)}.dp, ${formatNum(n.height)}.dp)`);
+      }
     }
 
     // Background
@@ -750,8 +941,80 @@ export class AndroidCodeGenerator {
   }
 
   private getColorName(color: RGBA): string {
+    if (this.useTokens) {
+      // Return token reference instead of extracted color name
+      const tokenName = this.mapColorToToken(color);
+      return `${this.tokenPrefix}.Colors.${tokenName}`;
+    }
     const key = this.colorToKey(color);
     return this.extractedColors.get(key)?.name ?? 'Color.Black';
+  }
+
+  /**
+   * Map a color to a semantic token name based on hue and luminance
+   */
+  private mapColorToToken(color: RGBA): string {
+    const r = Math.round(color.r * 255);
+    const g = Math.round(color.g * 255);
+    const b = Math.round(color.b * 255);
+
+    // Check for grayscale
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+
+    if (diff < 30) {
+      // Grayscale - map to shade based on luminance
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (luminance < 26) return 'Gray.shade900';
+      if (luminance < 51) return 'Gray.shade800';
+      if (luminance < 77) return 'Gray.shade700';
+      if (luminance < 102) return 'Gray.shade600';
+      if (luminance < 128) return 'Gray.shade500';
+      if (luminance < 153) return 'Gray.shade400';
+      if (luminance < 179) return 'Gray.shade300';
+      if (luminance < 204) return 'Gray.shade200';
+      if (luminance < 230) return 'Gray.shade100';
+      return 'Gray.shade50';
+    }
+
+    // Determine hue
+    let hue = 0;
+    if (max === r) {
+      hue = ((g - b) / diff) % 6;
+    } else if (max === g) {
+      hue = (b - r) / diff + 2;
+    } else {
+      hue = (r - g) / diff + 4;
+    }
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+
+    // Map hue to color name
+    let hueName: string;
+    if (hue < 15 || hue >= 345) hueName = 'Red';
+    else if (hue < 45) hueName = 'Orange';
+    else if (hue < 75) hueName = 'Yellow';
+    else if (hue < 150) hueName = 'Green';
+    else if (hue < 195) hueName = 'Cyan';
+    else if (hue < 255) hueName = 'Blue';
+    else if (hue < 285) hueName = 'Purple';
+    else hueName = 'Pink';
+
+    // Determine shade based on luminance
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    let shade: string;
+    if (luminance < 51) shade = 'shade900';
+    else if (luminance < 77) shade = 'shade800';
+    else if (luminance < 102) shade = 'shade700';
+    else if (luminance < 128) shade = 'shade600';
+    else if (luminance < 153) shade = 'shade500';
+    else if (luminance < 179) shade = 'shade400';
+    else if (luminance < 204) shade = 'shade300';
+    else if (luminance < 230) shade = 'shade200';
+    else shade = 'shade100';
+
+    return `${hueName}.${shade}`;
   }
 
   private colorToKey(color: RGBA): string {

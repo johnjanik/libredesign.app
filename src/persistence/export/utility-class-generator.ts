@@ -425,8 +425,10 @@ function getAutoLayoutClasses(autoLayout: AutoLayoutProps, useArbitrary: boolean
     return classes;
   }
 
+  const isHorizontal = autoLayout.mode === 'HORIZONTAL';
+
   // Flex direction
-  if (autoLayout.mode === 'HORIZONTAL') {
+  if (isHorizontal) {
     classes.push('flex', 'flex-row');
   } else if (autoLayout.mode === 'VERTICAL') {
     classes.push('flex', 'flex-col');
@@ -518,6 +520,27 @@ function getAutoLayoutClasses(autoLayout: AutoLayoutProps, useArbitrary: boolean
     case 'BASELINE':
       classes.push('items-baseline');
       break;
+  }
+
+  // Sizing modes
+  // Primary axis: horizontal → width, vertical → height
+  // Counter axis: horizontal → height, vertical → width
+  if (autoLayout.primaryAxisSizingMode === 'AUTO') {
+    // Hug contents on primary axis
+    if (isHorizontal) {
+      classes.push('w-fit');
+    } else {
+      classes.push('h-fit');
+    }
+  }
+
+  if (autoLayout.counterAxisSizingMode === 'AUTO') {
+    // Hug contents on counter axis
+    if (isHorizontal) {
+      classes.push('h-fit');
+    } else {
+      classes.push('w-fit');
+    }
   }
 
   return classes;

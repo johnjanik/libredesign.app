@@ -22,6 +22,10 @@ import type {
 import { solidPaint } from '@core/types/paint';
 import { rgba } from '@core/types/color';
 import type { VectorPath, PathCommand } from '@core/types/geometry';
+import type { BlendMode } from '@core/types/common';
+import type { Effect } from '@core/types/effect';
+import { dropShadow } from '@core/types/effect';
+import { rgba as rgbaColor } from '@core/types/color';
 
 /**
  * Helper to safely get node properties
@@ -422,6 +426,61 @@ export class DesignLibreBridge implements RuntimeBridge {
   async setCornerRadius(layerId: string, radius: number): Promise<void> {
     const sceneGraph = this.runtime.getSceneGraph();
     sceneGraph.updateNode(layerId as NodeId, { cornerRadius: radius });
+  }
+
+  async setBlendMode(layerId: string, blendMode: string): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    sceneGraph.updateNode(layerId as NodeId, { blendMode: blendMode as BlendMode });
+  }
+
+  async addDropShadow(
+    layerId: string,
+    options: {
+      color?: ColorValue;
+      offsetX?: number;
+      offsetY?: number;
+      radius?: number;
+      spread?: number;
+    }
+  ): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const node = sceneGraph.getNode(layerId as NodeId);
+    if (!node) throw new Error('Layer not found');
+
+    // Get existing effects or create empty array
+    const existingEffects = ((node as unknown as Record<string, unknown>)['effects'] as Effect[]) ?? [];
+
+    // Build dropShadow options, only including defined properties
+    const shadowOptions: {
+      color?: ReturnType<typeof rgbaColor>;
+      offsetX?: number;
+      offsetY?: number;
+      radius?: number;
+      spread?: number;
+    } = {};
+
+    if (options.color) {
+      shadowOptions.color = rgbaColor(options.color.r, options.color.g, options.color.b, options.color.a);
+    }
+    if (options.offsetX !== undefined) {
+      shadowOptions.offsetX = options.offsetX;
+    }
+    if (options.offsetY !== undefined) {
+      shadowOptions.offsetY = options.offsetY;
+    }
+    if (options.radius !== undefined) {
+      shadowOptions.radius = options.radius;
+    }
+    if (options.spread !== undefined) {
+      shadowOptions.spread = options.spread;
+    }
+
+    const shadow = dropShadow(shadowOptions);
+
+    // Add to effects array
+    sceneGraph.updateNode(layerId as NodeId, {
+      effects: [...existingEffects, shadow],
+    });
   }
 
   // =========================================================================

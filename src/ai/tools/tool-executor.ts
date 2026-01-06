@@ -266,7 +266,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.lockLayer(layerId);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'unlock_layer': {
@@ -275,7 +275,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.unlockLayer(layerId);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'hide_layer': {
@@ -284,7 +284,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.hideLayer(layerId);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'show_layer': {
@@ -293,7 +293,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.showLayer(layerId);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'delete_selection': {
@@ -417,7 +417,7 @@ export class ToolExecutor {
           throw new Error('Color is required');
         }
         await this.bridge.setFillColor(layerId, color);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'set_stroke_color': {
@@ -430,7 +430,7 @@ export class ToolExecutor {
           throw new Error('Color is required');
         }
         await this.bridge.setStrokeColor(layerId, color);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'set_stroke_width': {
@@ -439,7 +439,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.setStrokeWidth(layerId, getNumberArg(args, 'width') ?? 1);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'set_opacity': {
@@ -448,7 +448,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.setOpacity(layerId, getNumberArg(args, 'opacity') ?? 1);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'set_corner_radius': {
@@ -457,7 +457,7 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.setCornerRadius(layerId, getNumberArg(args, 'radius') ?? 0);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       // =====================================================================
@@ -482,7 +482,7 @@ export class ToolExecutor {
           | 'center-v'
           | 'bottom';
         await this.bridge.alignLayers(layerIds, alignment);
-        return { success: true };
+        return { success: true, affectedIds: layerIds };
       }
 
       case 'set_position': {
@@ -495,7 +495,7 @@ export class ToolExecutor {
           getNumberArg(args, 'x') ?? 0,
           getNumberArg(args, 'y') ?? 0
         );
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'set_size': {
@@ -508,7 +508,7 @@ export class ToolExecutor {
           getNumberArg(args, 'width') ?? 100,
           getNumberArg(args, 'height') ?? 100
         );
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
       }
 
       case 'rotate': {
@@ -517,7 +517,110 @@ export class ToolExecutor {
           throw new Error('No layer selected');
         }
         await this.bridge.setRotation(layerId, getNumberArg(args, 'degrees') ?? 0);
-        return { success: true };
+        return { success: true, affectedIds: [layerId] };
+      }
+
+      case 'move_by': {
+        const layerId = getStringArg(args, 'layerId') ?? selection[0];
+        if (!layerId) {
+          throw new Error('No layer selected');
+        }
+        const dx = getNumberArg(args, 'dx') ?? 0;
+        const dy = getNumberArg(args, 'dy') ?? 0;
+
+        // Get current position
+        const props = await this.bridge.getLayerProperties(layerId);
+        if (!props) {
+          throw new Error('Layer not found');
+        }
+
+        // Calculate new position
+        const newX = props.bounds.x + dx;
+        const newY = props.bounds.y + dy;
+
+        await this.bridge.setPosition(layerId, newX, newY);
+        return { success: true, newPosition: { x: newX, y: newY }, affectedIds: [layerId] };
+      }
+
+      case 'scale': {
+        const layerId = getStringArg(args, 'layerId') ?? selection[0];
+        if (!layerId) {
+          throw new Error('No layer selected');
+        }
+        const scaleX = getNumberArg(args, 'scaleX') ?? getNumberArg(args, 'scale') ?? 1;
+        const scaleY = getNumberArg(args, 'scaleY') ?? getNumberArg(args, 'scale') ?? scaleX;
+
+        // Get current size
+        const props = await this.bridge.getLayerProperties(layerId);
+        if (!props) {
+          throw new Error('Layer not found');
+        }
+
+        // Calculate new size
+        const newWidth = Math.round(props.bounds.width * scaleX);
+        const newHeight = Math.round(props.bounds.height * scaleY);
+
+        await this.bridge.setSize(layerId, newWidth, newHeight);
+        return { success: true, newSize: { width: newWidth, height: newHeight }, affectedIds: [layerId] };
+      }
+
+      case 'rename_layer': {
+        const layerId = getStringArg(args, 'layerId') ?? selection[0];
+        if (!layerId) {
+          throw new Error('No layer selected');
+        }
+        const name = getStringArg(args, 'name');
+        if (!name) {
+          throw new Error('Name is required');
+        }
+        await this.bridge.renameLayer(layerId, name);
+        return { success: true, affectedIds: [layerId] };
+      }
+
+      // =====================================================================
+      // Effects Tools
+      // =====================================================================
+
+      case 'add_drop_shadow': {
+        const layerId = getStringArg(args, 'layerId') ?? selection[0];
+        if (!layerId) {
+          throw new Error('No layer selected');
+        }
+        const color = this.normalizeColor(args['color']);
+        const offsetX = getNumberArg(args, 'offsetX');
+        const offsetY = getNumberArg(args, 'offsetY');
+        const radius = getNumberArg(args, 'radius');
+        const spread = getNumberArg(args, 'spread');
+
+        // Build options object with only defined values
+        const shadowOptions: {
+          color?: ColorValue;
+          offsetX?: number;
+          offsetY?: number;
+          radius?: number;
+          spread?: number;
+        } = {};
+        if (color) shadowOptions.color = color;
+        if (offsetX !== undefined) shadowOptions.offsetX = offsetX;
+        if (offsetY !== undefined) shadowOptions.offsetY = offsetY;
+        if (radius !== undefined) shadowOptions.radius = radius;
+        if (spread !== undefined) shadowOptions.spread = spread;
+
+        await this.bridge.addDropShadow(layerId, shadowOptions);
+        return { success: true, affectedIds: [layerId] };
+      }
+
+      case 'set_blend_mode': {
+        const layerId = getStringArg(args, 'layerId') ?? selection[0];
+        if (!layerId) {
+          throw new Error('No layer selected');
+        }
+        const blendMode = getStringArg(args, 'blendMode');
+        if (!blendMode) {
+          throw new Error('Blend mode is required');
+        }
+        await this.bridge.setBlendMode(layerId, blendMode);
+        return { success: true, affectedIds: [layerId] };
       }
 
       // =====================================================================

@@ -151,7 +151,7 @@ export class HelpPopup {
     appName.textContent = 'DesignLibre';
     appName.style.cssText = `
       margin: 0 0 8px;
-      font-size: 28px;
+      font-size: 42px;
       font-weight: 700;
       color: var(--designlibre-text-primary, #e4e4e4);
       letter-spacing: -0.5px;
@@ -162,7 +162,7 @@ export class HelpPopup {
     const version = document.createElement('div');
     version.textContent = 'Version 0.1.0';
     version.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       color: var(--designlibre-text-muted, #6a6a6a);
       margin-bottom: 24px;
     `;
@@ -186,7 +186,7 @@ export class HelpPopup {
     const helpTitle = document.createElement('div');
     helpTitle.textContent = 'Official Help Site';
     helpTitle.style.cssText = `
-      font-size: 14px;
+      font-size: 21px;
       font-weight: 500;
       color: var(--designlibre-text-primary, #e4e4e4);
       margin-bottom: 8px;
@@ -196,7 +196,7 @@ export class HelpPopup {
     const helpDesc = document.createElement('div');
     helpDesc.textContent = 'Documentation, tutorials, and community resources';
     helpDesc.style.cssText = `
-      font-size: 13px;
+      font-size: 20px;
       color: var(--designlibre-text-secondary, #888);
       margin-bottom: 16px;
     `;
@@ -209,7 +209,7 @@ export class HelpPopup {
       background: var(--designlibre-accent, #4dabff);
       border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 21px;
       font-weight: 500;
       color: white;
       cursor: pointer;
@@ -267,7 +267,7 @@ export class HelpPopup {
         background: transparent;
         border: 1px solid var(--designlibre-border, #3d3d3d);
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 20px;
         color: var(--designlibre-text-primary, #e4e4e4);
         cursor: pointer;
         transition: background 0.15s, border-color 0.15s;
@@ -298,7 +298,7 @@ export class HelpPopup {
     footer.style.cssText = `
       padding: 16px 24px;
       background: var(--designlibre-bg-secondary, #252525);
-      font-size: 11px;
+      font-size: 17px;
       color: var(--designlibre-text-muted, #6a6a6a);
     `;
     footer.innerHTML = 'Open-source design tool for everyone<br>Made with care';

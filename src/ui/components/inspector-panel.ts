@@ -267,7 +267,7 @@ export class InspectorPanel {
       tab.textContent = tabDef.label;
       tab.style.cssText = `
         flex: 1;
-        padding: 10px 8px;
+        padding: 6px 4px;
         border: none;
         background: ${tabDef.id === this.activeTab ? 'var(--designlibre-bg-primary, #1e1e1e)' : 'transparent'};
         color: ${tabDef.id === this.activeTab ? 'var(--designlibre-text-primary, #e4e4e4)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
@@ -276,6 +276,7 @@ export class InspectorPanel {
         cursor: pointer;
         transition: all 0.15s;
         border-bottom: 2px solid ${tabDef.id === this.activeTab ? 'var(--designlibre-accent, #4dabff)' : 'transparent'};
+        white-space: nowrap;
       `;
 
       tab.addEventListener('click', () => this.switchTab(tabDef.id));
@@ -4658,46 +4659,274 @@ export class InspectorPanel {
   }
 
   private createColorField(color: RGBA, onChange: (c: RGBA) => void): HTMLElement {
+    return this.createHSVColorPicker(color, onChange);
+  }
+
+  /**
+   * Create an HSV color picker with saturation-value plane and hue slider.
+   */
+  private createHSVColorPicker(initialColor: RGBA, onChange: (c: RGBA) => void): HTMLElement {
     const container = document.createElement('div');
-    container.style.cssText = `display: flex; align-items: center; gap: 8px; margin-bottom: 8px;`;
+    container.style.cssText = `margin-bottom: 8px;`;
 
-    const hex = rgbaToHex(color);
+    // Convert initial RGBA to RGB (0-255)
+    const initRgb: [number, number, number] = [
+      Math.round(initialColor.r * 255),
+      Math.round(initialColor.g * 255),
+      Math.round(initialColor.b * 255),
+    ];
 
-    const swatch = document.createElement('input');
-    swatch.type = 'color';
-    swatch.value = hex.slice(0, 7);
-    swatch.style.cssText = `
-      width: 32px;
-      height: 26px;
-      border: 1px solid var(--designlibre-border, #3d3d3d);
-      border-radius: 4px;
-      cursor: pointer;
-      padding: 0;
+    // HSV conversion functions
+    const hsvToRgb = (h: number, s: number, v: number): [number, number, number] => {
+      const c = v * s;
+      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+      const m = v - c;
+      let r = 0, g = 0, b = 0;
+      if (h < 60) { r = c; g = x; b = 0; }
+      else if (h < 120) { r = x; g = c; b = 0; }
+      else if (h < 180) { r = 0; g = c; b = x; }
+      else if (h < 240) { r = 0; g = x; b = c; }
+      else if (h < 300) { r = x; g = 0; b = c; }
+      else { r = c; g = 0; b = x; }
+      return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255),
+      ];
+    };
+
+    const rgbToHsv = (r: number, g: number, b: number): [number, number, number] => {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const d = max - min;
+      let h = 0;
+      const s = max === 0 ? 0 : d / max;
+      const v = max;
+      if (d !== 0) {
+        if (max === r) h = 60 * (((g - b) / d) % 6);
+        else if (max === g) h = 60 * ((b - r) / d + 2);
+        else h = 60 * ((r - g) / d + 4);
+      }
+      if (h < 0) h += 360;
+      return [h, s, v];
+    };
+
+    const rgbToHex = (r: number, g: number, b: number): string => {
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    };
+
+    const hexToRgb = (hex: string): [number, number, number] | null => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!result) return null;
+      return [parseInt(result[1]!, 16), parseInt(result[2]!, 16), parseInt(result[3]!, 16)];
+    };
+
+    // Initialize HSV from color
+    const [initH, initS, initV] = rgbToHsv(initRgb[0], initRgb[1], initRgb[2]);
+    let currentHue = initH;
+    let currentSat = initS;
+    let currentVal = initV;
+
+    // Saturation-Value plane
+    const svContainer = document.createElement('div');
+    svContainer.style.cssText = `
+      position: relative;
+      width: 100%;
+      height: 120px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: crosshair;
+      overflow: hidden;
     `;
-    swatch.addEventListener('change', () => {
-      const h = swatch.value;
-      const r = parseInt(h.slice(1, 3), 16) / 255;
-      const g = parseInt(h.slice(3, 5), 16) / 255;
-      const b = parseInt(h.slice(5, 7), 16) / 255;
-      onChange({ r, g, b, a: color.a });
-    });
-    container.appendChild(swatch);
+
+    const svCanvas = document.createElement('canvas');
+    svCanvas.width = 256;
+    svCanvas.height = 120;
+    svCanvas.style.cssText = `width: 100%; height: 100%; border-radius: 6px;`;
+
+    const svCursor = document.createElement('div');
+    svCursor.style.cssText = `
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.3);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+    `;
+
+    svContainer.appendChild(svCanvas);
+    svContainer.appendChild(svCursor);
+
+    // Draw SV plane
+    const drawSVPlane = () => {
+      const ctx = svCanvas.getContext('2d')!;
+      const width = svCanvas.width;
+      const height = svCanvas.height;
+      const [hr, hg, hb] = hsvToRgb(currentHue, 1, 1);
+      const gradH = ctx.createLinearGradient(0, 0, width, 0);
+      gradH.addColorStop(0, 'white');
+      gradH.addColorStop(1, `rgb(${hr},${hg},${hb})`);
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0, 0, width, height);
+      const gradV = ctx.createLinearGradient(0, 0, 0, height);
+      gradV.addColorStop(0, 'rgba(0,0,0,0)');
+      gradV.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = gradV;
+      ctx.fillRect(0, 0, width, height);
+    };
+
+    const updateSVCursor = () => {
+      svCursor.style.left = `${currentSat * 100}%`;
+      svCursor.style.top = `${(1 - currentVal) * 100}%`;
+    };
+
+    // Hue slider
+    const hueContainer = document.createElement('div');
+    hueContainer.style.cssText = `
+      position: relative;
+      width: 100%;
+      height: 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      background: linear-gradient(to right,
+        hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%),
+        hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%)
+      );
+    `;
+
+    const hueCursor = document.createElement('div');
+    hueCursor.style.cssText = `
+      position: absolute;
+      width: 6px;
+      height: 16px;
+      background: white;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+      pointer-events: none;
+      transform: translate(-50%, -2px);
+      top: 0;
+    `;
+    hueContainer.appendChild(hueCursor);
+
+    const updateHueCursor = () => {
+      hueCursor.style.left = `${(currentHue / 360) * 100}%`;
+    };
+
+    // Preview and hex input row
+    const inputRow = document.createElement('div');
+    inputRow.style.cssText = `display: flex; align-items: center; gap: 8px;`;
+
+    const [iR, iG, iB] = hsvToRgb(currentHue, currentSat, currentVal);
+    const previewSwatch = document.createElement('div');
+    previewSwatch.style.cssText = `
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      background: ${rgbToHex(iR, iG, iB)};
+      flex-shrink: 0;
+    `;
 
     const hexInput = document.createElement('input');
     hexInput.type = 'text';
-    hexInput.value = hex;
+    hexInput.value = rgbToHex(iR, iG, iB);
     hexInput.style.cssText = `
       flex: 1;
-      height: 26px;
-      padding: 0 6px;
+      height: 28px;
+      padding: 0 8px;
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-family: 'SF Mono', monospace;
-      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      font-family: monospace;
+      font-size: 11px;
     `;
-    container.appendChild(hexInput);
+
+    inputRow.appendChild(previewSwatch);
+    inputRow.appendChild(hexInput);
+
+    // Update displays and call onChange
+    const updateDisplays = () => {
+      const [r, g, b] = hsvToRgb(currentHue, currentSat, currentVal);
+      const hex = rgbToHex(r, g, b);
+      hexInput.value = hex;
+      previewSwatch.style.background = hex;
+      onChange({ r: r / 255, g: g / 255, b: b / 255, a: initialColor.a });
+    };
+
+    // SV interaction
+    let svDragging = false;
+    const handleSV = (e: MouseEvent | TouchEvent) => {
+      const rect = svContainer.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0]!.clientY : e.clientY;
+      currentSat = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      currentVal = Math.max(0, Math.min(1, 1 - (clientY - rect.top) / rect.height));
+      updateSVCursor();
+      updateDisplays();
+    };
+
+    svContainer.addEventListener('mousedown', (e) => { svDragging = true; handleSV(e); });
+    svContainer.addEventListener('touchstart', (e) => { svDragging = true; handleSV(e); e.preventDefault(); });
+
+    // Hue interaction
+    let hueDragging = false;
+    const handleHue = (e: MouseEvent | TouchEvent) => {
+      const rect = hueContainer.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0]!.clientX : e.clientX;
+      currentHue = Math.max(0, Math.min(360, ((clientX - rect.left) / rect.width) * 360));
+      updateHueCursor();
+      drawSVPlane();
+      updateDisplays();
+    };
+
+    hueContainer.addEventListener('mousedown', (e) => { hueDragging = true; handleHue(e); });
+    hueContainer.addEventListener('touchstart', (e) => { hueDragging = true; handleHue(e); e.preventDefault(); });
+
+    // Global move/up handlers
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      if (svDragging) handleSV(e);
+      if (hueDragging) handleHue(e);
+    };
+    const handleUp = () => { svDragging = false; hueDragging = false; };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    document.addEventListener('touchmove', handleMove);
+    document.addEventListener('touchend', handleUp);
+
+    // Hex input change
+    hexInput.addEventListener('blur', () => {
+      let val = hexInput.value.trim();
+      if (!val.startsWith('#')) val = '#' + val;
+      const rgb = hexToRgb(val);
+      if (rgb) {
+        hexInput.value = val.toUpperCase();
+        const [h, s, v] = rgbToHsv(rgb[0], rgb[1], rgb[2]);
+        currentHue = h;
+        currentSat = s;
+        currentVal = v;
+        drawSVPlane();
+        updateSVCursor();
+        updateHueCursor();
+        updateDisplays();
+      } else {
+        updateDisplays();
+      }
+    });
+
+    container.appendChild(svContainer);
+    container.appendChild(hueContainer);
+    container.appendChild(inputRow);
+
+    // Initial draw
+    drawSVPlane();
+    updateSVCursor();
+    updateHueCursor();
 
     return container;
   }

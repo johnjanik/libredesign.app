@@ -252,3 +252,116 @@ export type {
   MessageContext,
   AttachedImage,
 } from './tools';
+
+// Schemas (AI Priming)
+export {
+  // Type Schemas
+  type PropertySchema,
+  type TypeSchema,
+  POINT_SCHEMA,
+  BOUNDS_SCHEMA,
+  TRANSFORM_SCHEMA,
+  COLOR_SCHEMA,
+  RGBA_SCHEMA,
+  GRADIENT_STOP_SCHEMA,
+  FILL_SCHEMA,
+  STROKE_SCHEMA,
+  EFFECT_SCHEMA,
+  BLEND_MODE_SCHEMA,
+  NODE_TYPE_SCHEMA,
+  BASE_NODE_SCHEMA,
+  TEXT_NODE_SCHEMA,
+  FRAME_NODE_SCHEMA,
+  TOOL_RESULT_SCHEMA,
+  VIEWPORT_SCHEMA,
+  ALIGNMENT_TYPE_SCHEMA,
+  DISTRIBUTION_TYPE_SCHEMA,
+  TYPE_SCHEMA_REGISTRY,
+  getTypeSchema,
+  getTypeSchemaNames,
+  generateTypeSchemaDocumentation,
+  generateTypeSchemaPrompt,
+  typeSchemaToJSONSchema,
+  // Tool Documentation
+  type ToolDocumentation,
+  type ParameterDoc,
+  type ReturnDoc,
+  type ExampleDoc,
+  PRIORITY_1_TOOLS,
+  PRIORITY_2_TOOLS,
+  PRIORITY_3_TOOLS,
+  ALL_PRIORITY_TOOLS,
+  getToolPriority,
+  IMPLEMENTED_TOOLS,
+  isToolImplemented,
+  getImplementationStats,
+  generateToolDocumentation,
+  generateToolMarkdown,
+  generateCompleteToolDocumentation,
+  generateToolPrompt,
+  getToolsForTier,
+  generateToolQuickReference,
+} from './schemas';
+
+// Prompts (System Prompt Builder)
+export {
+  // Types
+  type ApplicationType,
+  type PromptVerbosity,
+  type SystemPromptOptions,
+  type DesignContext,
+  type SystemPromptResult,
+  // Main builders
+  buildSystemPrompt,
+  buildContextPrompt,
+  buildCombinedPrompt,
+  // Preset configurations
+  buildMinimalPrompt,
+  buildStandardPrompt,
+  buildDetailedPrompt,
+  // Utilities
+  getApplicationTypes,
+  getApplicationDomain,
+  validatePromptOptions,
+  getPromptSizeCategory,
+} from './prompts';
+
+// Tool Format Converter
+export {
+  // Types
+  type AnthropicTool,
+  type OpenAITool,
+  type OllamaTool,
+  type LlamaCppTool,
+  type ProviderFormat,
+  // Converters
+  toAnthropicFormat,
+  toOpenAIFormat,
+  toOllamaFormat,
+  toLlamaCppFormat,
+  toPromptFormat,
+  toolDefinitionToAITool,
+  convertToolsToFormat,
+  // Prompt-based parsing
+  parsePromptToolCalls,
+  extractPromptResponse,
+  // Utilities
+  validateToolDefinition,
+  supportsNativeToolCalling,
+  getProviderFormat,
+} from './providers/tool-format-converter';
+
+// Provider Adapter
+export {
+  // Types
+  type ProviderAdapterConfig,
+  type SendMessageOptions,
+  type AdaptedResponse,
+  // Class
+  ProviderAdapter,
+  // Factory functions
+  createProviderAdapter,
+  createDesignLibreAdapter,
+  createCADLibreAdapter,
+  createCAMLibreAdapter,
+} from './providers/provider-adapter';

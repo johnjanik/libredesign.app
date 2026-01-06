@@ -252,18 +252,18 @@ export class AIPanel {
       background: var(--designlibre-bg-tertiary, #252525);
     `;
 
-    // Title with AI icon
+    // Title with AI icon - allow shrinking to keep actions visible
     const titleArea = document.createElement('div');
-    titleArea.style.cssText = `display: flex; align-items: center; gap: 8px;`;
+    titleArea.style.cssText = `display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; overflow: hidden;`;
 
     const icon = document.createElement('span');
     icon.innerHTML = ICONS.ai;
-    icon.style.cssText = `display: flex; color: var(--designlibre-accent, #a855f7);`;
+    icon.style.cssText = `display: flex; flex-shrink: 0; color: var(--designlibre-accent, #a855f7);`;
     titleArea.appendChild(icon);
 
     const title = document.createElement('span');
-    title.textContent = 'AI Assistant';
-    title.style.cssText = `font-weight: 600; font-size: var(--designlibre-sidebar-font-size, 13px);`;
+    title.textContent = 'AI';
+    title.style.cssText = `font-weight: 600; font-size: var(--designlibre-sidebar-font-size, 13px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;`;
     titleArea.appendChild(title);
 
     // Status indicator
@@ -274,15 +274,16 @@ export class AIPanel {
       height: 8px;
       border-radius: 50%;
       background: var(--designlibre-text-muted, #6a6a6a);
-      margin-left: 8px;
+      margin-left: 4px;
+      flex-shrink: 0;
     `;
     titleArea.appendChild(status);
 
     header.appendChild(titleArea);
 
-    // Actions
+    // Actions - ensure they stay visible
     const actions = document.createElement('div');
-    actions.style.cssText = `display: flex; gap: 4px;`;
+    actions.style.cssText = `display: flex; gap: 4px; flex-shrink: 0;`;
 
     // Provider selector
     const providerSelect = document.createElement('select');

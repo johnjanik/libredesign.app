@@ -217,7 +217,7 @@ export class SettingsModal {
     title.id = 'settings-title';
     title.style.cssText = `
       margin: 0;
-      font-size: 18px;
+      font-size: 27px;
       font-weight: 600;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
@@ -290,7 +290,7 @@ export class SettingsModal {
     const header = document.createElement('div');
     header.style.cssText = `
       padding: 16px;
-      font-size: 11px;
+      font-size: 17px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -323,7 +323,7 @@ export class SettingsModal {
       border: none;
       background: ${isActive ? 'var(--designlibre-accent, #0d99ff)' : 'transparent'};
       color: ${isActive ? 'white' : 'var(--designlibre-text-primary, #e4e4e4)'};
-      font-size: 14px;
+      font-size: 21px;
       text-align: left;
       cursor: pointer;
       transition: background-color 0.15s;
@@ -649,7 +649,7 @@ export class SettingsModal {
       background: transparent;
       border: 1px solid var(--designlibre-border, #3d3d3d);
       color: var(--designlibre-text-secondary, #888);
-      font-size: 12px;
+      font-size: 18px;
       border-radius: 4px;
       cursor: pointer;
     `;
@@ -707,7 +707,7 @@ export class SettingsModal {
     const actionEl = document.createElement('span');
     actionEl.textContent = action.name;
     actionEl.style.cssText = `
-      font-size: 13px;
+      font-size: 15px;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
     row.appendChild(actionEl);
@@ -726,7 +726,7 @@ export class SettingsModal {
       border: 1px solid ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-border, #3d3d3d)'};
       border-radius: 4px;
       font-family: monospace;
-      font-size: 12px;
+      font-size: 18px;
       color: ${isCustom ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-text-secondary, #888)'};
       cursor: pointer;
       transition: all 0.15s;
@@ -758,7 +758,7 @@ export class SettingsModal {
         border: none;
         background: transparent;
         color: var(--designlibre-text-secondary, #888);
-        font-size: 14px;
+        font-size: 21px;
         cursor: pointer;
         border-radius: 4px;
       `;
@@ -925,7 +925,7 @@ export class SettingsModal {
 
     const title = document.createElement('span');
     title.textContent = displayName;
-    title.style.cssText = 'font-weight: 600; font-size: 14px; color: var(--designlibre-text-primary, #e4e4e4);';
+    title.style.cssText = 'font-weight: 600; font-size: 21px; color: var(--designlibre-text-primary, #e4e4e4);';
     nameEl.appendChild(title);
 
     if (configManager.getConfig().activeProvider === provider) {
@@ -935,7 +935,7 @@ export class SettingsModal {
         padding: 2px 8px;
         background: var(--designlibre-accent, #4dabff);
         color: white;
-        font-size: 10px;
+        font-size: 15px;
         font-weight: 600;
         border-radius: 10px;
         text-transform: uppercase;
@@ -993,7 +993,7 @@ export class SettingsModal {
 
           const label = document.createElement('label');
           label.textContent = 'Model';
-          label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+          label.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
           modelRow.appendChild(label);
 
           const select = document.createElement('select');
@@ -1003,7 +1003,7 @@ export class SettingsModal {
             border-radius: 6px;
             background: var(--designlibre-bg-secondary, #2d2d2d);
             color: var(--designlibre-text-primary, #e4e4e4);
-            font-size: 13px;
+            font-size: 15px;
             outline: none;
           `;
 
@@ -1030,7 +1030,7 @@ export class SettingsModal {
 
       const tempLabel = document.createElement('label');
       tempLabel.textContent = 'Temperature';
-      tempLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tempLabel.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
       tempRow.appendChild(tempLabel);
 
       const tempSliderWrapper = document.createElement('div');
@@ -1055,7 +1055,7 @@ export class SettingsModal {
       const tempValue = document.createElement('span');
       tempValue.textContent = providerConfig.temperature.toFixed(2);
       tempValue.style.cssText = `
-        font-size: 13px;
+        font-size: 15px;
         color: var(--designlibre-accent, #0d99ff);
         font-weight: 500;
         min-width: 40px;
@@ -1079,7 +1079,7 @@ export class SettingsModal {
 
       const tokensLabel = document.createElement('label');
       tokensLabel.textContent = 'Max Tokens';
-      tokensLabel.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+      tokensLabel.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
       tokensRow.appendChild(tokensLabel);
 
       const tokensInput = document.createElement('input');
@@ -1093,7 +1093,7 @@ export class SettingsModal {
         border-radius: 6px;
         background: var(--designlibre-bg-secondary, #2d2d2d);
         color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 13px;
+        font-size: 15px;
         outline: none;
         width: 120px;
       `;
@@ -1122,13 +1122,13 @@ export class SettingsModal {
         border: 1px solid var(--designlibre-border, #3d3d3d);
         background: var(--designlibre-bg-secondary, #2d2d2d);
         color: var(--designlibre-text-primary, #e4e4e4);
-        font-size: 12px;
+        font-size: 18px;
         border-radius: 6px;
         cursor: pointer;
       `;
 
       const statusSpan = document.createElement('span');
-      statusSpan.style.cssText = 'font-size: 12px;';
+      statusSpan.style.cssText = 'font-size: 18px;';
 
       testBtn.addEventListener('click', async () => {
         testBtn.disabled = true;
@@ -1216,7 +1216,7 @@ export class SettingsModal {
 
     const label = document.createElement('label');
     label.textContent = 'API Key';
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     row.appendChild(label);
 
     const inputWrapper = document.createElement('div');
@@ -1233,7 +1233,7 @@ export class SettingsModal {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 15px;
       font-family: 'SF Mono', Monaco, Consolas, monospace;
       outline: none;
     `;
@@ -1281,7 +1281,7 @@ export class SettingsModal {
 
     const label = document.createElement('label');
     label.textContent = 'Endpoint';
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     row.appendChild(label);
 
     const input = document.createElement('input');
@@ -1293,7 +1293,7 @@ export class SettingsModal {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 15px;
       outline: none;
     `;
     input.addEventListener('blur', () => {
@@ -1329,7 +1329,7 @@ export class SettingsModal {
 
     const label = document.createElement('label');
     label.innerHTML = isVision ? `<span style="display: flex; align-items: center; gap: 6px;">${ICONS['eye'] ?? ''} ${labelText}</span>` : labelText;
-    label.style.cssText = 'font-size: 12px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
+    label.style.cssText = 'font-size: 18px; font-weight: 500; color: var(--designlibre-text-secondary, #a0a0a0);';
     labelRow.appendChild(label);
 
     const refreshBtn = document.createElement('button');
@@ -1361,7 +1361,7 @@ export class SettingsModal {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 15px;
       outline: none;
     `;
 
@@ -1472,7 +1472,7 @@ export class SettingsModal {
       padding: 24px;
       text-align: center;
       color: var(--designlibre-text-secondary, #888);
-      font-size: 13px;
+      font-size: 15px;
     `;
     placeholder.textContent = 'Community plugins coming soon';
     container.appendChild(placeholder);
@@ -1485,7 +1485,7 @@ export class SettingsModal {
   private addSectionHeader(container: HTMLElement, title: string): void {
     const header = document.createElement('div');
     header.style.cssText = `
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 600;
       color: var(--designlibre-text-primary, #e4e4e4);
       padding: 16px 0 8px;
@@ -1529,7 +1529,7 @@ export class SettingsModal {
     const titleEl = document.createElement('div');
     titleEl.textContent = options.title;
     titleEl.style.cssText = `
-      font-size: 14px;
+      font-size: 21px;
       font-weight: 500;
       color: var(--designlibre-text-primary, #e4e4e4);
       margin-bottom: 4px;
@@ -1539,7 +1539,7 @@ export class SettingsModal {
     const descEl = document.createElement('div');
     descEl.textContent = options.description;
     descEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       color: var(--designlibre-text-secondary, #888);
     `;
     textContainer.appendChild(descEl);
@@ -1625,7 +1625,7 @@ export class SettingsModal {
     const valueDisplay = document.createElement('span');
     valueDisplay.textContent = format(value);
     valueDisplay.style.cssText = `
-      font-size: 13px;
+      font-size: 15px;
       color: var(--designlibre-accent, #0d99ff);
       font-weight: 500;
       min-width: 50px;
@@ -1672,7 +1672,7 @@ export class SettingsModal {
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 15px;
       cursor: pointer;
       outline: none;
     `;
@@ -1705,7 +1705,7 @@ export class SettingsModal {
     const actionEl = document.createElement('span');
     actionEl.textContent = action;
     actionEl.style.cssText = `
-      font-size: 13px;
+      font-size: 15px;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
     row.appendChild(actionEl);
@@ -1718,7 +1718,7 @@ export class SettingsModal {
       border: 1px solid var(--designlibre-border, #3d3d3d);
       border-radius: 4px;
       font-family: monospace;
-      font-size: 12px;
+      font-size: 18px;
       color: var(--designlibre-text-secondary, #888);
     `;
     row.appendChild(shortcutEl);

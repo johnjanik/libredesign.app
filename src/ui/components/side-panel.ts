@@ -131,11 +131,11 @@ export class SidePanel {
       flex-direction: row;
       width: ${this.width}px;
       height: 100%;
-      background: var(--designlibre-bg-secondary, #1e1e1e);
+      background: var(--designlibre-bg-primary, #1e1e1e);
       border-${isLeft ? 'right' : 'left'}: 1px solid var(--designlibre-border, #2d2d2d);
       position: relative;
       flex-shrink: 0;
-      overflow: hidden;
+      overflow: hidden
     `;
   }
 

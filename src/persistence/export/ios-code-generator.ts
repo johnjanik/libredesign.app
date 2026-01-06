@@ -27,6 +27,10 @@ export interface IOSCodeGeneratorOptions {
   useColorExtension?: boolean | undefined;
   /** Include comments (default: true) */
   includeComments?: boolean | undefined;
+  /** Use design tokens instead of hardcoded values (default: false) */
+  useTokens?: boolean | undefined;
+  /** Token prefix for generated references (default: 'DesignTokens') */
+  tokenPrefix?: string | undefined;
 }
 
 /**
@@ -52,6 +56,8 @@ export class IOSCodeGenerator {
   private sceneGraph: SceneGraph;
   private colorIndex = 0;
   private extractedColors: Map<string, { name: string; rgba: RGBA }> = new Map();
+  private useTokens = false;
+  private tokenPrefix = 'DesignTokens';
 
   constructor(sceneGraph: SceneGraph) {
     this.sceneGraph = sceneGraph;
@@ -67,6 +73,10 @@ export class IOSCodeGenerator {
     const includePreview = options.includePreview ?? true;
     const useColorExtension = options.useColorExtension ?? true;
     const includeComments = options.includeComments ?? true;
+
+    // Store token options for use in helper methods
+    this.useTokens = options.useTokens ?? false;
+    this.tokenPrefix = options.tokenPrefix ?? 'DesignTokens';
 
     // Reset extraction state
     this.colorIndex = 0;
@@ -216,18 +226,50 @@ export class IOSCodeGenerator {
     // Determine layout
     const isHorizontal = node.autoLayout?.mode === 'HORIZONTAL';
     const isVertical = node.autoLayout?.mode === 'VERTICAL';
+    const isSpaceBetween = node.autoLayout?.primaryAxisAlignItems === 'SPACE_BETWEEN';
 
     if (hasChildren) {
       if (isHorizontal) {
-        parts.push(`${spaces}HStack(spacing: ${node.autoLayout?.itemSpacing ?? 0}) {`);
+        const alignment = this.getSwiftUICounterAxisAlignment(node.autoLayout?.counterAxisAlignItems, 'horizontal');
+        const spacing = isSpaceBetween ? '0' : String(node.autoLayout?.itemSpacing ?? 0);
+        parts.push(`${spaces}HStack(alignment: ${alignment}, spacing: ${spacing}) {`);
+
+        // Insert Spacer() between children for SPACE_BETWEEN
+        if (isSpaceBetween) {
+          for (let i = 0; i < childIds.length; i++) {
+            if (i > 0) {
+              parts.push(`${spaces}    Spacer()`);
+            }
+            parts.push(this.generateSwiftUIBody(childIds[i]!, indent + 4));
+          }
+        } else {
+          for (const childId of childIds) {
+            parts.push(this.generateSwiftUIBody(childId, indent + 4));
+          }
+        }
       } else if (isVertical) {
-        parts.push(`${spaces}VStack(spacing: ${node.autoLayout?.itemSpacing ?? 0}) {`);
+        const alignment = this.getSwiftUICounterAxisAlignment(node.autoLayout?.counterAxisAlignItems, 'vertical');
+        const spacing = isSpaceBetween ? '0' : String(node.autoLayout?.itemSpacing ?? 0);
+        parts.push(`${spaces}VStack(alignment: ${alignment}, spacing: ${spacing}) {`);
+
+        // Insert Spacer() between children for SPACE_BETWEEN
+        if (isSpaceBetween) {
+          for (let i = 0; i < childIds.length; i++) {
+            if (i > 0) {
+              parts.push(`${spaces}    Spacer()`);
+            }
+            parts.push(this.generateSwiftUIBody(childIds[i]!, indent + 4));
+          }
+        } else {
+          for (const childId of childIds) {
+            parts.push(this.generateSwiftUIBody(childId, indent + 4));
+          }
+        }
       } else {
         parts.push(`${spaces}ZStack {`);
-      }
-
-      for (const childId of childIds) {
-        parts.push(this.generateSwiftUIBody(childId, indent + 4));
+        for (const childId of childIds) {
+          parts.push(this.generateSwiftUIBody(childId, indent + 4));
+        }
       }
 
       parts.push(`${spaces}}`);
@@ -235,10 +277,78 @@ export class IOSCodeGenerator {
       parts.push(`${spaces}Rectangle()`);
     }
 
-    // Apply modifiers
+    // Apply padding from auto-layout
+    const paddingModifiers = this.generateSwiftUIPadding(node, indent);
+    if (paddingModifiers) {
+      parts.push(paddingModifiers);
+    }
+
+    // Apply other modifiers
     const modifiers = this.generateSwiftUIModifiers(node, indent);
     if (modifiers) {
       parts.push(modifiers);
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Get SwiftUI alignment for counter axis
+   */
+  private getSwiftUICounterAxisAlignment(
+    align: 'MIN' | 'CENTER' | 'MAX' | 'BASELINE' | undefined,
+    direction: 'horizontal' | 'vertical'
+  ): string {
+    if (direction === 'horizontal') {
+      // HStack counter axis is vertical
+      switch (align) {
+        case 'MIN': return '.top';
+        case 'CENTER': return '.center';
+        case 'MAX': return '.bottom';
+        case 'BASELINE': return '.firstTextBaseline';
+        default: return '.center';
+      }
+    } else {
+      // VStack counter axis is horizontal
+      switch (align) {
+        case 'MIN': return '.leading';
+        case 'CENTER': return '.center';
+        case 'MAX': return '.trailing';
+        default: return '.center';
+      }
+    }
+  }
+
+  /**
+   * Generate padding modifiers from auto-layout
+   */
+  private generateSwiftUIPadding(node: FrameNodeData, indent: number): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    const pt = node.autoLayout?.paddingTop ?? 0;
+    const pr = node.autoLayout?.paddingRight ?? 0;
+    const pb = node.autoLayout?.paddingBottom ?? 0;
+    const pl = node.autoLayout?.paddingLeft ?? 0;
+
+    // Skip if no padding
+    if (pt === 0 && pr === 0 && pb === 0 && pl === 0) {
+      return '';
+    }
+
+    // Check for symmetric padding patterns
+    if (pt === pb && pl === pr) {
+      if (pt === pl) {
+        // All sides equal
+        parts.push(`${spaces}.padding(${pt})`);
+      } else {
+        // Horizontal and vertical different
+        if (pl > 0) parts.push(`${spaces}.padding(.horizontal, ${pl})`);
+        if (pt > 0) parts.push(`${spaces}.padding(.vertical, ${pt})`);
+      }
+    } else {
+      // Asymmetric - use EdgeInsets
+      parts.push(`${spaces}.padding(EdgeInsets(top: ${pt}, leading: ${pl}, bottom: ${pb}, trailing: ${pr}))`);
     }
 
     return parts.join('\n');
@@ -339,10 +449,34 @@ export class IOSCodeGenerator {
     const spaces = ' '.repeat(indent);
     const parts: string[] = [];
 
-    // Frame size
+    // Frame size - respect sizing modes for auto-layout frames
     if ('width' in node && 'height' in node) {
       const n = node as { width: number; height: number };
-      parts.push(`${spaces}.frame(width: ${formatNum(n.width)}, height: ${formatNum(n.height)})`);
+      const frameNode = node as FrameNodeData;
+      const autoLayout = frameNode.autoLayout;
+
+      if (autoLayout && autoLayout.mode !== 'NONE') {
+        // Auto-layout frame - check sizing modes
+        const isHorizontal = autoLayout.mode === 'HORIZONTAL';
+        const primaryAuto = autoLayout.primaryAxisSizingMode === 'AUTO';
+        const counterAuto = autoLayout.counterAxisSizingMode === 'AUTO';
+
+        // Determine which dimensions to set
+        const setWidth = isHorizontal ? !primaryAuto : !counterAuto;
+        const setHeight = isHorizontal ? !counterAuto : !primaryAuto;
+
+        if (setWidth && setHeight) {
+          parts.push(`${spaces}.frame(width: ${formatNum(n.width)}, height: ${formatNum(n.height)})`);
+        } else if (setWidth) {
+          parts.push(`${spaces}.frame(width: ${formatNum(n.width)})`);
+        } else if (setHeight) {
+          parts.push(`${spaces}.frame(height: ${formatNum(n.height)})`);
+        }
+        // If both AUTO, no frame modifier needed (hug contents)
+      } else {
+        // Non-auto-layout frame - always set explicit size
+        parts.push(`${spaces}.frame(width: ${formatNum(n.width)}, height: ${formatNum(n.height)})`);
+      }
     }
 
     // Background
@@ -739,8 +873,80 @@ export class IOSCodeGenerator {
   }
 
   private getColorName(color: RGBA): string {
+    if (this.useTokens) {
+      // Return token reference instead of extracted color name
+      const tokenName = this.mapColorToToken(color);
+      return `${this.tokenPrefix}.Colors.${tokenName}`;
+    }
     const key = this.colorToKey(color);
     return this.extractedColors.get(key)?.name ?? 'clear';
+  }
+
+  /**
+   * Map a color to a semantic token name based on hue and luminance
+   */
+  private mapColorToToken(color: RGBA): string {
+    const r = Math.round(color.r * 255);
+    const g = Math.round(color.g * 255);
+    const b = Math.round(color.b * 255);
+
+    // Check for grayscale
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const diff = max - min;
+
+    if (diff < 30) {
+      // Grayscale - map to shade based on luminance
+      const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+      if (luminance < 26) return 'Gray.shade900';
+      if (luminance < 51) return 'Gray.shade800';
+      if (luminance < 77) return 'Gray.shade700';
+      if (luminance < 102) return 'Gray.shade600';
+      if (luminance < 128) return 'Gray.shade500';
+      if (luminance < 153) return 'Gray.shade400';
+      if (luminance < 179) return 'Gray.shade300';
+      if (luminance < 204) return 'Gray.shade200';
+      if (luminance < 230) return 'Gray.shade100';
+      return 'Gray.shade50';
+    }
+
+    // Determine hue
+    let hue = 0;
+    if (max === r) {
+      hue = ((g - b) / diff) % 6;
+    } else if (max === g) {
+      hue = (b - r) / diff + 2;
+    } else {
+      hue = (r - g) / diff + 4;
+    }
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+
+    // Map hue to color name
+    let hueName: string;
+    if (hue < 15 || hue >= 345) hueName = 'Red';
+    else if (hue < 45) hueName = 'Orange';
+    else if (hue < 75) hueName = 'Yellow';
+    else if (hue < 150) hueName = 'Green';
+    else if (hue < 195) hueName = 'Cyan';
+    else if (hue < 255) hueName = 'Blue';
+    else if (hue < 285) hueName = 'Purple';
+    else hueName = 'Pink';
+
+    // Determine shade based on luminance
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    let shade: string;
+    if (luminance < 51) shade = 'shade900';
+    else if (luminance < 77) shade = 'shade800';
+    else if (luminance < 102) shade = 'shade700';
+    else if (luminance < 128) shade = 'shade600';
+    else if (luminance < 153) shade = 'shade500';
+    else if (luminance < 179) shade = 'shade400';
+    else if (luminance < 204) shade = 'shade300';
+    else if (luminance < 230) shade = 'shade200';
+    else shade = 'shade100';
+
+    return `${hueName}.${shade}`;
   }
 
   private colorToKey(color: RGBA): string {

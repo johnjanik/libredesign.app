@@ -242,6 +242,21 @@ export interface RuntimeBridge {
   /** Set corner radius */
   setCornerRadius(layerId: string, radius: number): Promise<void>;
 
+  /** Set blend mode */
+  setBlendMode(layerId: string, blendMode: string): Promise<void>;
+
+  /** Add drop shadow effect */
+  addDropShadow(
+    layerId: string,
+    options: {
+      color?: ColorValue;
+      offsetX?: number;
+      offsetY?: number;
+      radius?: number;
+      spread?: number;
+    }
+  ): Promise<void>;
+
   // =========================================================================
   // Layout Operations
   // =========================================================================

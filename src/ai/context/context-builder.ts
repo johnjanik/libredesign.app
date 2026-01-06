@@ -3,6 +3,8 @@
  *
  * Builds context information for AI prompts from the current design state.
  * Includes token counting, smart truncation, and custom instructions.
+ *
+ * Integrates with the system-prompt-builder for model-agnostic prompts.
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
@@ -13,6 +15,12 @@ import type { ToolTierConfig } from '../config/provider-config';
 import { getAllToolDefinitions, getToolDefinitions } from '../tools/tool-registry';
 import type { ToolDefinition, JSONSchema } from '../tools/tool-registry';
 import { getToolsForTier } from '../tools/tool-categories';
+import {
+  buildSystemPrompt as buildSystemPromptFromBuilder,
+  buildContextPrompt as buildContextPromptFromBuilder,
+  type SystemPromptOptions,
+  type DesignContext,
+} from '../prompts/system-prompt-builder';
 
 /**
  * Built context for AI
@@ -97,6 +105,14 @@ export class ContextBuilder {
   constructor(runtime: DesignLibreRuntime, calibrator: CoordinateCalibrator) {
     this.runtime = runtime;
     this.calibrator = calibrator;
+  }
+
+  /**
+   * Get the coordinate calibrator.
+   * @deprecated No longer used internally, kept for backwards compatibility.
+   */
+  getCalibrator(): CoordinateCalibrator {
+    return this.calibrator;
   }
 
   /**
@@ -236,149 +252,121 @@ export class ContextBuilder {
   }
 
   /**
-   * Build the system prompt.
+   * Build the system prompt using the new model-agnostic builder.
    */
   buildSystemPrompt(options: ContextBuilderOptions = {}): string {
-    const calibration = this.calibrator.getCalibrationPrompt();
-    const tools = this.getToolDescriptions();
-    const projectInfo = options.projectName ? `\nPROJECT: ${options.projectName}\n` : '';
     const customInstructions = options.customInstructions || this.customInstructions;
 
-    let prompt = `You are an AI design assistant for DesignLibre, a professional vector graphics editor.
-${projectInfo}
-${calibration}
+    // Build prompt options for the new system prompt builder
+    const promptOptions: SystemPromptOptions = {
+      application: 'designlibre',
+      verbosity: 'standard',
+      includeTypeSchemas: true,
+      includeToolSummary: true,
+      includeCoordinateSystem: true,
+      includeBestPractices: true,
+    };
 
-CAPABILITIES:
-- You can CREATE shapes (rectangles, ellipses, lines, text, frames)
-- You can SELECT, MOVE, RESIZE, ROTATE, and DELETE elements
-- You can change COLORS, OPACITY, and other style properties
-- You can GROUP and UNGROUP elements
-- You can control the VIEWPORT (pan, zoom)
-- You can UNDO and REDO changes
-
-AVAILABLE TOOLS:
-${tools}
-
-GUIDELINES:
-1. Be precise with coordinates - the red crosshair marks (0,0)
-2. When creating elements, place them in visible areas
-3. Use descriptive names for created elements
-4. Confirm your actions by describing what you did
-5. If asked to modify something, first identify it by name or position
-6. For colors, use hex codes (#ff0000) or color names (red, blue, etc.)
-
-When you receive a screenshot, analyze it to understand:
-- What elements exist and where they are positioned
-- The current selection state
-- The overall layout and composition
-
-Respond naturally and execute design requests using the provided tools.`;
-
-    // Add custom instructions if provided
+    // Only add optional properties if they have values
+    if (options.projectName) {
+      promptOptions.projectName = options.projectName;
+    }
     if (customInstructions) {
-      prompt += `\n\nCUSTOM INSTRUCTIONS:\n${customInstructions}`;
+      promptOptions.customInstructions = customInstructions;
     }
 
-    return prompt;
+    // Use the new system prompt builder
+    const result = buildSystemPromptFromBuilder(promptOptions);
+    return result.prompt;
   }
 
   /**
-   * Build a description of the current state.
+   * Build a DesignContext from the current runtime state.
+   * Used for context-aware prompts.
    */
-  buildStateDescription(options: ContextBuilderOptions = {}): string {
-    const parts: string[] = [];
-
-    // Viewport state
-    const viewport = this.runtime.getViewport();
-    if (viewport) {
-      const zoom = viewport.getZoom();
-      const bounds = viewport.getVisibleBounds();
-      parts.push(`Viewport: ${Math.round(zoom * 100)}% zoom`);
-      parts.push(`Visible area: (${Math.round(bounds.minX)}, ${Math.round(bounds.minY)}) to (${Math.round(bounds.maxX)}, ${Math.round(bounds.maxY)})`);
-    }
+  buildDesignContext(): DesignContext {
+    const context: DesignContext = {
+      selection: { ids: [], objects: [] },
+      viewport: { x: 0, y: 0, width: 1920, height: 1080, zoom: 1 },
+      layers: [],
+    };
 
     // Selection state
     const selection = this.runtime.getSelectionManager();
     if (selection) {
       const selectedIds = selection.getSelectedNodeIds();
-      if (selectedIds.length === 0) {
-        parts.push('Selection: none');
-      } else {
-        parts.push(`Selection: ${selectedIds.length} element(s)`);
+      context.selection.ids = selectedIds;
 
-        // Describe selected elements
-        const sceneGraph = this.runtime.getSceneGraph();
-        const maxToShow = options.detailedSelection ? 10 : 5;
-
-        if (sceneGraph && selectedIds.length <= maxToShow) {
-          for (const id of selectedIds) {
-            const node = sceneGraph.getNode(id);
-            if (node) {
-              const x = 'x' in node ? Math.round(node.x as number) : 0;
-              const y = 'y' in node ? Math.round(node.y as number) : 0;
-              const w = 'width' in node ? Math.round(node.width as number) : 0;
-              const h = 'height' in node ? Math.round(node.height as number) : 0;
-
-              // Basic info
-              let desc = `  - "${node.name}" (${node.type}) at (${x}, ${y})`;
-
-              // Add dimensions for detailed selection
-              if (options.detailedSelection && w > 0 && h > 0) {
-                desc += ` size ${w}x${h}`;
-              }
-
-              // Add style info for detailed selection
-              if (options.detailedSelection) {
-                const fill = 'fills' in node && Array.isArray(node.fills) && node.fills.length > 0
-                  ? (node.fills[0] as { color?: { hex?: string } })?.color?.hex
-                  : undefined;
-                if (fill) {
-                  desc += ` fill:${fill}`;
-                }
-              }
-
-              parts.push(desc);
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (sceneGraph) {
+        for (const id of selectedIds.slice(0, 10)) {
+          const node = sceneGraph.getNode(id);
+          if (node) {
+            const obj: DesignContext['selection']['objects'][0] = {
+              id: node.id,
+              type: node.type,
+              name: node.name,
+              x: 'x' in node ? Math.round(node.x as number) : 0,
+              y: 'y' in node ? Math.round(node.y as number) : 0,
+            };
+            // Only add width/height if they exist
+            if ('width' in node) {
+              obj.width = Math.round(node.width as number);
             }
-          }
-        } else if (selectedIds.length > maxToShow) {
-          parts.push(`  (${selectedIds.length} elements selected - showing first ${maxToShow})`);
-          // Show first few
-          const sceneGraphInstance = this.runtime.getSceneGraph();
-          if (sceneGraphInstance) {
-            for (let i = 0; i < maxToShow && i < selectedIds.length; i++) {
-              const id = selectedIds[i];
-              if (id) {
-                const node = sceneGraphInstance.getNode(id);
-                if (node) {
-                  const x = 'x' in node ? Math.round(node.x as number) : 0;
-                  const y = 'y' in node ? Math.round(node.y as number) : 0;
-                  parts.push(`  - "${node.name}" (${node.type}) at (${x}, ${y})`);
-                }
-              }
+            if ('height' in node) {
+              obj.height = Math.round(node.height as number);
             }
+            context.selection.objects.push(obj);
           }
         }
       }
+    }
+
+    // Viewport state
+    const viewport = this.runtime.getViewport();
+    if (viewport) {
+      const bounds = viewport.getVisibleBounds();
+      context.viewport = {
+        x: Math.round(bounds.minX),
+        y: Math.round(bounds.minY),
+        width: Math.round(bounds.maxX - bounds.minX),
+        height: Math.round(bounds.maxY - bounds.minY),
+        zoom: viewport.getZoom(),
+      };
     }
 
     // Active tool
     const toolManager = this.runtime.getToolManager();
     if (toolManager) {
       const activeTool = toolManager.getActiveTool();
-      parts.push(`Active tool: ${activeTool?.name ?? 'none'}`);
-    }
-
-    // Scene overview (if requested)
-    if (options.includeSceneGraph) {
-      const sceneDescription = this.buildSceneDescription(options.maxNodes ?? 20);
-      if (sceneDescription) {
-        parts.push('');
-        parts.push('SCENE CONTENTS:');
-        parts.push(sceneDescription);
+      if (activeTool?.name) {
+        context.activeTool = activeTool.name;
       }
     }
 
-    return parts.join('\n');
+    return context;
+  }
+
+  /**
+   * Build a description of the current state.
+   * Uses the new context prompt builder for consistent formatting.
+   */
+  buildStateDescription(options: ContextBuilderOptions = {}): string {
+    // Build the design context from runtime state
+    const designContext = this.buildDesignContext();
+
+    // Use the new context prompt builder for consistent formatting
+    let stateDescription = buildContextPromptFromBuilder(designContext);
+
+    // Scene overview (if requested) - append to the context description
+    if (options.includeSceneGraph) {
+      const sceneDescription = this.buildSceneDescription(options.maxNodes ?? 20);
+      if (sceneDescription) {
+        stateDescription += '\n\nSCENE CONTENTS:\n' + sceneDescription;
+      }
+    }
+
+    return stateDescription;
   }
 
   /**
@@ -521,23 +509,6 @@ Respond naturally and execute design requests using the provided tools.`;
     return param;
   }
 
-  /**
-   * Get tool descriptions as a string for the system prompt.
-   */
-  private getToolDescriptions(): string {
-    const tools = this.getTools();
-    return tools
-      .map((tool) => {
-        const params = Object.entries(tool.parameters.properties)
-          .map(([name, prop]) => {
-            const p = prop as { type: string; description?: string };
-            return `    ${name}: ${p.type}${p.description ? ` - ${p.description}` : ''}`;
-          })
-          .join('\n');
-        return `- ${tool.name}: ${tool.description}\n${params}`;
-      })
-      .join('\n\n');
-  }
 }
 
 /**

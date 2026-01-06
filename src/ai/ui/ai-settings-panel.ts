@@ -174,7 +174,7 @@ export class AISettingsPanel {
     title.textContent = 'AI Settings';
     title.style.cssText = `
       margin: 0;
-      font-size: 16px;
+      font-size: 24px;
       font-weight: 600;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
@@ -238,7 +238,7 @@ export class AISettingsPanel {
     title.textContent = PROVIDER_NAMES[provider];
     title.style.cssText = `
       margin: 0;
-      font-size: 14px;
+      font-size: 21px;
       font-weight: 600;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
@@ -252,7 +252,7 @@ export class AISettingsPanel {
         padding: 2px 8px;
         background: var(--designlibre-accent, #4dabff);
         color: white;
-        font-size: 10px;
+        font-size: 15px;
         font-weight: 600;
         border-radius: 10px;
         text-transform: uppercase;
@@ -390,7 +390,7 @@ export class AISettingsPanel {
       border: 1px solid var(--designlibre-border, #3d3d3d);
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: 18px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s;
@@ -398,7 +398,7 @@ export class AISettingsPanel {
 
     const statusSpan = document.createElement('span');
     statusSpan.className = 'sp-test-status';
-    statusSpan.style.cssText = 'font-size: 12px;';
+    statusSpan.style.cssText = 'font-size: 18px;';
 
     testBtn.addEventListener('click', async () => {
       testBtn.disabled = true;
@@ -444,7 +444,7 @@ export class AISettingsPanel {
     title.textContent = 'General Settings';
     title.style.cssText = `
       margin: 0 0 16px 0;
-      font-size: 14px;
+      font-size: 21px;
       font-weight: 600;
       color: var(--designlibre-text-primary, #e4e4e4);
     `;
@@ -518,7 +518,7 @@ export class AISettingsPanel {
       border: 1px solid var(--designlibre-border, #3d3d3d);
       background: transparent;
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 20px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s;
@@ -539,7 +539,7 @@ export class AISettingsPanel {
       border: none;
       background: var(--designlibre-accent, #4dabff);
       color: white;
-      font-size: 13px;
+      font-size: 20px;
       font-weight: 500;
       border-radius: 6px;
       cursor: pointer;
@@ -625,7 +625,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
     labelEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
     `;
@@ -640,7 +640,7 @@ export class AISettingsPanel {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 20px;
       outline: none;
       transition: border-color 0.15s;
     `;
@@ -663,7 +663,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.textContent = 'API Key';
     labelEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
     `;
@@ -684,7 +684,7 @@ export class AISettingsPanel {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 20px;
       font-family: 'SF Mono', Monaco, Consolas, monospace;
       outline: none;
       transition: border-color 0.15s;
@@ -925,7 +925,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
     labelEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
     `;
@@ -938,7 +938,7 @@ export class AISettingsPanel {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 20px;
       outline: none;
       cursor: pointer;
     `;
@@ -974,7 +974,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
     labelEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
     `;
@@ -983,7 +983,7 @@ export class AISettingsPanel {
     const valueEl = document.createElement('span');
     valueEl.textContent = value.toFixed(1);
     valueEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       color: var(--designlibre-text-primary, #e4e4e4);
       font-family: 'SF Mono', Monaco, Consolas, monospace;
     `;
@@ -1040,7 +1040,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.textContent = label;
     labelEl.style.cssText = `
-      font-size: 13px;
+      font-size: 20px;
       color: var(--designlibre-text-primary, #e4e4e4);
       cursor: pointer;
     `;
@@ -1087,7 +1087,7 @@ export class AISettingsPanel {
     const labelEl = document.createElement('label');
     labelEl.innerHTML = isVision ? `${ICONS.vision} ${labelText}` : labelText;
     labelEl.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 500;
       color: var(--designlibre-text-secondary, #a0a0a0);
       display: flex;
@@ -1142,7 +1142,7 @@ export class AISettingsPanel {
       border-radius: 6px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 13px;
+      font-size: 20px;
       outline: none;
       cursor: pointer;
     `;
@@ -1187,7 +1187,7 @@ export class AISettingsPanel {
 
     // Status message
     const statusEl = document.createElement('div');
-    statusEl.style.cssText = 'font-size: 11px; min-height: 16px;';
+    statusEl.style.cssText = 'font-size: 17px; min-height: 16px;';
     row.appendChild(statusEl);
 
     container.appendChild(row);
@@ -1291,7 +1291,7 @@ export class AISettingsPanel {
     const title = document.createElement('div');
     title.textContent = 'Server Controls';
     title.style.cssText = `
-      font-size: 12px;
+      font-size: 18px;
       font-weight: 600;
       color: var(--designlibre-text-secondary, #a0a0a0);
       margin-bottom: 12px;
@@ -1312,7 +1312,7 @@ export class AISettingsPanel {
       border: 1px solid var(--designlibre-border, #3d3d3d);
       background: var(--designlibre-bg-secondary, #2d2d2d);
       color: var(--designlibre-text-primary, #e4e4e4);
-      font-size: 12px;
+      font-size: 18px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.15s;
@@ -1327,7 +1327,7 @@ export class AISettingsPanel {
     });
 
     const statusSpan = document.createElement('span');
-    statusSpan.style.cssText = 'font-size: 12px; margin-left: 12px;';
+    statusSpan.style.cssText = 'font-size: 18px; margin-left: 12px;';
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
@@ -1369,7 +1369,7 @@ export class AISettingsPanel {
     const helpText = document.createElement('div');
     helpText.style.cssText = `
       margin-top: 12px;
-      font-size: 11px;
+      font-size: 17px;
       color: var(--designlibre-text-muted, #6a6a6a);
       line-height: 1.5;
     `;

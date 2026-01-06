@@ -186,6 +186,8 @@ export class AnthropicProvider implements AIProvider {
 
     if (anthropicTools && anthropicTools.length > 0) {
       body['tools'] = anthropicTools;
+      // Encourage the model to use tools when they're available
+      body['tool_choice'] = { type: 'auto' };
     }
 
     const headers = await this.getHeaders();
@@ -234,6 +236,8 @@ export class AnthropicProvider implements AIProvider {
 
     if (anthropicTools && anthropicTools.length > 0) {
       body['tools'] = anthropicTools;
+      // Encourage the model to use tools when they're available
+      body['tool_choice'] = { type: 'auto' };
     }
 
     const headers = await this.getHeaders();
