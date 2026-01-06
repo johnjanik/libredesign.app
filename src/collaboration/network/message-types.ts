@@ -27,7 +27,11 @@ export type MessageType =
   | 'PRESENCE'
   | 'ERROR'
   | 'PING'
-  | 'PONG';
+  | 'PONG'
+  // Encryption-related messages
+  | 'ENCRYPTED'
+  | 'KEY_EXCHANGE'
+  | 'KEY_REQUEST';
 
 /**
  * Hello message - sent when connecting
@@ -141,6 +145,82 @@ export interface PongMessage extends BaseMessage {
   readonly timestamp: number;
 }
 
+// =============================================================================
+// Encryption Messages
+// =============================================================================
+
+/**
+ * Encrypted data container (matches crypto-utils EncryptedData)
+ */
+export interface EncryptedPayload {
+  readonly ciphertext: string;
+  readonly iv: string;
+  readonly tag?: string;
+  readonly algorithm: 'AES-GCM' | 'AES-CBC';
+  readonly keySize: 128 | 192 | 256;
+}
+
+/**
+ * Encrypted message envelope - wraps any encrypted content
+ */
+export interface EncryptedMessage extends BaseMessage {
+  readonly type: 'ENCRYPTED';
+  /** Envelope version for compatibility */
+  readonly version: 1;
+  /** Document ID this message belongs to */
+  readonly documentId: string;
+  /** Key ID used for encryption */
+  readonly keyId: string;
+  /** Key version */
+  readonly keyVersion: number;
+  /** Sender's user ID */
+  readonly senderId: string;
+  /** Unique message ID (nonce for replay protection) */
+  readonly messageId: string;
+  /** Timestamp */
+  readonly timestamp: number;
+  /** Encrypted payload containing a SyncMessage */
+  readonly payload: EncryptedPayload;
+}
+
+/**
+ * Encrypted session key for a participant
+ */
+export interface EncryptedSessionKey {
+  readonly recipientId: string;
+  readonly encryptedKey: string;
+  readonly keyId: string;
+  readonly version: number;
+}
+
+/**
+ * Key exchange message - distribute session keys to participants
+ */
+export interface KeyExchangeMessage extends BaseMessage {
+  readonly type: 'KEY_EXCHANGE';
+  readonly documentId: string;
+  readonly senderId: string;
+  /** Encrypted session keys for each participant */
+  readonly encryptedKeys: readonly EncryptedSessionKey[];
+  /** Key version being distributed */
+  readonly keyVersion: number;
+  /** Key ID */
+  readonly keyId: string;
+  /** Sender's public key PEM (for new participants) */
+  readonly senderPublicKey?: string | undefined;
+}
+
+/**
+ * Key request message - request session key when joining
+ */
+export interface KeyRequestMessage extends BaseMessage {
+  readonly type: 'KEY_REQUEST';
+  readonly documentId: string;
+  readonly requesterId: string;
+  /** Requester's public key PEM */
+  readonly requesterPublicKey: string;
+}
+
 /**
  * Union of all message types
  */
@@ -154,7 +234,33 @@ export type SyncMessage =
   | PresenceMessage
   | ErrorMessage
   | PingMessage
-  | PongMessage;
+  | PongMessage
+  | EncryptedMessage
+  | KeyExchangeMessage
+  | KeyRequestMessage;
+
+/**
+ * Messages that should be encrypted
+ */
+export type EncryptableSyncMessage =
+  | SyncRequestMessage
+  | SyncResponseMessage
+  | OperationMessage
+  | OperationAckMessage
+  | PresenceMessage;
+
+/**
+ * Messages that are sent in plaintext (handshake, encryption, keepalive)
+ */
+export type PlaintextSyncMessage =
+  | HelloMessage
+  | HelloAckMessage
+  | ErrorMessage
+  | PingMessage
+  | PongMessage
+  | EncryptedMessage
+  | KeyExchangeMessage
+  | KeyRequestMessage;
 
 /**
  * Serialize a message to JSON.
@@ -235,5 +341,81 @@ export function createErrorMessage(
     code,
     message,
     details,
+  };
+}
+
+// =============================================================================
+// Encryption Message Helpers
+// =============================================================================
+
+/**
+ * Check if a message is an encrypted envelope.
+ */
+export function isEncryptedMessage(message: SyncMessage): message is EncryptedMessage {
+  return message.type === 'ENCRYPTED';
+}
+
+/**
+ * Check if a message is a key exchange message.
+ */
+export function isKeyExchangeMessage(message: SyncMessage): message is KeyExchangeMessage {
+  return message.type === 'KEY_EXCHANGE';
+}
+
+/**
+ * Check if a message is a key request message.
+ */
+export function isKeyRequestMessage(message: SyncMessage): message is KeyRequestMessage {
+  return message.type === 'KEY_REQUEST';
+}
+
+/**
+ * Check if a message type should be encrypted.
+ */
+export function shouldEncryptMessage(message: SyncMessage): message is EncryptableSyncMessage {
+  return (
+    message.type === 'SYNC_REQUEST' ||
+    message.type === 'SYNC_RESPONSE' ||
+    message.type === 'OPERATION' ||
+    message.type === 'OPERATION_ACK' ||
+    message.type === 'PRESENCE'
+  );
+}
+
+/**
+ * Create a KEY_EXCHANGE message.
+ */
+export function createKeyExchangeMessage(
+  documentId: string,
+  senderId: string,
+  encryptedKeys: readonly EncryptedSessionKey[],
+  keyVersion: number,
+  keyId: string,
+  senderPublicKey?: string
+): KeyExchangeMessage {
+  return {
+    type: 'KEY_EXCHANGE',
+    documentId,
+    senderId,
+    encryptedKeys,
+    keyVersion,
+    keyId,
+    senderPublicKey,
+  };
+}
+
+/**
+ * Create a KEY_REQUEST message.
+ */
+export function createKeyRequestMessage(
+  documentId: string,
+  requesterId: string,
+  requesterPublicKey: string
+): KeyRequestMessage {
+  return {
+    type: 'KEY_REQUEST',
+    documentId,
+    requesterId,
+    requesterPublicKey,
   };
 }
