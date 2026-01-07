@@ -8,7 +8,6 @@ import type { AIProvider } from '@ai/providers/ai-provider';
 import type {
   DesignCandidate,
   GenerationStrategy,
-  ScoredCandidate,
   AdaptiveConfig,
 } from '../types';
 import type { Generator, GenerationContext } from './base-generator';
@@ -52,7 +51,7 @@ export interface StrategySelection {
 export class StrategyManager {
   private generators: Map<GenerationStrategy, Generator> = new Map();
   private provider: AIProvider | null = null;
-  private config: StrategyManagerConfig;
+  private readonly config: StrategyManagerConfig;
   private strategyWeights: Record<GenerationStrategy, number>;
   private strategyHistory: Map<GenerationStrategy, number[]> = new Map();
 
@@ -330,6 +329,13 @@ export class StrategyManager {
         this.strategyWeights[strategy] = Math.max(0.1, currentWeight * 0.9);
       }
     }
+  }
+
+  /**
+   * Get the configuration
+   */
+  getConfig(): StrategyManagerConfig {
+    return this.config;
   }
 }
 

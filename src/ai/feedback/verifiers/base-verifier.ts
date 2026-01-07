@@ -152,7 +152,7 @@ Respond in JSON format:
       // Extract JSON from response (handle markdown code blocks)
       let jsonStr = responseText;
       const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
+      if (jsonMatch && jsonMatch[1]) {
         jsonStr = jsonMatch[1];
       }
 
@@ -183,12 +183,12 @@ Respond in JSON format:
     // Try to extract score from text patterns like "score: 0.8" or "8/10"
     let score = 0.5;
     const scoreMatch = responseText.match(/score[:\s]+(\d+\.?\d*)/i);
-    if (scoreMatch) {
+    if (scoreMatch && scoreMatch[1]) {
       const num = parseFloat(scoreMatch[1]);
       score = num > 1 ? num / 10 : num;
     } else {
       const ratingMatch = responseText.match(/(\d+)\s*\/\s*10/);
-      if (ratingMatch) {
+      if (ratingMatch && ratingMatch[1]) {
         score = parseInt(ratingMatch[1]) / 10;
       }
     }

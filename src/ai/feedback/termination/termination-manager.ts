@@ -168,7 +168,7 @@ export class TerminationManager {
       reason: reason || 'No specific reason',
       confidence,
       strategyBreakdown: decisions,
-      alternativeSuggestions: suggestions.length > 0 ? suggestions : undefined,
+      ...(suggestions.length > 0 ? { alternativeSuggestions: suggestions } : {}),
     };
   }
 
@@ -208,16 +208,14 @@ export class TerminationManager {
 
     // Suggest adjusting threshold if close
     const scores = context.iterations.map(i => i.bestCandidate.qualityScore.overall);
-    if (scores.length > 0) {
-      const currentScore = scores[scores.length - 1];
-      if (currentScore >= context.qualityThreshold * 0.9) {
-        suggestions.push({
-          type: 'adjust_threshold',
-          reason: `Current score ${(currentScore * 100).toFixed(1)}% is close to threshold`,
-          action: 'Consider lowering threshold or continuing for minor improvements',
-          confidence: 0.5,
-        });
-      }
+    const currentScore = scores[scores.length - 1];
+    if (currentScore !== undefined && currentScore >= context.qualityThreshold * 0.9) {
+      suggestions.push({
+        type: 'adjust_threshold',
+        reason: `Current score ${(currentScore * 100).toFixed(1)}% is close to threshold`,
+        action: 'Consider lowering threshold or continuing for minor improvements',
+        confidence: 0.5,
+      });
     }
 
     // Suggest continuing if diversity is good
@@ -234,10 +232,11 @@ export class TerminationManager {
     if (scores.length >= 3) {
       const recentScores = scores.slice(-3);
       const scoreRange = Math.max(...recentScores) - Math.min(...recentScores);
-      if (scoreRange < 0.05 && scores[scores.length - 1] < context.qualityThreshold) {
+      const lastScore = scores[scores.length - 1];
+      if (lastScore !== undefined && scoreRange < 0.05 && lastScore < context.qualityThreshold) {
         suggestions.push({
           type: 'change_strategy',
-          reason: `Scores stagnating around ${(scores[scores.length - 1] * 100).toFixed(1)}%`,
+          reason: `Scores stagnating around ${(lastScore * 100).toFixed(1)}%`,
           action: 'Try different generation strategies or increase exploration',
           confidence: 0.65,
         });

@@ -30,6 +30,9 @@ import {
   isValidToolCall,
 } from '../../../src/ai/parser';
 
+// Type helper for normalized tool call data
+type NormalizedToolCall = { tool: string; parameters: Record<string, unknown> };
+
 // =============================================================================
 // Schema Registry Tests
 // =============================================================================
@@ -350,7 +353,7 @@ describe('SchemaValidator', () => {
       );
       expect(result.isValid).toBe(true);
       expect(result.normalizedData).not.toBeNull();
-      expect(result.normalizedData?.tool).toBe('create_rectangle');
+      expect((result.normalizedData as NormalizedToolCall).tool).toBe('create_rectangle');
     });
 
     it('fails for unknown tool', () => {
@@ -398,7 +401,7 @@ describe('SchemaValidator', () => {
       expect(result.isValid).toBe(true);
       // If defaults are injected, they should be in injectedDefaults or parameters
       expect(
-        result.normalizedData?.parameters['width'] !== undefined ||
+        (result.normalizedData as NormalizedToolCall | null)?.parameters['width'] !== undefined ||
         result.injectedDefaults['width'] !== undefined
       ).toBe(true);
     });
@@ -413,7 +416,7 @@ describe('SchemaValidator', () => {
         registry
       );
       expect(result.isValid).toBe(true);
-      expect(result.normalizedData?.tool).toBe('create_rectangle');
+      expect((result.normalizedData as NormalizedToolCall | null)?.tool).toBe('create_rectangle');
       expect(result.warnings.length).toBeGreaterThan(0);
     });
 
@@ -496,8 +499,9 @@ describe('Full Validation Pipeline', () => {
     );
 
     expect(result.isValid).toBe(true);
-    expect(result.normalizedData?.tool).toBe('create_rectangle');
-    expect(result.normalizedData?.parameters).toEqual(
+    const normalized = result.normalizedData as NormalizedToolCall | null;
+    expect(normalized?.tool).toBe('create_rectangle');
+    expect(normalized?.parameters).toEqual(
       expect.objectContaining({
         x: 100,
         y: 50,

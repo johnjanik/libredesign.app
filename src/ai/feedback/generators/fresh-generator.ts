@@ -8,6 +8,7 @@
 import type { AIMessage } from '@ai/providers/ai-provider';
 import type { DesignCandidate, GenerationStrategy } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Fresh generator configuration
@@ -56,7 +57,7 @@ export class FreshGenerator extends BaseGenerator {
         const response = await this.provider!.sendMessage(messages, {
           systemPrompt,
           temperature: temp,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({ maxTokens: this.config.maxTokens }),
         });
 
         const seed = this.parseToolCalls(response.content);
@@ -148,7 +149,7 @@ IMPORTANT:
       if (scored.verification.detailedAnalysis.strengths.length > 0) {
         // Suggest avoiding strengths to encourage different approaches
         const strength = scored.verification.detailedAnalysis.strengths[0];
-        if (strength.length < 50) {
+        if (strength && strength.length < 50) {
           patterns.push(strength);
         }
       }

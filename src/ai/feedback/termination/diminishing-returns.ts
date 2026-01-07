@@ -61,7 +61,7 @@ export class DiminishingReturnsStrategy extends BaseTerminationStrategy {
 
     // Check if improvement is below threshold
     if (effectiveImprovement < this.minImprovementRate) {
-      const currentScore = scores[scores.length - 1];
+      const currentScore = scores[scores.length - 1] ?? 0;
       const confidence = Math.min(1, (currentScore / context.qualityThreshold));
 
       // Only terminate if we have a decent score
@@ -112,9 +112,11 @@ export class DiminishingReturnsStrategy extends BaseTerminationStrategy {
 
     let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     for (let i = 0; i < n; i++) {
+      const score = recentScores[i];
+      if (score === undefined) continue;
       sumX += i;
-      sumY += recentScores[i];
-      sumXY += i * recentScores[i];
+      sumY += score;
+      sumXY += i * score;
       sumX2 += i * i;
     }
 
@@ -123,8 +125,9 @@ export class DiminishingReturnsStrategy extends BaseTerminationStrategy {
 
     // Predict score after lookahead iterations
     const predicted = intercept + slope * (n - 1 + lookahead);
+    const lastScore = scores[scores.length - 1] ?? 0;
 
-    return predicted - scores[scores.length - 1];
+    return predicted - lastScore;
   }
 }
 

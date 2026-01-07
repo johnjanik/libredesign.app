@@ -1831,19 +1831,81 @@ export class InspectorPanel {
     const fontWeight = firstStyle?.fontWeight ?? 400;
     const fontSize = firstStyle?.fontSize ?? 14;
 
+    // Text Fill Color
+    const textFills = firstStyle?.fills ?? [];
+    const solidFill = textFills.find(f => f.type === 'SOLID' && f.visible !== false) as SolidPaint | undefined;
+    if (solidFill) {
+      section.appendChild(this.createColorField(
+        solidFill.color,
+        (color) => {
+          // Update the text style fills
+          const newTextStyles = node.textStyles?.map(style => ({
+            ...style,
+            fills: style.fills?.map(fill =>
+              fill.type === 'SOLID' ? { ...fill, color } as SolidPaint : fill
+            ) ?? [{ type: 'SOLID' as const, color, visible: true, opacity: 1 }],
+          })) ?? [{
+            start: 0,
+            end: node.characters?.length ?? 0,
+            fontSize: 14,
+            fontWeight: 400,
+            fontFamily: 'Inter',
+            lineHeight: 18,
+            letterSpacing: 0,
+            textDecoration: 'NONE' as const,
+            fills: [{ type: 'SOLID' as const, color, visible: true, opacity: 1 }],
+          }];
+          this.updateNode(nodeId, { textStyles: newTextStyles });
+        }
+      ));
+    } else {
+      // No fill yet, add a button to add one
+      section.appendChild(this.createButton('+ Add Text Color', () => {
+        const lastColor = this.runtime.getLastUsedFillColor();
+        const newTextStyles = node.textStyles?.map(style => ({
+          ...style,
+          fills: [{ type: 'SOLID' as const, color: lastColor, visible: true, opacity: 1 }],
+        })) ?? [{
+          start: 0,
+          end: node.characters?.length ?? 0,
+          fontSize: 14,
+          fontWeight: 400,
+          fontFamily: 'Inter',
+          lineHeight: 18,
+          letterSpacing: 0,
+          textDecoration: 'NONE' as const,
+          fills: [{ type: 'SOLID' as const, color: lastColor, visible: true, opacity: 1 }],
+        }];
+        this.updateNode(nodeId, { textStyles: newTextStyles });
+      }));
+    }
+
     // Font Family
-    section.appendChild(this.createLabeledDropdown('Font', fontFamily, ['Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Courier New'], (_v) => {
-      // Text style updates require updating the textStyles array
+    section.appendChild(this.createLabeledDropdown('Font', fontFamily, ['Inter', 'Arial', 'Helvetica', 'Georgia', 'Times New Roman', 'Courier New'], (v) => {
+      const newTextStyles = node.textStyles?.map(style => ({
+        ...style,
+        fontFamily: v,
+      }));
+      this.updateNode(nodeId, { textStyles: newTextStyles });
     }));
 
     // Font Weight
-    section.appendChild(this.createLabeledDropdown('Weight', String(fontWeight), ['100', '200', '300', '400', '500', '600', '700', '800', '900'], (_v) => {
-      // Text style updates require updating the textStyles array
+    section.appendChild(this.createLabeledDropdown('Weight', String(fontWeight), ['100', '200', '300', '400', '500', '600', '700', '800', '900'], (v) => {
+      const newTextStyles = node.textStyles?.map(style => ({
+        ...style,
+        fontWeight: parseInt(v, 10),
+      }));
+      this.updateNode(nodeId, { textStyles: newTextStyles });
     }));
 
     // Font Size
-    section.appendChild(this.createLabeledNumberField('Size', fontSize, 'px', (_v) => {
-      // Text style updates require updating the textStyles array
+    section.appendChild(this.createLabeledNumberField('Size', fontSize, 'px', (v) => {
+      const newTextStyles = node.textStyles?.map(style => ({
+        ...style,
+        fontSize: v,
+        lineHeight: v * 1.2,
+      }));
+      this.updateNode(nodeId, { textStyles: newTextStyles });
     }));
 
     // Text Align

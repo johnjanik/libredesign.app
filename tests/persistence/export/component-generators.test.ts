@@ -59,7 +59,8 @@ describe('Component Generators - Visual Verification', () => {
         fontWeight: 700,
         fontFamily: 'Inter',
         lineHeight: 36,
-        letterSpacing: { value: -0.5, unit: 'PIXELS' },
+        letterSpacing: -0.5,
+        textDecoration: 'NONE',
         fills: [{ type: 'SOLID', color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, visible: true, opacity: 1 }],
       }],
     });
@@ -75,6 +76,8 @@ describe('Component Generators - Visual Verification', () => {
         fontWeight: 800,
         fontFamily: 'Inter',
         lineHeight: 56,
+        letterSpacing: 0,
+        textDecoration: 'NONE',
         fills: [{ type: 'SOLID', color: { r: 0.2, g: 0.4, b: 0.9, a: 1 }, visible: true, opacity: 1 }],
       }],
     });
@@ -90,6 +93,8 @@ describe('Component Generators - Visual Verification', () => {
         fontWeight: 400,
         fontFamily: 'Inter',
         lineHeight: 24,
+        letterSpacing: 0,
+        textDecoration: 'NONE',
         fills: [{ type: 'SOLID', color: { r: 0.4, g: 0.4, b: 0.4, a: 1 }, visible: true, opacity: 1 }],
       }],
     });
@@ -125,6 +130,8 @@ describe('Component Generators - Visual Verification', () => {
         fontWeight: 600,
         fontFamily: 'Inter',
         lineHeight: 24,
+        letterSpacing: 0,
+        textDecoration: 'NONE',
         fills: [{ type: 'SOLID', color: { r: 1, g: 1, b: 1, a: 1 }, visible: true, opacity: 1 }],
       }],
     });

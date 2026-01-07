@@ -581,7 +581,7 @@ export class SettingsModal {
       type: 'slider',
       value: this.getSetting('text-scale', 1),
       min: 0.5,
-      max: 2.5,
+      max: 2.0,
       step: 0.1,
       format: (v: number) => `${Math.round(v * 100)}%`,
       onChange: (v) => {

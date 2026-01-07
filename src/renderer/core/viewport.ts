@@ -225,6 +225,13 @@ export class Viewport extends EventEmitter<ViewportEvents> {
     this.centerOn(x + width / 2, y + height / 2);
   }
 
+  /**
+   * Zoom to fit a rectangle in view (alias for fitRect).
+   */
+  zoomToFit(x: number, y: number, width: number, height: number, padding: number = 20): void {
+    this.fitRect(x, y, width, height, padding);
+  }
+
   // =========================================================================
   // Matrices
   // =========================================================================

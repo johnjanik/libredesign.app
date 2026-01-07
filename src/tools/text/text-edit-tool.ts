@@ -369,9 +369,59 @@ export class TextEditTool extends BaseTool {
     if (!node) return;
 
     const viewport = context.viewport;
-    void viewport; // Used for zoom-adjusted rendering
 
     ctx.save();
+
+    // Get text node bounds
+    const nodeWithPos = node as { x?: number; y?: number; width?: number; height?: number };
+    const nodeX = nodeWithPos.x ?? 0;
+    const nodeY = nodeWithPos.y ?? 0;
+    const nodeWidth = nodeWithPos.width ?? 100;
+    const nodeHeight = nodeWithPos.height ?? 20;
+
+    // Draw bounding box outline
+    const lineWidth = 1 / viewport.getZoom();
+    ctx.strokeStyle = this.options.cursorColor;
+    ctx.lineWidth = lineWidth;
+    ctx.setLineDash([4 / viewport.getZoom(), 4 / viewport.getZoom()]);
+    ctx.strokeRect(nodeX, nodeY, nodeWidth, nodeHeight);
+    ctx.setLineDash([]);
+
+    // Render text content (since WebGL renderer doesn't render text yet)
+    if (this.currentText.length > 0) {
+      // Get text node properties for styling
+      const textNode = node as unknown as {
+        fills?: Array<{ type: string; color?: { r: number; g: number; b: number; a: number }; visible?: boolean }>;
+        textStyles?: Array<{ fontSize?: number; fontFamily?: string; fontWeight?: number }>;
+      };
+
+      // Get font size from text styles or use default
+      const fontSize = textNode.textStyles?.[0]?.fontSize ?? 16;
+      const fontFamily = textNode.textStyles?.[0]?.fontFamily ?? 'Inter, sans-serif';
+      const fontWeight = textNode.textStyles?.[0]?.fontWeight ?? 400;
+
+      // Get fill color
+      let fillColor = 'black';
+      const fill = textNode.fills?.find(f => f.visible !== false && f.type === 'SOLID');
+      if (fill?.color) {
+        const c = fill.color;
+        fillColor = `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${c.a})`;
+      }
+
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = fillColor;
+      ctx.textBaseline = 'top';
+
+      // Render text lines
+      const lines = this.currentText.split('\n');
+      let y = nodeY;
+      const lineHeight = fontSize * 1.2;
+
+      for (const line of lines) {
+        ctx.fillText(line, nodeX, y);
+        y += lineHeight;
+      }
+    }
 
     // Canvas container already applies viewport transform, so we render in world coords
     // Draw selection
@@ -413,47 +463,68 @@ export class TextEditTool extends BaseTool {
     }
 
     // Draw cursor
-    if (this.cursorVisible && this.layoutQuery && !selection) {
+    if (this.cursorVisible && !selection) {
       const cursorPos = this.textCursor.position;
       let cursorX: number;
       let cursorY: number;
       let cursorHeight: number;
 
-      if (this.currentText.length === 0) {
-        // Empty text - use first line info
-        const lineInfo = this.layoutQuery.getLineInfo(0);
-        if (lineInfo) {
-          cursorX = 0; // TODO: get from text node bounds
-          cursorY = lineInfo.y;
-          cursorHeight = lineInfo.height;
+      // Get text node position for cursor placement
+      const nodeWithPos = node as { x?: number; y?: number; width?: number; height?: number };
+      const nodeX = nodeWithPos.x ?? 0;
+      const nodeY = nodeWithPos.y ?? 0;
+      const defaultFontSize = 16; // Default font size for cursor height
+
+      if (this.layoutQuery) {
+        // Use layout query for precise cursor positioning
+        if (this.currentText.length === 0) {
+          // Empty text - use first line info
+          const lineInfo = this.layoutQuery.getLineInfo(0);
+          if (lineInfo) {
+            cursorX = nodeX;
+            cursorY = lineInfo.y;
+            cursorHeight = lineInfo.height;
+          } else {
+            cursorX = nodeX;
+            cursorY = nodeY;
+            cursorHeight = defaultFontSize;
+          }
+        } else if (cursorPos >= this.currentText.length) {
+          // Cursor at end
+          const lastPos = this.layoutQuery.getCharacterPosition(this.currentText.length - 1);
+          if (lastPos) {
+            cursorX = lastPos.x + lastPos.width;
+            cursorY = lastPos.y;
+            cursorHeight = lastPos.height;
+          } else {
+            cursorX = nodeX;
+            cursorY = nodeY;
+            cursorHeight = defaultFontSize;
+          }
         } else {
-          cursorX = 0;
-          cursorY = 0;
-          cursorHeight = 16;
-        }
-      } else if (cursorPos >= this.currentText.length) {
-        // Cursor at end
-        const lastPos = this.layoutQuery.getCharacterPosition(this.currentText.length - 1);
-        if (lastPos) {
-          cursorX = lastPos.x + lastPos.width;
-          cursorY = lastPos.y;
-          cursorHeight = lastPos.height;
-        } else {
-          cursorX = 0;
-          cursorY = 0;
-          cursorHeight = 16;
+          // Cursor before a character
+          const charPos = this.layoutQuery.getCharacterPosition(cursorPos);
+          if (charPos) {
+            cursorX = charPos.x;
+            cursorY = charPos.y;
+            cursorHeight = charPos.height;
+          } else {
+            cursorX = nodeX;
+            cursorY = nodeY;
+            cursorHeight = defaultFontSize;
+          }
         }
       } else {
-        // Cursor before a character
-        const charPos = this.layoutQuery.getCharacterPosition(cursorPos);
-        if (charPos) {
-          cursorX = charPos.x;
-          cursorY = charPos.y;
-          cursorHeight = charPos.height;
-        } else {
-          cursorX = 0;
-          cursorY = 0;
-          cursorHeight = 16;
+        // No layout query - use simplified cursor placement based on node position
+        // For empty text or start position, cursor at node origin
+        // For non-empty text, estimate position based on character count
+        cursorX = nodeX;
+        cursorY = nodeY;
+        cursorHeight = defaultFontSize;
+
+        // Simple estimation: assume ~8px per character for cursor position
+        if (this.currentText.length > 0 && cursorPos > 0) {
+          cursorX += Math.min(cursorPos, this.currentText.length) * 8;
         }
       }
 

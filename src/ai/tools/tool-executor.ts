@@ -592,7 +592,7 @@ export class ToolExecutor {
         }
         const duplicateId = await this.bridge.duplicateLayer(layerId);
         // Apply offset if specified
-        const offset = args.offset as { x?: number; y?: number } | undefined;
+        const offset = args['offset'] as { x?: number; y?: number } | undefined;
         if (offset && (offset.x || offset.y)) {
           await this.bridge.moveBy(duplicateId, offset.x ?? 0, offset.y ?? 0);
         }
@@ -1653,7 +1653,7 @@ export class ToolExecutor {
         const newColor = args['newColor'] as ColorValue;
         if (!newColor) throw new Error('New color is required');
         const scope = getStringArg(args, 'scope') as 'selection' | 'page' | 'document' | undefined;
-        const replacedCount = await this.bridge.replaceColor(oldColor, newColor, { scope });
+        const replacedCount = await this.bridge.replaceColor(oldColor, newColor, scope ? { scope } : {});
         return { success: true, replacedCount };
       }
 
@@ -1882,7 +1882,7 @@ export class ToolExecutor {
         const scale = getNumberArg(args, 'scale');
         for (const layerId of layerIds) {
           if (scale) {
-            await this.bridge.scaleLayers([layerId], scale, scale);
+            await this.bridge.scaleLayers([layerId], scale);
           } else if (width !== undefined || height !== undefined) {
             await this.bridge.resizeLayer(layerId, width, height);
           }

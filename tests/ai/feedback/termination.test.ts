@@ -33,7 +33,7 @@ function createMockIteration(options: {
     totalTimeMs = 5000,
   } = options;
 
-  const candidates: ScoredCandidate[] = candidateScores.map((score, idx) => ({
+  const candidates: ScoredCandidate[] = candidateScores.map((score) => ({
     candidate: {
       id: generateId(),
       seed: '{}',

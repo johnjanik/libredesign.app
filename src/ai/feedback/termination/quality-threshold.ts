@@ -50,15 +50,25 @@ export class QualityThresholdStrategy extends BaseTerminationStrategy {
     );
 
     if (allMeetThreshold) {
-      const currentBest = context.iterations[context.iterations.length - 1].bestCandidate;
+      const lastIteration = context.iterations[context.iterations.length - 1];
+      if (!lastIteration) {
+        return {
+          strategyName: this.name,
+          terminate: false,
+          confidence: 0,
+          reason: 'No iterations available',
+        };
+      }
+      const currentBest = lastIteration.bestCandidate;
       const confidence = currentBest.qualityScore.confidence;
 
       if (confidence >= this.minConfidence) {
+        const lastRecentScore = recentScores[recentScores.length - 1] ?? 0;
         return {
           strategyName: this.name,
           terminate: true,
           confidence: confidence,
-          reason: `Quality threshold ${(context.qualityThreshold * 100).toFixed(0)}% met with score ${(recentScores[recentScores.length - 1] * 100).toFixed(1)}%`,
+          reason: `Quality threshold ${(context.qualityThreshold * 100).toFixed(0)}% met with score ${(lastRecentScore * 100).toFixed(1)}%`,
         };
       } else {
         return {
@@ -70,7 +80,7 @@ export class QualityThresholdStrategy extends BaseTerminationStrategy {
       }
     }
 
-    const currentScore = scores[scores.length - 1];
+    const currentScore = scores[scores.length - 1] ?? 0;
     const gap = context.qualityThreshold - currentScore;
 
     return {

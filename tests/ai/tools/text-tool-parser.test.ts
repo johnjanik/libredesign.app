@@ -26,8 +26,8 @@ Done!`;
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('create_rectangle');
-      expect(calls[0].arguments).toEqual({
+      expect(calls[0]!.name).toBe('create_rectangle');
+      expect(calls[0]!.arguments).toEqual({
         x: 100,
         y: 100,
         width: 200,
@@ -56,9 +56,9 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(2);
-      expect(calls[0].name).toBe('create_rectangle');
-      expect(calls[1].name).toBe('create_text');
-      expect(calls[1].arguments).toHaveProperty('text', 'Submit');
+      expect(calls[0]!.name).toBe('create_rectangle');
+      expect(calls[1]!.name).toBe('create_text');
+      expect(calls[1]!.arguments).toHaveProperty('text', 'Submit');
     });
 
     it('parses code block without json language specifier', () => {
@@ -68,7 +68,7 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('select_all');
+      expect(calls[0]!.name).toBe('select_all');
     });
   });
 
@@ -83,8 +83,8 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('create_ellipse');
-      expect(calls[0].arguments).toEqual({
+      expect(calls[0]!.name).toBe('create_ellipse');
+      expect(calls[0]!.arguments).toEqual({
         x: 50, y: 50, width: 100, height: 100
       });
     });
@@ -99,8 +99,8 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('set_fill_color');
-      expect(calls[0].arguments).toEqual({ r: 255, g: 0, b: 0 });
+      expect(calls[0]!.name).toBe('set_fill_color');
+      expect(calls[0]!.arguments).toEqual({ r: 255, g: 0, b: 0 });
     });
 
     it('parses flat format with parameters at root', () => {
@@ -114,8 +114,8 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('set_position');
-      expect(calls[0].arguments).toEqual({ x: 200, y: 300 });
+      expect(calls[0]!.name).toBe('set_position');
+      expect(calls[0]!.arguments).toEqual({ x: 200, y: 300 });
     });
   });
 
@@ -125,7 +125,7 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('zoom_to_fit');
+      expect(calls[0]!.name).toBe('zoom_to_fit');
     });
 
     it('prefers code blocks over inline JSON', () => {
@@ -137,7 +137,7 @@ Adding text...
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].name).toBe('preferred');
+      expect(calls[0]!.name).toBe('preferred');
     });
   });
 
@@ -193,7 +193,7 @@ Let me repeat:
 
       const calls = parseTextToolCalls(text);
       expect(calls).toHaveLength(1);
-      expect(calls[0].arguments).toEqual({
+      expect(calls[0]!.arguments).toEqual({
         color: { r: 0.2, g: 0.6, b: 1, a: 1 }
       });
     });

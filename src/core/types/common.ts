@@ -27,6 +27,12 @@ export const NodeType = {
   INSTANCE: 'INSTANCE',
   BOOLEAN_OPERATION: 'BOOLEAN_OPERATION',
   SLICE: 'SLICE',
+  // Primitive shapes
+  RECTANGLE: 'RECTANGLE',
+  ELLIPSE: 'ELLIPSE',
+  LINE: 'LINE',
+  POLYGON: 'POLYGON',
+  STAR: 'STAR',
 } as const;
 
 export type NodeType = (typeof NodeType)[keyof typeof NodeType];

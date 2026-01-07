@@ -17,7 +17,6 @@ import type {
   DesignCandidate,
   VerificationConfig,
   QualityScore,
-  FeedbackLoopOptions,
 } from '@ai/feedback/types';
 
 describe('Level 1: Types and Utilities', () => {

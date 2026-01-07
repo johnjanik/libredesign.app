@@ -793,6 +793,23 @@ export class DesignLibreBridge implements RuntimeBridge {
     sceneGraph.updateNode(layerId as NodeId, { width, height });
   }
 
+  async resizeLayer(layerId: string, width?: number, height?: number): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const node = sceneGraph.getNode(layerId as NodeId);
+    if (!node) return;
+    const updates: Record<string, number> = {};
+    if (width !== undefined) updates['width'] = width;
+    if (height !== undefined) updates['height'] = height;
+    if (Object.keys(updates).length > 0) {
+      sceneGraph.updateNode(layerId as NodeId, updates);
+    }
+  }
+
+  async setLayerProperty(layerId: string, property: string, value: unknown): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    sceneGraph.updateNode(layerId as NodeId, { [property]: value });
+  }
+
   async setRotation(layerId: string, degrees: number): Promise<void> {
     const sceneGraph = this.runtime.getSceneGraph();
     sceneGraph.updateNode(layerId as NodeId, { rotation: degrees });
@@ -1756,7 +1773,7 @@ export class DesignLibreBridge implements RuntimeBridge {
         sceneGraph.updateNode(layerId as NodeId, { textStyles: updatedStyles } as Partial<unknown>);
       } else if (style.type === 'EFFECT') {
         const effectStyle = style as { effects: readonly unknown[] };
-        sceneGraph.updateNode(layerId as NodeId, { effects: [...effectStyle.effects] });
+        sceneGraph.updateNode(layerId as NodeId, { effects: [...effectStyle.effects] } as Partial<unknown>);
       }
 
       // Store the style reference on the node
@@ -1949,12 +1966,12 @@ export class DesignLibreBridge implements RuntimeBridge {
 
     // Store style properties in clipboard
     this.styleClipboard = {
-      fills: nodeData['fills'] ? JSON.parse(JSON.stringify(nodeData['fills'])) : undefined,
-      strokes: nodeData['strokes'] ? JSON.parse(JSON.stringify(nodeData['strokes'])) : undefined,
-      strokeWeight: nodeData['strokeWeight'] as number | undefined,
-      effects: nodeData['effects'] ? JSON.parse(JSON.stringify(nodeData['effects'])) : undefined,
-      opacity: nodeData['opacity'] as number | undefined,
-      cornerRadius: nodeData['cornerRadius'] as number | undefined,
+      ...(nodeData['fills'] ? { fills: JSON.parse(JSON.stringify(nodeData['fills'])) } : {}),
+      ...(nodeData['strokes'] ? { strokes: JSON.parse(JSON.stringify(nodeData['strokes'])) } : {}),
+      ...(typeof nodeData['strokeWeight'] === 'number' ? { strokeWeight: nodeData['strokeWeight'] } : {}),
+      ...(nodeData['effects'] ? { effects: JSON.parse(JSON.stringify(nodeData['effects'])) } : {}),
+      ...(typeof nodeData['opacity'] === 'number' ? { opacity: nodeData['opacity'] } : {}),
+      ...(typeof nodeData['cornerRadius'] === 'number' ? { cornerRadius: nodeData['cornerRadius'] } : {}),
     };
   }
 
@@ -2102,19 +2119,27 @@ export class DesignLibreBridge implements RuntimeBridge {
 
     // Get interactions for this node and update their transitions
     const interactions = interactionManager.getInteractionsForNode(layerId as NodeId);
+    // Action types that have transitions
+    const actionsWithTransition = new Set(['NAVIGATE', 'OPEN_OVERLAY', 'SWAP_OVERLAY', 'CLOSE_OVERLAY', 'BACK']);
     for (const interaction of interactions) {
-      // Update each action's transition
-      const updatedActions = interaction.actions.map(action => ({
-        ...action,
-        transition: {
-          ...action.transition,
-          type: transitionTypeMap[transitionType] ?? 'DISSOLVE',
-          duration: duration ?? action.transition.duration ?? 300,
-          easing: easing ? (easingTypeMap[easing] ?? 'EASE_OUT') : action.transition.easing,
-        },
-      }));
+      // Update each action's transition (only for actions that support transitions)
+      const updatedActions = interaction.actions.map(action => {
+        if (!actionsWithTransition.has(action.type)) {
+          return action;
+        }
+        const actionWithTransition = action as { transition: { type: string; duration: number; easing: string } };
+        return {
+          ...action,
+          transition: {
+            ...actionWithTransition.transition,
+            type: transitionTypeMap[transitionType] ?? 'DISSOLVE',
+            duration: duration ?? actionWithTransition.transition.duration ?? 300,
+            easing: easing ? (easingTypeMap[easing] ?? 'EASE_OUT') : actionWithTransition.transition.easing,
+          },
+        };
+      });
 
-      interactionManager.updateInteraction(interaction.id, { actions: updatedActions });
+      interactionManager.updateInteraction(interaction.id, { actions: updatedActions as import('@core/types/page-schema').InteractionAction[] });
     }
   }
 
@@ -2393,7 +2418,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       type: def.type,
       value: variableManager.getValue(def.id) ?? def.defaultValue,
       defaultValue: def.defaultValue,
-      group: def.group,
+      ...(def.group ? { group: def.group } : {}),
     }));
   }
 
@@ -2438,7 +2463,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       height,
       x: 0,
       y: 0,
-    });
+    } as Partial<unknown>);
 
     // Store the generation prompt as metadata for future processing
     sceneGraph.updateNode(imageId, {
@@ -2676,7 +2701,9 @@ export class DesignLibreBridge implements RuntimeBridge {
       // Stub implementation - infer name from node type and properties
       const nodeData = node as unknown as Record<string, unknown>;
 
-      switch (node.type) {
+      // Cast type to string for comparison since primitive shapes may not be in NodeData
+      const nodeType = node.type as string;
+      switch (nodeType) {
         case 'TEXT':
           // Name text layers by their content
           const text = (nodeData['characters'] as string) ?? '';
@@ -2709,7 +2736,7 @@ export class DesignLibreBridge implements RuntimeBridge {
           newName = 'Circle';
           break;
         default:
-          newName = node.type.charAt(0) + node.type.slice(1).toLowerCase();
+          newName = nodeType.charAt(0) + nodeType.slice(1).toLowerCase();
       }
 
       if (newName !== oldName) {
@@ -2918,7 +2945,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       y: minY,
       width: maxX - minX,
       height: maxY - minY,
-    });
+    } as Partial<unknown>);
 
     // Mark it as flattened with source layers (for potential undo)
     sceneGraph.updateNode(flattenedId, {
@@ -2996,7 +3023,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       y,
       width: radius * 2,
       height: radius * 2,
-    });
+    } as Partial<unknown>);
 
     // Build the vector path
     const pathData: PathCommand[] = points.map((p, i) => ({
@@ -3052,7 +3079,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       y,
       width: outerRadius * 2,
       height: outerRadius * 2,
-    });
+    } as Partial<unknown>);
 
     const pathData: PathCommand[] = vertices.map((v, i) => ({
       type: i === 0 ? 'M' : 'L',
@@ -3111,7 +3138,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       y: Math.min(startY, endY) - headSize,
       width: Math.abs(dx) + headSize * 2,
       height: Math.abs(dy) + headSize * 2,
-    });
+    } as Partial<unknown>);
 
     // Create arrow line as vector
     const lineId = sceneGraph.createNode('LINE', arrowId, -1, {
@@ -3412,7 +3439,6 @@ export class DesignLibreBridge implements RuntimeBridge {
     return {
       name: doc?.name ?? 'Untitled',
       lastModified: new Date(),
-      path: undefined,
     };
   }
 
@@ -3464,11 +3490,10 @@ export class DesignLibreBridge implements RuntimeBridge {
       id: commentId,
       layerId,
       text,
-      author: undefined,
       timestamp: new Date(),
       resolved: false,
-      x,
-      y,
+      ...(x !== undefined ? { x } : {}),
+      ...(y !== undefined ? { y } : {}),
       replies: [],
     });
     return commentId;
@@ -3482,7 +3507,6 @@ export class DesignLibreBridge implements RuntimeBridge {
     comment.replies.push({
       id: replyId,
       text,
-      author: undefined,
       timestamp: new Date(),
     });
     return replyId;
@@ -3522,9 +3546,10 @@ export class DesignLibreBridge implements RuntimeBridge {
       if (!node) continue;
 
       const nodeData = node as unknown as Record<string, unknown>;
+      const nodeType = node.type as string;
 
       // Check for missing alt text on images
-      if (node.type === 'IMAGE' || node.type === 'RECTANGLE') {
+      if (nodeType === 'IMAGE' || nodeType === 'RECTANGLE') {
         const fills = (nodeData['fills'] as Array<{ type: string }>) ?? [];
         const hasImageFill = fills.some(f => f.type === 'IMAGE');
         if (hasImageFill && !nodeData['altText']) {
@@ -3538,7 +3563,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       }
 
       // Check for small text
-      if (node.type === 'TEXT') {
+      if (nodeType === 'TEXT') {
         const textStyles = (nodeData['textStyles'] as Array<{ fontSize?: number }>) ?? [];
         const fontSize = textStyles[0]?.fontSize ?? 12;
         if (fontSize < 12) {
@@ -3554,7 +3579,7 @@ export class DesignLibreBridge implements RuntimeBridge {
       // Check for small touch targets
       const width = (nodeData['width'] as number) ?? 0;
       const height = (nodeData['height'] as number) ?? 0;
-      if ((node.type === 'RECTANGLE' || node.type === 'FRAME') && width < 44 && height < 44) {
+      if ((nodeType === 'RECTANGLE' || nodeType === 'FRAME') && width < 44 && height < 44) {
         issues.push({
           layerId,
           issue: 'Touch target may be too small',

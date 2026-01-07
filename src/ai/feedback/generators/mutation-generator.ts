@@ -7,6 +7,7 @@
 import type { AIMessage } from '@ai/providers/ai-provider';
 import type { DesignCandidate, GenerationStrategy, ScoredCandidate } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Mutation types
@@ -79,7 +80,7 @@ export class MutationGenerator extends BaseGenerator {
         const response = await this.provider!.sendMessage(messages, {
           systemPrompt,
           temperature: mutationTemp,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({ maxTokens: this.config.maxTokens }),
         });
 
         const seed = this.parseToolCalls(response.content);
@@ -124,10 +125,11 @@ export class MutationGenerator extends BaseGenerator {
       const candidateIdx = i % sorted.length;
       const mutationIdx = i % this.mutationTypes.length;
 
-      selections.push({
-        candidate: sorted[candidateIdx],
-        mutation: this.mutationTypes[mutationIdx],
-      });
+      const candidate = sorted[candidateIdx];
+      const mutation = this.mutationTypes[mutationIdx];
+      if (candidate && mutation) {
+        selections.push({ candidate, mutation });
+      }
     }
 
     return selections;

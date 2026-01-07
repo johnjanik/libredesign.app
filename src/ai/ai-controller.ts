@@ -488,7 +488,8 @@ export class AIController extends EventEmitter<AIControllerEvents> {
       );
 
       // Use validated/normalized args if available, otherwise fall back to original
-      const validatedArgs = validationResult.normalizedData?.arguments ?? toolCall.arguments;
+      const normalizedData = validationResult.normalizedData as { tool?: string; arguments?: Record<string, unknown> } | null;
+      const validatedArgs = normalizedData?.arguments ?? toolCall.arguments;
 
       // Log validation warnings
       if (validationResult.warnings.length > 0) {
@@ -502,7 +503,7 @@ export class AIController extends EventEmitter<AIControllerEvents> {
 
       // Convert AIToolCall to ToolCall format with validated args
       const call: ToolCall = {
-        tool: validationResult.normalizedData?.tool ?? toolCall.name,
+        tool: normalizedData?.tool ?? toolCall.name,
         args: validatedArgs,
       };
 

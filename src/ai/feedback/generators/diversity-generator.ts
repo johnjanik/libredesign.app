@@ -6,8 +6,9 @@
  */
 
 import type { AIMessage } from '@ai/providers/ai-provider';
-import type { DesignCandidate, GenerationStrategy, ScoredCandidate } from '../types';
+import type { DesignCandidate, GenerationStrategy } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Diversity dimensions to vary
@@ -77,7 +78,7 @@ export class DiversityGenerator extends BaseGenerator {
         const response = await this.provider!.sendMessage(messages, {
           systemPrompt,
           temperature: diverseTemp,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({ maxTokens: this.config.maxTokens }),
         });
 
         const seed = this.parseToolCalls(response.content);
@@ -155,7 +156,8 @@ export class DiversityGenerator extends BaseGenerator {
       const dims: DiversityDimension[] = [];
       for (let j = 0; j < numDims; j++) {
         const idx = (startIdx + j) % this.dimensions.length;
-        dims.push(this.dimensions[idx]);
+        const dim = this.dimensions[idx];
+        if (dim) dims.push(dim);
       }
 
       assignments.push(dims);

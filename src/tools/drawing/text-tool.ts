@@ -45,7 +45,7 @@ export class TextTool extends BaseTool {
   private options: Required<TextToolOptions>;
   private startPoint: Point | null = null;
   private currentPoint: Point | null = null;
-  private isDragging = false;
+  protected override isDragging = false;
 
   // Callbacks
   private onTextComplete?: (position: Point, width?: number) => NodeId | null;

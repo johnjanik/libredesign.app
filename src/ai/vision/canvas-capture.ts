@@ -287,6 +287,9 @@ export class CanvasCapture {
 
     // Create a high-quality source canvas at the largest resolution needed
     const largestPreset = sortedPresets[0];
+    if (!largestPreset) {
+      throw new Error('At least one resolution preset is required');
+    }
     const sourceScale = Math.min(
       largestPreset.maxDimension / canvas.width,
       largestPreset.maxDimension / canvas.height,
@@ -375,18 +378,19 @@ export class CanvasCapture {
       throw new Error('SceneGraph or Viewport not available');
     }
 
-    // Find the frame
-    const frame = sceneGraph.getNodeById?.(frameId);
+    // Find the frame - cast to NodeId for branded type compatibility
+    const frame = sceneGraph.getNodeById?.(frameId as unknown as import('@core/types/common').NodeId);
     if (!frame) {
       throw new Error(`Frame not found: ${frameId}`);
     }
 
-    // Get frame bounds
-    const bounds = frame.getBounds?.() ?? {
-      x: frame.x ?? 0,
-      y: frame.y ?? 0,
-      width: frame.width ?? 100,
-      height: frame.height ?? 100,
+    // Get frame bounds - access properties safely via unknown cast
+    const frameAny = frame as unknown as { getBounds?: () => { x: number; y: number; width: number; height: number }; x?: number; y?: number; width?: number; height?: number };
+    const bounds = frameAny.getBounds?.() ?? {
+      x: frameAny.x ?? 0,
+      y: frameAny.y ?? 0,
+      width: frameAny.width ?? 100,
+      height: frameAny.height ?? 100,
     };
 
     // Save current viewport state
@@ -489,11 +493,11 @@ export class CanvasCapture {
     const frames = sceneGraph.getNodesByType?.('FRAME') ?? [];
 
     for (const frame of frames) {
-      const frameId = frame.id ?? frame.getId?.();
+      const frameId = frame.id;
       if (frameId) {
         try {
-          const capture = await this.captureFrame(frameId, options);
-          results.set(frameId, capture);
+          const capture = await this.captureFrame(frameId as string, options);
+          results.set(frameId as string, capture);
         } catch (error) {
           console.warn(`Failed to capture frame ${frameId}:`, error);
         }

@@ -11,7 +11,6 @@ import type { NodeId } from '@core/types/common';
 import {
   extractTokens,
   exportTokens,
-  type ExtractedTokens,
 } from '@persistence/export/token-extractor';
 
 describe('Token Extractor', () => {
@@ -212,8 +211,6 @@ describe('Token Extractor', () => {
   });
 
   describe('Output formats', () => {
-    let tokens: ExtractedTokens;
-
     beforeEach(() => {
       // Create a design with various tokens
       graph.createFrame(pageId, {
@@ -257,8 +254,6 @@ describe('Token Extractor', () => {
           fills: [{ type: 'SOLID', color: { r: 0.1, g: 0.1, b: 0.1, a: 1 }, visible: true, opacity: 1 }],
         }],
       });
-
-      tokens = extractTokens(graph);
     });
 
     it('exports to CSS custom properties', () => {

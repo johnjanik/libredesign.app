@@ -70,6 +70,20 @@ export class SelectionManager extends EventEmitter<SelectionManagerEvents> {
   }
 
   /**
+   * Get selected node IDs (alias for getSelectedNodeIds).
+   */
+  getSelected(): NodeId[] {
+    return this.getSelectedNodeIds();
+  }
+
+  /**
+   * Set selection to the given node IDs (alias for select with 'replace' mode).
+   */
+  setSelected(nodeIds: NodeId[]): void {
+    this.select(nodeIds, 'replace');
+  }
+
+  /**
    * Check if a node is selected.
    */
   isSelected(nodeId: NodeId): boolean {

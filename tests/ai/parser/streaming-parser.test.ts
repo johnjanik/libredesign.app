@@ -113,7 +113,6 @@ describe('IncrementalJSONParser', () => {
 
     it('closes open strings', () => {
       parser.feed('{"tool": "test');
-      const result = parser.attemptCompletion();
       // May or may not succeed depending on JSON structure
       // but should not throw
       expect(() => parser.attemptCompletion()).not.toThrow();

@@ -11,6 +11,7 @@ import {
   type VerifierConfig,
   type VerificationRequest,
 } from './base-verifier';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Vision-capable models in Ollama
@@ -42,7 +43,7 @@ export interface OllamaVerifierConfig extends VerifierConfig {
 export class OllamaVerifier extends BaseVerifier {
   readonly name: VerificationModelName = 'ollama';
   private provider: AIProvider | null = null;
-  private model: string;
+  private readonly model: string;
 
   constructor(config: OllamaVerifierConfig = {}) {
     super(config);
@@ -113,9 +114,11 @@ export class OllamaVerifier extends BaseVerifier {
 
     try {
       const response = await this.provider.sendMessage(messages, {
-        maxTokens: this.config.maxTokens,
-        temperature: this.config.temperature,
         systemPrompt: 'You are a precise design verification assistant. Always respond with valid JSON.',
+        ...definedProps({
+          maxTokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+        }),
       });
 
       const duration = performance.now() - startTime;
@@ -140,6 +143,13 @@ export class OllamaVerifier extends BaseVerifier {
         rawResponse: String(error),
       };
     }
+  }
+
+  /**
+   * Get the model name
+   */
+  getModel(): string {
+    return this.model;
   }
 
   /**

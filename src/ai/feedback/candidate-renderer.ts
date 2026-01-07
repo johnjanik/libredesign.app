@@ -6,7 +6,7 @@
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
-import type { CanvasCapture, CaptureResult } from '@ai/vision/canvas-capture';
+import type { CanvasCapture } from '@ai/vision/canvas-capture';
 import type { ToolExecutor, ToolCall, ToolResult } from '@ai/tools/tool-executor';
 import type {
   DesignCandidate,
@@ -50,10 +50,19 @@ interface ParsedSeed {
 }
 
 /**
+ * Serialized scene data from serializeAll()
+ */
+interface SerializedScene {
+  version: string;
+  nodes: unknown[];
+  parentMap: Record<string, string | null>;
+}
+
+/**
  * Scene snapshot for isolation
  */
 interface SceneSnapshot {
-  nodes: unknown[];
+  scene: SerializedScene | null;
   selection: string[];
 }
 
@@ -227,11 +236,11 @@ export class CandidateRenderer {
     const sceneGraph = this.runtime.getSceneGraph?.();
     const selectionManager = this.runtime.getSelectionManager?.();
 
-    // Serialize current nodes
-    const nodes = sceneGraph?.serializeAll?.() ?? [];
+    // Serialize current scene
+    const scene = sceneGraph?.serializeAll?.() ?? null;
     const selection = selectionManager?.getSelected?.() ?? [];
 
-    return { nodes, selection };
+    return { scene, selection };
   }
 
   /**
@@ -242,13 +251,13 @@ export class CandidateRenderer {
     const selectionManager = this.runtime.getSelectionManager?.();
 
     // Clear current scene and restore
-    if (sceneGraph && typeof sceneGraph.deserializeAll === 'function') {
-      sceneGraph.deserializeAll(snapshot.nodes);
+    if (sceneGraph && typeof sceneGraph.deserializeAll === 'function' && snapshot.scene) {
+      sceneGraph.deserializeAll(snapshot.scene as Parameters<typeof sceneGraph.deserializeAll>[0]);
     }
 
-    // Restore selection
+    // Restore selection (cast strings to NodeId)
     if (selectionManager && typeof selectionManager.setSelected === 'function') {
-      selectionManager.setSelected(snapshot.selection);
+      selectionManager.setSelected(snapshot.selection as unknown as import('@core/types/common').NodeId[]);
     }
 
     // Wait for restore to render

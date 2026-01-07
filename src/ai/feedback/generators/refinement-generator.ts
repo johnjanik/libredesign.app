@@ -7,6 +7,7 @@
 import type { AIMessage } from '@ai/providers/ai-provider';
 import type { DesignCandidate, GenerationStrategy, ScoredCandidate } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Refinement generator configuration
@@ -23,13 +24,20 @@ export interface RefinementGeneratorConfig extends GeneratorConfig {
  */
 export class RefinementGenerator extends BaseGenerator {
   readonly strategy: GenerationStrategy = 'refinement';
-  private focusCategories: string[];
+  private readonly focusCategories: string[];
   private targetImprovement: number;
 
   constructor(config: RefinementGeneratorConfig = {}) {
     super(config);
     this.focusCategories = config.focusCategories ?? [];
     this.targetImprovement = config.targetImprovement ?? 0.1;
+  }
+
+  /**
+   * Get categories to focus refinement on
+   */
+  getFocusCategories(): string[] {
+    return this.focusCategories;
   }
 
   async generate(context: GenerationContext, count: number): Promise<DesignCandidate[]> {
@@ -63,8 +71,10 @@ export class RefinementGenerator extends BaseGenerator {
 
         const response = await this.provider!.sendMessage(messages, {
           systemPrompt,
-          temperature: this.config.temperature,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({
+            temperature: this.config.temperature,
+            maxTokens: this.config.maxTokens,
+          }),
         });
 
         const seed = this.parseToolCalls(response.content);

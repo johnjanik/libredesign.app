@@ -34,12 +34,14 @@
   --designlibre-radius-sm: 4px;
   --designlibre-transition: 0.15s ease;
 
-  /* Text scaling for sidebars - adjustable via settings */
+  /* Text scaling for sidebars - adjustable via settings
+     Base sizes calibrated so 100% = comfortable reading size
+     Range: 50% to 200% */
   --designlibre-text-scale: 1;
-  --designlibre-sidebar-font-size: calc(13px * var(--designlibre-text-scale));
-  --designlibre-sidebar-font-size-sm: calc(12px * var(--designlibre-text-scale));
-  --designlibre-sidebar-font-size-xs: calc(11px * var(--designlibre-text-scale));
-  --designlibre-sidebar-font-size-lg: calc(14px * var(--designlibre-text-scale));
+  --designlibre-sidebar-font-size: calc(23px * var(--designlibre-text-scale));
+  --designlibre-sidebar-font-size-sm: calc(22px * var(--designlibre-text-scale));
+  --designlibre-sidebar-font-size-xs: calc(20px * var(--designlibre-text-scale));
+  --designlibre-sidebar-font-size-lg: calc(25px * var(--designlibre-text-scale));
 }
 
 /* Sidebar text scaling - applies to all sidebar containers */

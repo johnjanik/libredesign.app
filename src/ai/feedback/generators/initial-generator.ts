@@ -7,6 +7,7 @@
 import type { AIMessage } from '@ai/providers/ai-provider';
 import type { DesignCandidate, GenerationStrategy } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Initial generator configuration
@@ -54,7 +55,7 @@ export class InitialGenerator extends BaseGenerator {
         const response = await this.provider!.sendMessage(messages, {
           systemPrompt,
           temperature: temp,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({ maxTokens: this.config.maxTokens }),
         });
 
         const seed = this.parseToolCalls(response.content);

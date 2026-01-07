@@ -11,7 +11,6 @@ import type {
   ScreenshotData,
   VerificationConfig,
   VerificationResult,
-  VerificationTier,
   VerificationModelName,
   ModelVerificationResult,
   VerificationCategories,
@@ -132,9 +131,7 @@ export class TieredVerifier {
       throw new Error(`Verifier not available: ${modelName}`);
     }
 
-    const startTime = performance.now();
     const result = await verifier.verify(request);
-    const duration = performance.now() - startTime;
 
     // Parse issues from critique if structured response
     const { issues, strengths, suggestions } = this.parseDetailedInfo(result);
@@ -360,7 +357,7 @@ export class TieredVerifier {
     if (result.rawResponse) {
       try {
         const jsonMatch = result.rawResponse.match(/```(?:json)?\s*([\s\S]*?)```/);
-        const jsonStr = jsonMatch ? jsonMatch[1] : result.rawResponse;
+        const jsonStr = (jsonMatch && jsonMatch[1]) ? jsonMatch[1] : result.rawResponse;
         const parsed = JSON.parse(jsonStr);
 
         if (Array.isArray(parsed.issues)) {
@@ -442,8 +439,8 @@ export class TieredVerifier {
     lines.push('');
 
     // Aggregate critique
-    const critiques = results.map(r => r.result.critique).filter(Boolean);
-    if (critiques.length > 0) {
+    const critiques = results.map(r => r.result.critique).filter((c): c is string => Boolean(c));
+    if (critiques.length > 0 && critiques[0]) {
       lines.push('Key observations:');
       lines.push(critiques[0]); // Use first model's critique as primary
     }

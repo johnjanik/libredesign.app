@@ -46,7 +46,7 @@ export class DiversityDepletionStrategy extends BaseTerminationStrategy {
 
     if (diversity < this.minDiversity) {
       const scores = this.getScores(context);
-      const currentScore = scores[scores.length - 1];
+      const currentScore = scores[scores.length - 1] ?? 0;
 
       // Only terminate if we have a reasonable score
       if (currentScore >= context.qualityThreshold * 0.8) {

@@ -180,22 +180,22 @@ describe('Level 3: Generators', () => {
       const context = createContext();
       const candidates = await generator.generate(context, 1);
 
-      expect(candidates[0].generationMethod).toBe('initial');
+      expect(candidates[0]!.generationMethod).toBe('initial');
     });
 
     it('should set correct iteration born', async () => {
       const context = createContext({ iteration: 5 });
       const candidates = await generator.generate(context, 1);
 
-      expect(candidates[0].iterationBorn).toBe(5);
+      expect(candidates[0]!.iterationBorn).toBe(5);
     });
 
     it('should generate valid seed JSON', async () => {
       const context = createContext();
       const candidates = await generator.generate(context, 1);
 
-      expect(() => JSON.parse(candidates[0].seed)).not.toThrow();
-      const parsed = JSON.parse(candidates[0].seed);
+      expect(() => JSON.parse(candidates[0]!.seed)).not.toThrow();
+      const parsed = JSON.parse(candidates[0]!.seed);
       expect(parsed.toolCalls).toBeDefined();
     });
 
@@ -250,8 +250,8 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 1);
 
       expect(candidates.length).toBeGreaterThan(0);
-      expect(candidates[0].generationMethod).toBe('refinement');
-      expect(candidates[0].parentId).toBe(prevCandidate.candidate.id);
+      expect(candidates[0]!.generationMethod).toBe('refinement');
+      expect(candidates[0]!.parentId).toBe(prevCandidate.candidate.id);
     });
 
     it('should skip near-perfect candidates', async () => {
@@ -292,7 +292,7 @@ describe('Level 3: Generators', () => {
 
       const candidates = await generator.generate(context, 1);
 
-      expect(candidates[0].metadata.refinementFocus).toBe('layout');
+      expect(candidates[0]!.metadata.refinementFocus).toBe('layout');
     });
   });
 
@@ -336,9 +336,9 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 1);
 
       expect(candidates.length).toBeGreaterThan(0);
-      expect(candidates[0].generationMethod).toBe('crossover');
-      expect(candidates[0].parentIds).toBeDefined();
-      expect(candidates[0].parentIds!.length).toBeGreaterThanOrEqual(2);
+      expect(candidates[0]!.generationMethod).toBe('crossover');
+      expect(candidates[0]!.parentIds).toBeDefined();
+      expect(candidates[0]!.parentIds!.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should include parent scores in metadata', async () => {
@@ -351,8 +351,8 @@ describe('Level 3: Generators', () => {
 
       const candidates = await generator.generate(context, 1);
 
-      expect(candidates[0].metadata.parentScores).toBeDefined();
-      expect(candidates[0].metadata.parentScores!.length).toBeGreaterThanOrEqual(2);
+      expect(candidates[0]!.metadata.parentScores).toBeDefined();
+      expect(candidates[0]!.metadata.parentScores!.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -392,7 +392,7 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 1);
 
       // Should mutate the good candidate
-      expect(candidates[0].parentId).toBe(goodCandidate.candidate.id);
+      expect(candidates[0]!.parentId).toBe(goodCandidate.candidate.id);
     });
 
     it('should set mutation type as refinement focus', async () => {
@@ -405,7 +405,7 @@ describe('Level 3: Generators', () => {
 
       // refinementFocus should be a mutation type
       const mutationTypes = ['color_shift', 'spacing_adjust', 'size_variation', 'layout_tweak', 'style_shift', 'element_swap'];
-      expect(mutationTypes).toContain(candidates[0].metadata.refinementFocus);
+      expect(mutationTypes).toContain(candidates[0]!.metadata.refinementFocus);
     });
   });
 
@@ -443,8 +443,8 @@ describe('Level 3: Generators', () => {
 
       const candidates = await generator.generate(context, 1);
 
-      expect(candidates[0].parentId).toBeUndefined();
-      expect(candidates[0].parentIds).toBeUndefined();
+      expect(candidates[0]!.parentId).toBeUndefined();
+      expect(candidates[0]!.parentIds).toBeUndefined();
     });
 
     it('should use higher temperature in creative mode', async () => {
@@ -485,7 +485,7 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 2);
 
       expect(candidates.length).toBeGreaterThan(0);
-      expect(candidates[0].generationMethod).toBe('diversity');
+      expect(candidates[0]!.generationMethod).toBe('diversity');
     });
 
     it('should include dimension focus in metadata', async () => {
@@ -493,7 +493,7 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 1);
 
       // Should have refinementFocus indicating which dimensions were varied
-      expect(candidates[0].metadata.refinementFocus).toBeDefined();
+      expect(candidates[0]!.metadata.refinementFocus).toBeDefined();
     });
   });
 
@@ -563,10 +563,9 @@ describe('Level 3: Generators', () => {
 
       manager.updateWeights(results);
 
-      const weights = manager.getStrategyEffectiveness();
-      // Weights should have been adjusted (we can't directly check weights,
-      // but the method should not throw)
-      expect(true).toBe(true);
+      // Verify the method doesn't throw - effectiveness is updated internally
+      const effectiveness = manager.getStrategyEffectiveness();
+      expect(effectiveness).toBeDefined();
     });
   });
 
@@ -589,7 +588,7 @@ describe('Level 3: Generators', () => {
       const context = createContext();
       const candidates = await generator.generate(context, 1);
 
-      const seed = JSON.parse(candidates[0].seed);
+      const seed = JSON.parse(candidates[0]!.seed);
       expect(seed.toolCalls).toBeDefined();
     });
 
@@ -608,7 +607,7 @@ describe('Level 3: Generators', () => {
       const candidates = await generator.generate(context, 1);
 
       expect(candidates.length).toBe(1);
-      const seed = JSON.parse(candidates[0].seed);
+      const seed = JSON.parse(candidates[0]!.seed);
       expect(seed.toolCalls).toHaveLength(1);
     });
 

@@ -5,7 +5,7 @@
  * These tests simulate realistic scenarios.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   TieredVerifier,
   ClaudeVerifier,
@@ -323,7 +323,7 @@ describe('Level 5: Integration Tests', () => {
       };
 
       const selections1 = strategyManager.selectStrategies(context1, 3);
-      expect(selections1[0].strategy).toBe('initial');
+      expect(selections1[0]!.strategy).toBe('initial');
 
       // Later iteration with previous candidates: should not use initial
       const context5: GenerationContext = {
@@ -467,7 +467,7 @@ describe('Level 5: Integration Tests', () => {
       const iterations: FeedbackIteration[] = [];
 
       for (let i = 0; i < scoreProgression.length; i++) {
-        const iteration = createMockIteration(i + 1, scoreProgression[i]);
+        const iteration = createMockIteration(i + 1, scoreProgression[i]!);
         iterations.push(iteration);
 
         const decision = terminationManager.evaluate(iterations, {
@@ -486,7 +486,7 @@ describe('Level 5: Integration Tests', () => {
       expect(iterations.length).toBe(5);
 
       // Best score should be 0.88
-      const finalBest = iterations[iterations.length - 1].bestCandidate;
+      const finalBest = iterations[iterations.length - 1]!.bestCandidate;
       expect(finalBest.qualityScore.overall).toBe(0.88);
     });
 

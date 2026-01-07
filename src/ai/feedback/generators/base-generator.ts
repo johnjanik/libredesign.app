@@ -10,9 +10,9 @@ import type {
   DesignCandidate,
   GenerationStrategy,
   ScoredCandidate,
-  VerificationResult,
 } from '../types';
 import { generateId } from '../types';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Generator configuration
@@ -105,14 +105,15 @@ export abstract class BaseGenerator implements Generator {
       seed,
       generationMethod: this.strategy,
       iterationBorn: iteration,
-      parentId: metadata.parentId,
-      parentIds: metadata.parentIds,
+      ...definedProps({ parentId: metadata.parentId, parentIds: metadata.parentIds }),
       metadata: {
-        temperature: this.config.temperature,
-        refinementFocus: metadata.refinementFocus,
-        improvementConfidence: metadata.improvementConfidence,
-        parentScores: metadata.parentScores,
         generatedAt: Date.now(),
+        ...definedProps({
+          temperature: this.config.temperature,
+          refinementFocus: metadata.refinementFocus,
+          improvementConfidence: metadata.improvementConfidence,
+          parentScores: metadata.parentScores,
+        }),
       },
     };
   }
@@ -186,7 +187,7 @@ Example output format:
       // Handle markdown code blocks
       let jsonStr = response;
       const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
+      if (jsonMatch && jsonMatch[1]) {
         jsonStr = jsonMatch[1];
       }
 

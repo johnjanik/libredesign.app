@@ -314,6 +314,9 @@ export class CanvasContainer {
         this.drawOrigin(ctx, zoom);
       }
 
+      // Render text nodes (WebGL renderer doesn't handle text yet)
+      this.renderTextNodes(ctx, zoom);
+
       toolManager.render(ctx);
       ctx.restore();
     }
@@ -449,6 +452,84 @@ export class CanvasContainer {
     ctx.stroke();
 
     ctx.setLineDash([]);
+  }
+
+  /**
+   * Render all text nodes on the canvas.
+   * This is necessary because WebGL renderer doesn't handle text yet.
+   * Rendered in world coordinates (viewport transform already applied).
+   */
+  private renderTextNodes(ctx: CanvasRenderingContext2D, _zoom: number): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    if (!sceneGraph) return;
+
+    // Get all nodes and filter for text nodes
+    const allNodeIds = sceneGraph.getAllNodeIds();
+    const textNodes = allNodeIds
+      .map(id => sceneGraph.getNode(id))
+      .filter((node): node is NonNullable<typeof node> => node !== null && node.type === 'TEXT');
+
+    for (const node of textNodes) {
+      const textNode = node as unknown as {
+        id: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        characters?: string;
+        fills?: Array<{
+          type: string;
+          color?: { r: number; g: number; b: number; a: number };
+          visible?: boolean;
+        }>;
+        textStyles?: Array<{
+          fontSize?: number;
+          fontFamily?: string;
+          fontWeight?: number;
+          lineHeight?: number;
+        }>;
+        visible?: boolean;
+        opacity?: number;
+      };
+
+      // Skip invisible nodes or nodes with no text
+      if (textNode.visible === false) continue;
+      if (!textNode.characters || textNode.characters.length === 0) continue;
+
+      const x = textNode.x ?? 0;
+      const y = textNode.y ?? 0;
+      const opacity = textNode.opacity ?? 1;
+
+      // Get text style
+      const fontSize = textNode.textStyles?.[0]?.fontSize ?? 16;
+      const fontFamily = textNode.textStyles?.[0]?.fontFamily ?? 'Inter, sans-serif';
+      const fontWeight = textNode.textStyles?.[0]?.fontWeight ?? 400;
+      const lineHeight = textNode.textStyles?.[0]?.lineHeight ?? fontSize * 1.2;
+
+      // Get fill color
+      let fillColor = 'black';
+      const fill = textNode.fills?.find(f => f.visible !== false && f.type === 'SOLID');
+      if (fill?.color) {
+        const c = fill.color;
+        fillColor = `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${c.a * opacity})`;
+      }
+
+      ctx.save();
+      ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+      ctx.fillStyle = fillColor;
+      ctx.textBaseline = 'top';
+
+      // Render text line by line
+      const lines = textNode.characters.split('\n');
+      let currentY = y;
+
+      for (const line of lines) {
+        ctx.fillText(line, x, currentY);
+        currentY += lineHeight;
+      }
+
+      ctx.restore();
+    }
   }
 
   /**

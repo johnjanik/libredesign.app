@@ -11,6 +11,7 @@ import {
   type VerifierConfig,
   type VerificationRequest,
 } from './base-verifier';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Claude-specific configuration
@@ -26,7 +27,7 @@ export interface ClaudeVerifierConfig extends VerifierConfig {
 export class ClaudeVerifier extends BaseVerifier {
   readonly name: VerificationModelName = 'claude';
   private provider: AIProvider | null = null;
-  private model: string;
+  private readonly model: string;
 
   constructor(config: ClaudeVerifierConfig = {}) {
     super(config);
@@ -91,9 +92,11 @@ export class ClaudeVerifier extends BaseVerifier {
 
     try {
       const response = await this.provider.sendMessage(messages, {
-        maxTokens: this.config.maxTokens,
-        temperature: this.config.temperature,
         systemPrompt: 'You are a precise design verification assistant. Always respond with valid JSON.',
+        ...definedProps({
+          maxTokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+        }),
       });
 
       const duration = performance.now() - startTime;
@@ -120,6 +123,13 @@ export class ClaudeVerifier extends BaseVerifier {
         rawResponse: String(error),
       };
     }
+  }
+
+  /**
+   * Get the model name
+   */
+  getModel(): string {
+    return this.model;
   }
 }
 

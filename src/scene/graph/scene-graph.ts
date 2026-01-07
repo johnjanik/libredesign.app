@@ -699,4 +699,57 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
       nodes: this.registry.toJSON(),
     };
   }
+
+  /**
+   * Serialize all nodes to a portable format.
+   * Used for state snapshotting and undo/redo.
+   */
+  serializeAll(): { version: string; nodes: NodeData[]; parentMap: Record<string, string | null> } {
+    const nodes: NodeData[] = [];
+    const parentMap: Record<string, string | null> = {};
+
+    this.traverse((node) => {
+      nodes.push({ ...node } as NodeData);
+      parentMap[node.id] = node.parentId ?? null;
+    });
+
+    return {
+      version: '1.0.0',
+      nodes,
+      parentMap,
+    };
+  }
+
+  /**
+   * Restore the scene graph from serialized data.
+   * Used for state restoration and undo/redo.
+   */
+  deserializeAll(data: { version: string; nodes: NodeData[]; parentMap: Record<string, string | null> }): void {
+    this.clear();
+
+    // First pass: add all nodes
+    for (const node of data.nodes) {
+      this.registry.addNode(node, generateFirstIndex());
+    }
+
+    // Second pass: restore parent relationships
+    for (const node of data.nodes) {
+      const parentId = data.parentMap[node.id];
+      if (parentId) {
+        this.registry.updateNode(node.id, (n) => ({
+          ...n,
+          parentId: parentId as NodeId,
+        }) as NodeData);
+      }
+    }
+
+    this.emit('document:loaded');
+  }
+
+  /**
+   * Get a node by ID (alias for getNode for API compatibility).
+   */
+  getNodeById(id: NodeId): NodeData | null {
+    return this.getNode(id);
+  }
 }

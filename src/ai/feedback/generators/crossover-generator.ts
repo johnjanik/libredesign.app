@@ -7,6 +7,7 @@
 import type { AIMessage } from '@ai/providers/ai-provider';
 import type { DesignCandidate, GenerationStrategy, ScoredCandidate } from '../types';
 import { BaseGenerator, type GenerationContext, type GeneratorConfig } from './base-generator';
+import { definedProps } from '@core/utils/object-utils';
 
 /**
  * Crossover generator configuration
@@ -58,8 +59,10 @@ export class CrossoverGenerator extends BaseGenerator {
 
         const response = await this.provider.sendMessage(messages, {
           systemPrompt,
-          temperature: this.config.temperature,
-          maxTokens: this.config.maxTokens,
+          ...definedProps({
+            temperature: this.config.temperature,
+            maxTokens: this.config.maxTokens,
+          }),
         });
 
         const seed = this.parseToolCalls(response.content);
@@ -96,9 +99,10 @@ export class CrossoverGenerator extends BaseGenerator {
     const selected = new Set<string>();
 
     // First, add best overall
-    if (sorted.length > 0) {
-      parents.push(sorted[0]);
-      selected.add(sorted[0].candidate.id);
+    const bestOverall = sorted[0];
+    if (bestOverall) {
+      parents.push(bestOverall);
+      selected.add(bestOverall.candidate.id);
     }
 
     // Then add candidates with different category strengths
@@ -180,6 +184,7 @@ IMPORTANT:
 
     for (let i = 0; i < parents.length; i++) {
       const p = parents[i];
+      if (!p) continue;
       prompt += `=== Design ${i + 1} (score: ${(p.qualityScore.overall * 100).toFixed(1)}%) ===\n`;
       prompt += `Strengths:\n`;
 

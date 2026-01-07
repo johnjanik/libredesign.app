@@ -67,7 +67,7 @@ export class ConvergenceDetectionStrategy extends BaseTerminationStrategy {
     const stability = Math.max(0, 1 - variance / 0.01); // Scale variance to confidence
 
     if (isConverged) {
-      const currentScore = scores[scores.length - 1];
+      const currentScore = scores[scores.length - 1] ?? 0;
       const isGoodEnough = currentScore >= context.qualityThreshold * 0.9; // Within 10% of threshold
 
       if (isGoodEnough) {
@@ -116,8 +116,12 @@ export class ConvergenceDetectionStrategy extends BaseTerminationStrategy {
     // Check for oscillation (alternating up/down)
     let directionChanges = 0;
     for (let i = 2; i < scores.length; i++) {
-      const prev = scores[i - 1] - scores[i - 2];
-      const curr = scores[i] - scores[i - 1];
+      const scoreI = scores[i];
+      const scoreI1 = scores[i - 1];
+      const scoreI2 = scores[i - 2];
+      if (scoreI === undefined || scoreI1 === undefined || scoreI2 === undefined) continue;
+      const prev = scoreI1 - scoreI2;
+      const curr = scoreI - scoreI1;
       if ((prev > 0 && curr < 0) || (prev < 0 && curr > 0)) {
         directionChanges++;
       }
@@ -132,7 +136,11 @@ export class ConvergenceDetectionStrategy extends BaseTerminationStrategy {
     // Calculate convergence rate
     const improvementRates: number[] = [];
     for (let i = 1; i < scores.length; i++) {
-      improvementRates.push(scores[i] - scores[i - 1]);
+      const curr = scores[i];
+      const prev = scores[i - 1];
+      if (curr !== undefined && prev !== undefined) {
+        improvementRates.push(curr - prev);
+      }
     }
     const avgImprovement = improvementRates.reduce((a, b) => a + b, 0) / improvementRates.length;
     const convergenceRate = Math.abs(avgImprovement);

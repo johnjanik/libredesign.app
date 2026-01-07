@@ -304,6 +304,12 @@ export interface RuntimeBridge {
   /** Set size */
   setSize(layerId: string, width: number, height: number): Promise<void>;
 
+  /** Resize a layer, optionally specifying only width or height */
+  resizeLayer(layerId: string, width?: number, height?: number): Promise<void>;
+
+  /** Set a generic property on a layer */
+  setLayerProperty(layerId: string, property: string, value: unknown): Promise<void>;
+
   /** Set rotation */
   setRotation(layerId: string, degrees: number): Promise<void>;
 

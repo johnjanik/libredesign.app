@@ -72,7 +72,11 @@ export abstract class BaseTerminationStrategy implements TerminationStrategy {
     // Average improvement per iteration
     let totalImprovement = 0;
     for (let i = 1; i < recent.length; i++) {
-      totalImprovement += recent[i] - recent[i - 1];
+      const curr = recent[i];
+      const prev = recent[i - 1];
+      if (curr !== undefined && prev !== undefined) {
+        totalImprovement += curr - prev;
+      }
     }
 
     return totalImprovement / (recent.length - 1);

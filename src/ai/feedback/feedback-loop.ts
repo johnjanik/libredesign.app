@@ -17,10 +17,8 @@ import type {
   FeedbackLoopOptions,
   ScoredCandidate,
   QualityScore,
-  PerformanceMetrics,
   AdaptiveConfig,
   TemperatureSchedule,
-  VerificationConfig,
   DesignAnalytics,
   ConvergenceAnalysis,
   GenerationStrategy,
@@ -30,7 +28,6 @@ import {
   DEFAULT_ADAPTIVE_CONFIG,
   DEFAULT_TEMPERATURE_SCHEDULE,
   QUALITY_COMPONENT_WEIGHTS,
-  generateId,
 } from './types';
 import { CandidateRenderer, createCandidateRenderer } from './candidate-renderer';
 import { TieredVerifier, createTieredVerifier } from './verifiers';
@@ -58,7 +55,7 @@ export interface FeedbackLoopConfig {
  * Visual Feedback Loop
  */
 export class FeedbackLoop {
-  private runtime: DesignLibreRuntime;
+  private readonly runtime: DesignLibreRuntime;
   private candidateRenderer: CandidateRenderer;
   private tieredVerifier: TieredVerifier;
   private strategyManager: StrategyManager;
@@ -115,8 +112,8 @@ export class FeedbackLoop {
           intent,
           iteration,
           previousCandidates: iterations.flatMap(i => i.candidates),
-          bestCandidate: bestCandidate ?? undefined,
           availableTools: this.availableTools,
+          ...(bestCandidate ? { bestCandidate } : {}),
         };
 
         // Update temperature based on schedule
@@ -451,8 +448,12 @@ export class FeedbackLoop {
     // Check for oscillation
     let directionChanges = 0;
     for (let i = 2; i < scores.length; i++) {
-      const prev = scores[i - 1] - scores[i - 2];
-      const curr = scores[i] - scores[i - 1];
+      const scoreI = scores[i];
+      const scoreI1 = scores[i - 1];
+      const scoreI2 = scores[i - 2];
+      if (scoreI === undefined || scoreI1 === undefined || scoreI2 === undefined) continue;
+      const prev = scoreI1 - scoreI2;
+      const curr = scoreI - scoreI1;
       if ((prev > 0 && curr < 0) || (prev < 0 && curr > 0)) {
         directionChanges++;
       }
@@ -466,9 +467,13 @@ export class FeedbackLoop {
     const plateauDetected = variance < 0.001;
 
     // Calculate convergence rate
-    const improvements = [];
+    const improvements: number[] = [];
     for (let i = 1; i < scores.length; i++) {
-      improvements.push(scores[i] - scores[i - 1]);
+      const curr = scores[i];
+      const prev = scores[i - 1];
+      if (curr !== undefined && prev !== undefined) {
+        improvements.push(curr - prev);
+      }
     }
     const convergenceRate = improvements.length > 0
       ? Math.abs(improvements.reduce((a, b) => a + b, 0) / improvements.length)
@@ -502,6 +507,20 @@ export class FeedbackLoop {
       'add_effect',
       'group_layers',
     ];
+  }
+
+  /**
+   * Get the runtime instance
+   */
+  getRuntime(): DesignLibreRuntime {
+    return this.runtime;
+  }
+
+  /**
+   * Get the AI provider
+   */
+  getProvider(): AIProvider {
+    return this.provider;
   }
 
   /**

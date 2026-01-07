@@ -25,6 +25,7 @@ import { StarTool, createStarTool } from '@tools/drawing/star-tool';
 import { PencilTool, createPencilTool } from '@tools/drawing/pencil-tool';
 import { ImageTool, createImageTool } from '@tools/drawing/image-tool';
 import { TextTool, createTextTool } from '@tools/drawing/text-tool';
+import { TextEditTool, createTextEditTool } from '@tools/text';
 import { HandTool, createHandTool } from '@tools/navigation/hand-tool';
 import { PointerHandler, createPointerHandler } from '@tools/input/pointer-handler';
 import { KeyboardHandler, createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -179,6 +180,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private pencilTool: PencilTool | null = null;
   private imageTool: ImageTool | null = null;
   private textTool: TextTool | null = null;
+  private textEditTool: TextEditTool | null = null;
   private handTool: HandTool | null = null;
 
   // State
@@ -1423,7 +1425,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         x: position.x,
         y: position.y,
         width: width ?? 100,
-        characters: 'Text',
+        characters: '', // Start with empty text
       });
 
       // Set default fill (black text)
@@ -1433,10 +1435,30 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       this.selectionManager.select([nodeId], 'replace');
 
-      // Canonical behavior: return to Select tool after creating object
-      this.setTool('select');
+      // Enter text editing mode with cursor ready for input
+      if (this.textEditTool) {
+        this.setTool('text-edit');
+        this.textEditTool.startEditing(nodeId, '', 0);
+      } else {
+        // Fallback: return to Select tool if text-edit tool not available
+        this.setTool('select');
+      }
 
       return nodeId;
+    });
+
+    // Text edit tool
+    this.textEditTool = createTextEditTool();
+    this.textEditTool.setOnTextUpdate((nodeId, text) => {
+      // Update the text node in the scene graph
+      // Note: Only update the characters, not the name - user may want a custom layer name
+      this.sceneGraph.updateNode(nodeId, {
+        characters: text,
+      });
+    });
+    this.textEditTool.setOnEditEnd(() => {
+      // Return to select tool when editing ends
+      this.setTool('select');
     });
 
     // Hand tool for panning
@@ -1457,6 +1479,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.pencilTool);
     this.toolManager.registerTool(this.imageTool);
     this.toolManager.registerTool(this.textTool);
+    this.toolManager.registerTool(this.textEditTool);
     this.toolManager.registerTool(this.handTool);
 
     // Set default tool
@@ -1615,14 +1638,26 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     });
 
     // Keyboard shortcuts
-    this.keyboardHandler.on('shortcut', ({ action }) => {
+    this.keyboardHandler.on('shortcut', ({ action, event }) => {
+      // Don't process shortcuts during text editing (except Escape)
+      if (this.textEditTool?.isEditing() && action !== 'cancel') {
+        // Pass as regular keydown instead
+        this.toolManager!.handleKeyDown(event);
+        return;
+      }
       this.handleShortcut(action);
     });
 
     this.keyboardHandler.on('keydown', (event) => {
+      // Don't hijack keys when text editing is active
+      const currentTool = this.getActiveTool();
+      if (currentTool === 'text-edit' && this.textEditTool?.isEditing()) {
+        this.toolManager!.handleKeyDown(event);
+        return;
+      }
+
       // Space key for temporary hand tool (canonical behavior)
       if (event.key === ' ' && !this.spaceHandState.active) {
-        const currentTool = this.getActiveTool();
         if (currentTool !== 'hand') {
           this.spaceHandState.active = true;
           this.spaceHandState.previousTool = currentTool;
