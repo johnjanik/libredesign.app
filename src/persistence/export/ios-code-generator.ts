@@ -266,9 +266,21 @@ export class IOSCodeGenerator {
           }
         }
       } else {
-        parts.push(`${spaces}ZStack {`);
+        // No auto-layout - use ZStack with absolute positioning
+        // Use .topLeading alignment so positions are relative to top-left corner
+        parts.push(`${spaces}ZStack(alignment: .topLeading) {`);
         for (const childId of childIds) {
-          parts.push(this.generateSwiftUIBody(childId, indent + 4));
+          const childNode = this.sceneGraph.getNode(childId);
+
+          // Check if child needs absolute positioning
+          if (childNode && 'x' in childNode && 'y' in childNode && 'width' in childNode && 'height' in childNode) {
+            const cn = childNode as { x: number; y: number; width: number; height: number };
+            // Wrap child in a positioned container
+            parts.push(this.generateSwiftUIBody(childId, indent + 4));
+            parts.push(`${' '.repeat(indent + 4)}.offset(x: ${formatNum(cn.x)}, y: ${formatNum(cn.y)})`);
+          } else {
+            parts.push(this.generateSwiftUIBody(childId, indent + 4));
+          }
         }
       }
 
