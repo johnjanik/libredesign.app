@@ -24,3 +24,18 @@ export {
   tangentAtLength,
 } from './dash-pattern';
 export type { DashConfig, DashResult } from './dash-pattern';
+
+// Boundary detection
+export {
+  BoundaryDetector,
+  createBoundaryDetector,
+  detectBoundaryAtPoint,
+  linesToBoundarySegments,
+  rectToBoundarySegments,
+  polygonToBoundarySegments,
+} from './boundary-detection';
+export type {
+  BoundarySegment,
+  DetectedBoundary,
+  BoundaryDetectionConfig,
+} from './boundary-detection';

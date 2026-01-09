@@ -25,3 +25,33 @@ export * from './drawing';
 
 // Text
 export * from './text';
+
+// Navigation
+export * from './navigation';
+
+// Snapping (selective to avoid AlignmentGuide conflict with base/tool)
+export { SnapManager, createSnapManager, type SnapType, type SnapPoint, type SnapConfig } from './snapping';
+
+// Path
+export * from './path';
+
+// Construction
+export * from './construction';
+
+// Block/Symbol
+export * from './block';
+
+// Measurement
+export * from './measurement';
+
+// Modification
+export * from './modification';
+
+// Schematic
+export * from './schematic';
+
+// Annotation (dimension, hatch)
+export * from './annotation';
+
+// PCB
+export * from './pcb';
