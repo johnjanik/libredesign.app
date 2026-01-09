@@ -1,0 +1,135 @@
+{
+  "name": "nested-layout",
+  "description": "Nested horizontal and vertical layouts",
+  "category": "layout",
+  "platforms": ["react", "css"],
+  "canvas": {
+    "width": 400,
+    "height": 300,
+    "backgroundColor": "#FFFFFF"
+  },
+  "root": {
+    "type": "FRAME",
+    "name": "OuterContainer",
+    "width": 360,
+    "height": 260,
+    "x": 20,
+    "y": 20,
+    "fills": [
+      {
+        "type": "SOLID",
+        "color": { "r": 0.9, "g": 0.9, "b": 0.9 }
+      }
+    ],
+    "cornerRadius": 12,
+    "autoLayout": {
+      "mode": "VERTICAL",
+      "itemSpacing": 16,
+      "padding": 16
+    },
+    "children": [
+      {
+        "type": "FRAME",
+        "name": "TopRow",
+        "width": 328,
+        "height": 80,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": { "r": 1, "g": 1, "b": 1 }
+          }
+        ],
+        "cornerRadius": 8,
+        "autoLayout": {
+          "mode": "HORIZONTAL",
+          "itemSpacing": 12,
+          "padding": 12,
+          "counterAxisAlign": "CENTER"
+        },
+        "children": [
+          {
+            "type": "RECTANGLE",
+            "name": "A",
+            "width": 56,
+            "height": 56,
+            "fills": [{ "type": "SOLID", "color": { "r": 0.91, "g": 0.3, "b": 0.24 } }],
+            "cornerRadius": 4
+          },
+          {
+            "type": "RECTANGLE",
+            "name": "B",
+            "width": 56,
+            "height": 56,
+            "fills": [{ "type": "SOLID", "color": { "r": 0.18, "g": 0.8, "b": 0.44 } }],
+            "cornerRadius": 4
+          },
+          {
+            "type": "RECTANGLE",
+            "name": "C",
+            "width": 56,
+            "height": 56,
+            "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+            "cornerRadius": 4
+          }
+        ]
+      },
+      {
+        "type": "FRAME",
+        "name": "BottomRow",
+        "width": 328,
+        "height": 132,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": { "r": 1, "g": 1, "b": 1 }
+          }
+        ],
+        "cornerRadius": 8,
+        "autoLayout": {
+          "mode": "HORIZONTAL",
+          "itemSpacing": 12,
+          "padding": 12,
+          "primaryAxisAlign": "SPACE_BETWEEN"
+        },
+        "children": [
+          {
+            "type": "FRAME",
+            "name": "LeftStack",
+            "width": 100,
+            "height": 108,
+            "autoLayout": {
+              "mode": "VERTICAL",
+              "itemSpacing": 8
+            },
+            "children": [
+              {
+                "type": "RECTANGLE",
+                "name": "D",
+                "width": 100,
+                "height": 50,
+                "fills": [{ "type": "SOLID", "color": { "r": 0.56, "g": 0.27, "b": 0.68 } }],
+                "cornerRadius": 4
+              },
+              {
+                "type": "RECTANGLE",
+                "name": "E",
+                "width": 100,
+                "height": 50,
+                "fills": [{ "type": "SOLID", "color": { "r": 0.95, "g": 0.61, "b": 0.07 } }],
+                "cornerRadius": 4
+              }
+            ]
+          },
+          {
+            "type": "RECTANGLE",
+            "name": "F",
+            "width": 100,
+            "height": 108,
+            "fills": [{ "type": "SOLID", "color": { "r": 0.1, "g": 0.74, "b": 0.61 } }],
+            "cornerRadius": 4
+          }
+        ]
+      }
+    ]
+  }
+}

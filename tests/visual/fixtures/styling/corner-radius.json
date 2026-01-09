@@ -1,0 +1,75 @@
+{
+  "name": "corner-radius",
+  "description": "Different corner radius values",
+  "category": "styling",
+  "platforms": ["react", "css"],
+  "canvas": {
+    "width": 420,
+    "height": 102,
+    "backgroundColor": "#FFFFFF"
+  },
+  "root": {
+    "type": "FRAME",
+    "name": "RadiusExamples",
+    "width": 420,
+    "height": 102,
+    "x": 0,
+    "y": 0,
+    "fills": [
+      {
+        "type": "SOLID",
+        "color": { "r": 0.95, "g": 0.95, "b": 0.95 }
+      }
+    ],
+    "cornerRadius": 8,
+    "autoLayout": {
+      "mode": "HORIZONTAL",
+      "itemSpacing": 8,
+      "padding": 16,
+      "primaryAxisAlign": "MIN",
+      "counterAxisAlign": "CENTER"
+    },
+    "children": [
+      {
+        "type": "RECTANGLE",
+        "name": "R0",
+        "width": 70,
+        "height": 70,
+        "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+        "cornerRadius": 0
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "R4",
+        "width": 70,
+        "height": 70,
+        "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+        "cornerRadius": 4
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "R8",
+        "width": 70,
+        "height": 70,
+        "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+        "cornerRadius": 8
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "R16",
+        "width": 70,
+        "height": 70,
+        "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+        "cornerRadius": 16
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "RFull",
+        "width": 70,
+        "height": 70,
+        "fills": [{ "type": "SOLID", "color": { "r": 0.2, "g": 0.6, "b": 0.86 } }],
+        "cornerRadius": 35
+      }
+    ]
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "name": "horizontal-basic",
+  "description": "Basic horizontal layout with three items and spacing",
+  "category": "layout",
+  "platforms": ["react", "css"],
+  "canvas": {
+    "width": 400,
+    "height": 200,
+    "backgroundColor": "#FFFFFF"
+  },
+  "root": {
+    "type": "FRAME",
+    "name": "Container",
+    "width": 360,
+    "height": 160,
+    "x": 20,
+    "y": 20,
+    "fills": [
+      {
+        "type": "SOLID",
+        "color": { "r": 0.95, "g": 0.95, "b": 0.95 }
+      }
+    ],
+    "cornerRadius": 8,
+    "autoLayout": {
+      "mode": "HORIZONTAL",
+      "itemSpacing": 16,
+      "padding": 16,
+      "primaryAxisAlign": "MIN",
+      "counterAxisAlign": "CENTER"
+    },
+    "children": [
+      {
+        "type": "RECTANGLE",
+        "name": "Item1",
+        "width": 80,
+        "height": 80,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": { "r": 0.91, "g": 0.3, "b": 0.24 }
+          }
+        ],
+        "cornerRadius": 4
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "Item2",
+        "width": 80,
+        "height": 80,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": { "r": 0.18, "g": 0.8, "b": 0.44 }
+          }
+        ],
+        "cornerRadius": 4
+      },
+      {
+        "type": "RECTANGLE",
+        "name": "Item3",
+        "width": 80,
+        "height": 80,
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": { "r": 0.2, "g": 0.6, "b": 0.86 }
+          }
+        ],
+        "cornerRadius": 4
+      }
+    ]
+  }
+}

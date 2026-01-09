@@ -1,0 +1,4 @@
+# Generated visual regression test outputs
+diffs/
+snapshots/
+reports/
