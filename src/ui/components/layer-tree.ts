@@ -299,9 +299,7 @@ export class LayerTree {
 
       try {
         // Move to page root (at the end)
-        const pageNode = sceneGraph.getNode(currentPageId);
-        const pageNodeWithChildren = pageNode as unknown as { childIds?: readonly NodeId[] } | null;
-        const childIds = pageNodeWithChildren?.childIds ?? [];
+        const childIds = sceneGraph.getChildIds(currentPageId);
         sceneGraph.moveNode(this.draggedId, currentPageId, childIds.length);
       } catch (error) {
         console.error('Failed to move layer to page root:', error);
@@ -909,14 +907,13 @@ export class LayerTree {
       } else {
         // Move before or after the target
         if (targetParentId) {
-          const parent = sceneGraph.getNode(targetParentId);
-          const children = (parent as { children?: NodeId[] })?.children ?? [];
-          const targetIndex = children.indexOf(targetId);
+          const childIds = sceneGraph.getChildIds(targetParentId);
+          const targetIndex = childIds.indexOf(targetId);
 
           if (targetIndex >= 0) {
             if (draggedParentId === targetParentId) {
               // Same parent - reorder
-              const draggedIndex = children.indexOf(this.draggedId);
+              const draggedIndex = childIds.indexOf(this.draggedId);
               let newPosition = this.dropPosition === 'after' ? targetIndex + 1 : targetIndex;
               // Adjust for removing the dragged item first
               if (draggedIndex < newPosition) {
