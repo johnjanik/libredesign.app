@@ -38,6 +38,37 @@ export interface KeyEventData {
 }
 
 /**
+ * Snap result from snap manager
+ */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
+
+/**
+ * Alignment guide for visual feedback during snapping
+ */
+export interface AlignmentGuide {
+  readonly type: 'horizontal' | 'vertical';
+  readonly position: number;
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * Snap context for tools - provides snap functionality
+ */
+export interface SnapContext {
+  /** Find a snap point near the given position */
+  findSnapPoint: (x: number, y: number, excludeNodeIds?: NodeId[]) => SnapResult | null;
+  /** Find alignment guides for the given position */
+  findAlignmentGuides: (x: number, y: number, excludeNodeIds?: NodeId[]) => AlignmentGuide[];
+  /** Check if snapping is enabled */
+  isEnabled: () => boolean;
+}
+
+/**
  * Tool context - shared state for tools
  */
 export interface ToolContext {
@@ -45,6 +76,8 @@ export interface ToolContext {
   readonly viewport: Viewport;
   readonly selectedNodeIds: readonly NodeId[];
   readonly hoveredNodeId: NodeId | null;
+  /** Optional snap context for snap-to functionality */
+  readonly snapContext?: SnapContext;
 }
 
 /**

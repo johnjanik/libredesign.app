@@ -6,7 +6,7 @@ import type { NodeId } from '@core/types/common';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { Viewport } from '@renderer/core/viewport';
 import { EventEmitter } from '@core/events/event-emitter';
-import type { Tool, ToolContext, ToolCursor, PointerEventData, KeyEventData } from './tool';
+import type { Tool, ToolContext, ToolCursor, PointerEventData, KeyEventData, SnapContext } from './tool';
 
 /**
  * Tool manager events
@@ -31,6 +31,7 @@ export class ToolManager extends EventEmitter<ToolManagerEvents> {
   private selectedNodeIds: NodeId[] = [];
   private hoveredNodeId: NodeId | null = null;
   private currentCursor: ToolCursor = 'default';
+  private snapContext: SnapContext | null = null;
 
   // Grid snapping settings
   private snapToGrid: boolean = true;
@@ -43,6 +44,20 @@ export class ToolManager extends EventEmitter<ToolManagerEvents> {
 
     // Load grid settings from localStorage
     this.loadGridSettings();
+  }
+
+  /**
+   * Set the snap context for snap-to functionality.
+   */
+  setSnapContext(snapContext: SnapContext | null): void {
+    this.snapContext = snapContext;
+  }
+
+  /**
+   * Get the current snap context.
+   */
+  getSnapContext(): SnapContext | null {
+    return this.snapContext;
   }
 
   private loadGridSettings(): void {
@@ -375,12 +390,16 @@ export class ToolManager extends EventEmitter<ToolManagerEvents> {
    * Get the current tool context.
    */
   private getContext(): ToolContext {
-    return {
+    const context: ToolContext = {
       sceneGraph: this.sceneGraph,
       viewport: this.viewport,
       selectedNodeIds: this.selectedNodeIds,
       hoveredNodeId: this.hoveredNodeId,
     };
+    if (this.snapContext) {
+      (context as { snapContext?: SnapContext }).snapContext = this.snapContext;
+    }
+    return context;
   }
 
   /**

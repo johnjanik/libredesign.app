@@ -230,7 +230,87 @@ export class LayerTree {
       this.renderLayers(layers, this.listElement);
     }
 
+    // Add "drop to page root" zone at the bottom for dragging items to page level
+    if (this.options.enableDragDrop) {
+      const rootDropZone = this.renderRootDropZone();
+      this.listElement.appendChild(rootDropZone);
+    }
+
     this.element.appendChild(this.listElement);
+  }
+
+  /**
+   * Render a drop zone at the bottom of the layer tree for dropping items to page root
+   */
+  private renderRootDropZone(): HTMLElement {
+    const dropZone = document.createElement('div');
+    dropZone.className = 'layer-root-drop-zone';
+    dropZone.style.cssText = `
+      min-height: 24px;
+      margin: 4px 8px;
+      border: 1px dashed transparent;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: transparent;
+      transition: all 0.15s ease;
+    `;
+
+    // Get current page ID for dropping to page level
+    const currentPageId = this.runtime.getCurrentPageId?.() ?? null;
+
+    dropZone.addEventListener('dragover', (e) => {
+      if (!this.draggedId || !currentPageId) return;
+
+      e.preventDefault();
+      e.dataTransfer!.dropEffect = 'move';
+
+      this.dropTargetId = currentPageId;
+      this.dropPosition = 'inside'; // Will add to end of page children
+
+      dropZone.style.borderColor = 'var(--designlibre-accent, #0d99ff)';
+      dropZone.style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
+      dropZone.style.color = 'var(--designlibre-text-secondary, #888)';
+      dropZone.textContent = 'Drop here to move to page root';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = 'transparent';
+      dropZone.style.backgroundColor = 'transparent';
+      dropZone.style.color = 'transparent';
+      dropZone.textContent = '';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+
+      if (!this.draggedId || !currentPageId) {
+        this.handleDragEnd();
+        return;
+      }
+
+      const sceneGraph = this.runtime.getSceneGraph();
+      if (!sceneGraph) {
+        this.handleDragEnd();
+        return;
+      }
+
+      try {
+        // Move to page root (at the end)
+        const pageNode = sceneGraph.getNode(currentPageId);
+        const pageNodeWithChildren = pageNode as unknown as { childIds?: readonly NodeId[] } | null;
+        const childIds = pageNodeWithChildren?.childIds ?? [];
+        sceneGraph.moveNode(this.draggedId, currentPageId, childIds.length);
+      } catch (error) {
+        console.error('Failed to move layer to page root:', error);
+      }
+
+      this.handleDragEnd();
+    });
+
+    return dropZone;
   }
 
   private renderHeader(): HTMLElement {
@@ -731,6 +811,14 @@ export class LayerTree {
 
     this.dropTargetId = targetId;
 
+    // Get scene graph to check parent relationship
+    const sceneGraph = this.runtime.getSceneGraph();
+    const draggedNode = sceneGraph?.getNode(this.draggedId);
+    const targetNode = sceneGraph?.getNode(targetId);
+
+    // Check if target is the dragged node's parent
+    const isDroppingOnParent = draggedNode?.parentId === targetId;
+
     // Determine drop position based on mouse Y
     const item = (e.target as HTMLElement).closest('.layer-item');
     if (item) {
@@ -738,29 +826,47 @@ export class LayerTree {
       const y = e.clientY - rect.top;
       const height = rect.height;
 
-      if (y < height * 0.25) {
+      // Clear all visual states first
+      (item as HTMLElement).style.borderTop = '';
+      (item as HTMLElement).style.borderBottom = '';
+      (item as HTMLElement).style.backgroundColor = '';
+
+      // Use larger zones for before/after (35% each) to make drag-out easier
+      // When dropping on parent, use even larger zones (40%) to encourage drag-out
+      const beforeThreshold = isDroppingOnParent ? 0.4 : 0.35;
+      const afterThreshold = isDroppingOnParent ? 0.6 : 0.65;
+
+      if (y < height * beforeThreshold) {
         this.dropPosition = 'before';
         (item as HTMLElement).style.borderTop = '2px solid var(--designlibre-accent, #0d99ff)';
-        (item as HTMLElement).style.borderBottom = '';
-      } else if (y > height * 0.75) {
+      } else if (y > height * afterThreshold) {
         this.dropPosition = 'after';
-        (item as HTMLElement).style.borderTop = '';
         (item as HTMLElement).style.borderBottom = '2px solid var(--designlibre-accent, #0d99ff)';
       } else {
-        this.dropPosition = 'inside';
-        (item as HTMLElement).style.borderTop = '';
-        (item as HTMLElement).style.borderBottom = '';
-        (item as HTMLElement).style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
+        // Inside zone - but check if target can have children
+        const canHaveChildren = targetNode?.type === 'FRAME' ||
+                                targetNode?.type === 'GROUP' ||
+                                targetNode?.type === 'COMPONENT';
+
+        if (canHaveChildren && !isDroppingOnParent) {
+          this.dropPosition = 'inside';
+          (item as HTMLElement).style.backgroundColor = 'var(--designlibre-accent-light, #1a3a5c)';
+        } else {
+          // If can't drop inside (not a container or is already parent), default to 'after'
+          this.dropPosition = 'after';
+          (item as HTMLElement).style.borderBottom = '2px solid var(--designlibre-accent, #0d99ff)';
+        }
       }
     }
   }
 
   private handleDragLeave(): void {
-    // Clear visual feedback
+    // Clear all visual feedback
     const items = this.element?.querySelectorAll('.layer-item');
     items?.forEach((item) => {
       (item as HTMLElement).style.borderTop = '';
       (item as HTMLElement).style.borderBottom = '';
+      (item as HTMLElement).style.backgroundColor = '';
     });
   }
 
@@ -857,6 +963,7 @@ export class LayerTree {
     items?.forEach((item) => {
       (item as HTMLElement).style.borderTop = '';
       (item as HTMLElement).style.borderBottom = '';
+      (item as HTMLElement).style.backgroundColor = '';
     });
 
     this.render();

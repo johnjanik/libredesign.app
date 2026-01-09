@@ -24,6 +24,16 @@ type SelectionMode = 'replace' | 'add' | 'subtract' | 'toggle';
 type HandlePosition = 'nw' | 'n' | 'ne' | 'w' | 'e' | 'sw' | 's' | 'se';
 
 /**
+ * Snap guide for rendering
+ */
+interface SnapGuide {
+  type: 'horizontal' | 'vertical';
+  position: number;
+  start: number;
+  end: number;
+}
+
+/**
  * Select tool state
  */
 interface SelectToolState {
@@ -42,6 +52,9 @@ interface SelectToolState {
   // Duplicate while moving (Alt+drag - canonical behavior)
   duplicatedNodes: boolean;
   originalSelection: NodeId[] | null;
+  // Snapping state
+  activeSnap: { x: number; y: number; type: string } | null;
+  activeGuides: SnapGuide[];
 }
 
 /**
@@ -64,6 +77,8 @@ export class SelectTool extends BaseTool {
     moveStartPositions: null,
     duplicatedNodes: false,
     originalSelection: null,
+    activeSnap: null,
+    activeGuides: [],
   };
 
   private readonly handleSize = 8;
@@ -100,6 +115,8 @@ export class SelectTool extends BaseTool {
       moveStartPositions: null,
       duplicatedNodes: false,
       originalSelection: null,
+      activeSnap: null,
+      activeGuides: [],
     };
   }
 
@@ -178,15 +195,35 @@ export class SelectTool extends BaseTool {
 
     const worldPoint = { x: event.worldX, y: event.worldY };
 
+    // Clear snapping state
+    this.state.activeSnap = null;
+    this.state.activeGuides = [];
+
     if (this.state.mode === 'resizing' && this.state.resizeTarget && this.state.resizeStartBounds && this.state.resizeStartPoint && this.state.activeHandle) {
       // Calculate new bounds based on handle being dragged
-      const newBounds = this.calculateResizedBounds(
+      let newBounds = this.calculateResizedBounds(
         this.state.resizeStartBounds,
         this.state.activeHandle,
         this.state.resizeStartPoint,
         worldPoint,
         event.shiftKey // Preserve aspect ratio with shift
       );
+
+      // Apply snapping to resize if available (snap the corner/edge being dragged)
+      if (context.snapContext?.isEnabled()) {
+        const snapPoint = this.getResizeSnapPoint(newBounds, this.state.activeHandle);
+        const snap = context.snapContext.findSnapPoint(snapPoint.x, snapPoint.y, [this.state.resizeTarget]);
+
+        if (snap) {
+          // Adjust bounds based on snap
+          newBounds = this.applySnapToBounds(newBounds, this.state.activeHandle, snapPoint, { x: snap.x, y: snap.y });
+          this.state.activeSnap = snap;
+
+          // Get alignment guides
+          const guides = context.snapContext.findAlignmentGuides(snap.x, snap.y, [this.state.resizeTarget]);
+          this.state.activeGuides = guides;
+        }
+      }
 
       // Update the node
       context.sceneGraph.updateNode(this.state.resizeTarget, {
@@ -215,6 +252,40 @@ export class SelectTool extends BaseTool {
         }
       }
 
+      // Apply snapping to move if available
+      if (context.snapContext?.isEnabled() && this.state.moveStartPositions.size > 0) {
+        // Get the first node's proposed new position for snapping reference
+        const firstEntry = this.state.moveStartPositions.entries().next().value;
+        if (firstEntry) {
+          const [firstNodeId, firstStartPos] = firstEntry;
+          const proposedX = firstStartPos.x + dx;
+          const proposedY = firstStartPos.y + dy;
+
+          // Get node bounds for snapping (snap to center and corners)
+          const node = context.sceneGraph.getNode(firstNodeId);
+          if (node && 'width' in node && 'height' in node) {
+            const n = node as { width: number; height: number };
+            const centerX = proposedX + n.width / 2;
+            const centerY = proposedY + n.height / 2;
+
+            // Try snapping the center point
+            const excludeIds = Array.from(this.state.moveStartPositions.keys());
+            const snap = context.snapContext.findSnapPoint(centerX, centerY, excludeIds);
+
+            if (snap) {
+              // Adjust delta to snap to the point
+              dx += snap.x - centerX;
+              dy += snap.y - centerY;
+              this.state.activeSnap = snap;
+
+              // Get alignment guides
+              const guides = context.snapContext.findAlignmentGuides(snap.x, snap.y, excludeIds);
+              this.state.activeGuides = guides;
+            }
+          }
+        }
+      }
+
       // Move all selected nodes
       for (const [nodeId, startPos] of this.state.moveStartPositions) {
         context.sceneGraph.updateNode(nodeId, {
@@ -232,6 +303,72 @@ export class SelectTool extends BaseTool {
         this.updateSelection(nodesInMarquee, context);
       }
     }
+  }
+
+  /**
+   * Get the point to snap for a resize operation based on which handle is being dragged.
+   */
+  private getResizeSnapPoint(bounds: Rect, handle: HandlePosition): Point {
+    switch (handle) {
+      case 'nw': return { x: bounds.x, y: bounds.y };
+      case 'n': return { x: bounds.x + bounds.width / 2, y: bounds.y };
+      case 'ne': return { x: bounds.x + bounds.width, y: bounds.y };
+      case 'w': return { x: bounds.x, y: bounds.y + bounds.height / 2 };
+      case 'e': return { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 };
+      case 'sw': return { x: bounds.x, y: bounds.y + bounds.height };
+      case 's': return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height };
+      case 'se': return { x: bounds.x + bounds.width, y: bounds.y + bounds.height };
+      default: return { x: bounds.x, y: bounds.y };
+    }
+  }
+
+  /**
+   * Apply a snap adjustment to bounds based on handle position.
+   */
+  private applySnapToBounds(bounds: Rect, handle: HandlePosition, originalPoint: Point, snapPoint: Point): Rect {
+    const dx = snapPoint.x - originalPoint.x;
+    const dy = snapPoint.y - originalPoint.y;
+    const result = { ...bounds };
+
+    // Adjust position and/or size based on handle
+    switch (handle) {
+      case 'nw':
+        result.x += dx;
+        result.y += dy;
+        result.width -= dx;
+        result.height -= dy;
+        break;
+      case 'n':
+        result.y += dy;
+        result.height -= dy;
+        break;
+      case 'ne':
+        result.y += dy;
+        result.width += dx;
+        result.height -= dy;
+        break;
+      case 'w':
+        result.x += dx;
+        result.width -= dx;
+        break;
+      case 'e':
+        result.width += dx;
+        break;
+      case 'sw':
+        result.x += dx;
+        result.width -= dx;
+        result.height += dy;
+        break;
+      case 's':
+        result.height += dy;
+        break;
+      case 'se':
+        result.width += dx;
+        result.height += dy;
+        break;
+    }
+
+    return result;
   }
 
   onPointerUp(event: PointerEventData, context: ToolContext): void {
@@ -325,6 +462,79 @@ export class SelectTool extends BaseTool {
 
     // Render selection handles for selected nodes
     this.renderSelectionHandles(ctx, context);
+
+    // Render snap guides and indicator during move/resize
+    if ((this.state.mode === 'moving' || this.state.mode === 'resizing') &&
+        (this.state.activeSnap || this.state.activeGuides.length > 0)) {
+      this.renderSnapFeedback(ctx, context);
+    }
+  }
+
+  /**
+   * Render snap feedback (alignment guides and snap indicator).
+   */
+  private renderSnapFeedback(ctx: CanvasRenderingContext2D, context: ToolContext): void {
+    const zoom = context.viewport.getZoom();
+
+    ctx.save();
+
+    // Render alignment guides
+    if (this.state.activeGuides.length > 0) {
+      ctx.strokeStyle = '#FF00FF'; // Magenta for visibility
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.setLineDash([6 / zoom, 3 / zoom]);
+
+      for (const guide of this.state.activeGuides) {
+        ctx.beginPath();
+
+        if (guide.type === 'horizontal') {
+          ctx.moveTo(guide.start, guide.position);
+          ctx.lineTo(guide.end, guide.position);
+        } else {
+          ctx.moveTo(guide.position, guide.start);
+          ctx.lineTo(guide.position, guide.end);
+        }
+
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]);
+    }
+
+    // Render snap indicator
+    if (this.state.activeSnap) {
+      const snap = this.state.activeSnap;
+      const size = 12 / zoom;
+
+      ctx.strokeStyle = '#FF00FF';
+      ctx.fillStyle = 'rgba(255, 0, 255, 0.3)';
+      ctx.lineWidth = 2 / zoom;
+
+      // Draw crosshair at snap point
+      ctx.beginPath();
+      ctx.moveTo(snap.x - size, snap.y);
+      ctx.lineTo(snap.x + size, snap.y);
+      ctx.moveTo(snap.x, snap.y - size);
+      ctx.lineTo(snap.x, snap.y + size);
+      ctx.stroke();
+
+      // Draw circle at snap point
+      ctx.beginPath();
+      ctx.arc(snap.x, snap.y, size / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw label
+      const fontSize = 10 / zoom;
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.fillStyle = '#FF00FF';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      const label = snap.type.charAt(0).toUpperCase() + snap.type.slice(1);
+      ctx.fillText(label, snap.x + size, snap.y - size / 2);
+    }
+
+    ctx.restore();
   }
 
   // =========================================================================

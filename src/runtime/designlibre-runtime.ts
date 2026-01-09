@@ -25,7 +25,18 @@ import { StarTool, createStarTool } from '@tools/drawing/star-tool';
 import { PencilTool, createPencilTool } from '@tools/drawing/pencil-tool';
 import { ImageTool, createImageTool } from '@tools/drawing/image-tool';
 import { TextTool, createTextTool } from '@tools/drawing/text-tool';
+import { PolylineTool, createPolylineTool } from '@tools/drawing/polyline-tool';
+import { ArcTool, createArcTool } from '@tools/drawing/arc-tool';
+import { CircleTool, createCircleTool } from '@tools/drawing/circle-tool';
 import { TextEditTool, createTextEditTool } from '@tools/text';
+import { SnapManager, createSnapManager } from '@tools/snapping';
+import { MirrorTool, createMirrorTool, mirrorBounds } from '@tools/modification/mirror-tool';
+import {
+  ArrayTool,
+  createArrayTool,
+  calculateRectangularArrayPositions,
+  calculatePolarArrayPositions,
+} from '@tools/modification/array-tool';
 import { HandTool, createHandTool } from '@tools/navigation/hand-tool';
 import { PointerHandler, createPointerHandler } from '@tools/input/pointer-handler';
 import { KeyboardHandler, createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -182,6 +193,14 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private textTool: TextTool | null = null;
   private textEditTool: TextEditTool | null = null;
   private handTool: HandTool | null = null;
+  private polylineTool: PolylineTool | null = null;
+  private arcTool: ArcTool | null = null;
+  private circleTool: CircleTool | null = null;
+
+  // CAD tools
+  private snapManager: SnapManager | null = null;
+  private mirrorTool: MirrorTool | null = null;
+  private arrayTool: ArrayTool | null = null;
 
   // State
   private state: RuntimeState = {
@@ -922,6 +941,68 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
+   * Get the snap manager.
+   */
+  getSnapManager(): SnapManager | null {
+    return this.snapManager;
+  }
+
+  /**
+   * Find snap point for a cursor position.
+   * Returns the snapped point and snap type, or null if no snap.
+   */
+  findSnapPoint(cursorX: number, cursorY: number, excludeNodeIds?: NodeId[]): { x: number; y: number; type: string } | null {
+    if (!this.snapManager || !this.viewport) return null;
+
+    const zoom = this.viewport.getZoom();
+    const excludeSet = excludeNodeIds ? new Set(excludeNodeIds) : undefined;
+    const snap = this.snapManager.findSnapPoint({ x: cursorX, y: cursorY }, zoom, excludeSet);
+
+    if (snap) {
+      return { x: snap.point.x, y: snap.point.y, type: snap.type };
+    }
+    return null;
+  }
+
+  /**
+   * Render snap indicator at the given snap point.
+   */
+  renderSnapIndicator(ctx: CanvasRenderingContext2D, snap: { x: number; y: number; type: string } | null): void {
+    if (!this.snapManager || !this.viewport) return;
+
+    const zoom = this.viewport.getZoom();
+
+    // Always try to render alignment guides for the cursor position
+    if (snap) {
+      // Find and render alignment guides
+      const guides = this.snapManager.findAlignmentGuides({ x: snap.x, y: snap.y }, zoom);
+      this.snapManager.renderAlignmentGuides(ctx, guides, zoom);
+
+      // Render the snap indicator
+      const snapPoint = {
+        point: { x: snap.x, y: snap.y },
+        type: snap.type as import('@tools/snapping').SnapType,
+        distance: 0,
+      };
+      this.snapManager.render(ctx, snapPoint, zoom);
+    }
+  }
+
+  /**
+   * Get the mirror tool.
+   */
+  getMirrorTool(): MirrorTool | null {
+    return this.mirrorTool;
+  }
+
+  /**
+   * Get the array tool.
+   */
+  getArrayTool(): ArrayTool | null {
+    return this.arrayTool;
+  }
+
+  /**
    * Get autosave settings.
    */
   getAutosaveSettings(): { enabled: boolean; interval: number } | null {
@@ -1059,31 +1140,20 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       },
     });
 
-    // Rectangle tool
+    // Rectangle tool - creates FRAME nodes with cornerRadius support
     this.rectangleTool = createRectangleTool();
-    this.rectangleTool.setOnRectComplete((rect, _cornerRadius) => {
+    this.rectangleTool.setOnRectComplete((rect, cornerRadius) => {
       const parentId = this.getCurrentPageId();
       if (!parentId) return null;
 
-      // Create a rectangle path
-      const path: VectorPath = {
-        windingRule: 'NONZERO',
-        commands: [
-          { type: 'M', x: 0, y: 0 },
-          { type: 'L', x: rect.width, y: 0 },
-          { type: 'L', x: rect.width, y: rect.height },
-          { type: 'L', x: 0, y: rect.height },
-          { type: 'Z' },
-        ] as PathCommand[],
-      };
-
-      const nodeId = this.sceneGraph.createVector(parentId, {
+      // Create a FRAME node (supports cornerRadius for rounded rectangles)
+      const nodeId = this.sceneGraph.createFrame(parentId, {
         name: 'Rectangle',
         x: rect.x,
         y: rect.y,
         width: rect.width,
         height: rect.height,
-        vectorPaths: [path],
+        cornerRadius: cornerRadius,
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
@@ -1094,6 +1164,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       return nodeId;
     });
+
+    // Wire snapping to rectangle tool
+    this.rectangleTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.rectangleTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
 
     // Frame tool (creates actual frame container)
     this.frameTool = createFrameTool();
@@ -1118,6 +1192,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Wire snapping to frame tool
+    this.frameTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.frameTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
     // Ellipse tool
     this.ellipseTool = createEllipseTool();
     this.ellipseTool.setOnEllipseComplete((path, bounds) => {
@@ -1141,6 +1219,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       return nodeId;
     });
+
+    // Wire snapping to ellipse tool
+    this.ellipseTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.ellipseTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
 
     // Line tool
     this.lineTool = createLineTool();
@@ -1181,6 +1263,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       return nodeId;
     });
+
+    // Wire snapping to line tool
+    this.lineTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.lineTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
 
     // Pen tool
     this.penTool = createPenTool();
@@ -1257,6 +1343,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Wire snapping to pen tool
+    this.penTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.penTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
     // Polygon tool
     this.polygonTool = createPolygonTool();
     this.polygonTool.setOnPolygonComplete((polygon) => {
@@ -1297,6 +1387,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Wire snapping to polygon tool
+    this.polygonTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.polygonTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
     // Star tool
     this.starTool = createStarTool();
     this.starTool.setOnStarComplete((star) => {
@@ -1336,6 +1430,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
       return nodeId;
     });
+
+    // Wire snapping to star tool
+    this.starTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.starTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
 
     // Pencil tool (freehand drawing)
     this.pencilTool = createPencilTool();
@@ -1447,6 +1545,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       return nodeId;
     });
 
+    // Wire snapping to text tool (no render callback - text tool doesn't have preview rendering)
+    this.textTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+
     // Text edit tool
     this.textEditTool = createTextEditTool();
     this.textEditTool.setOnTextUpdate((nodeId, text) => {
@@ -1463,6 +1564,225 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Hand tool for panning
     this.handTool = createHandTool();
+
+    // Polyline tool
+    this.polylineTool = createPolylineTool();
+    this.polylineTool.setOnPolylineComplete((path, points, closed) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      // Calculate bounds
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of points) {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: closed ? 'Polygon' : 'Polyline',
+        x: minX,
+        y: minY,
+        width: maxX - minX || 1,
+        height: maxY - minY || 1,
+        vectorPaths: [path],
+        fills: closed ? [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))] : [],
+        strokes: [solidPaint(rgba(0, 0, 0, 1))],
+        strokeWeight: 2,
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      this.setTool('select');
+      return nodeId;
+    });
+
+    // Wire snapping to polyline tool
+    this.polylineTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.polylineTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
+    // Arc tool
+    this.arcTool = createArcTool();
+    this.arcTool.setOnArcComplete((path, bounds) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: 'Arc',
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width || 1,
+        height: bounds.height || 1,
+        vectorPaths: [path],
+        fills: [],
+        strokes: [solidPaint(rgba(0, 0, 0, 1))],
+        strokeWeight: 2,
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      this.setTool('select');
+      return nodeId;
+    });
+
+    // Wire snapping to arc tool
+    this.arcTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.arcTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
+    // Circle tool (with multiple modes)
+    this.circleTool = createCircleTool();
+    this.circleTool.setOnCircleComplete((path, bounds) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return null;
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: 'Circle',
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        vectorPaths: [path],
+        fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
+      });
+
+      this.selectionManager.select([nodeId], 'replace');
+      this.setTool('select');
+      return nodeId;
+    });
+
+    // Wire snapping to circle tool
+    this.circleTool.setOnFindSnap((x, y) => this.findSnapPoint(x, y));
+    this.circleTool.setOnRenderSnap((ctx, snap) => this.renderSnapIndicator(ctx, snap));
+
+    // Snap manager - configured for CAD precision
+    this.snapManager = createSnapManager({
+      endpoint: true,
+      midpoint: true,
+      center: true,
+      intersection: true,
+      grid: true,
+      gridSize: 10,
+      aperture: 15,
+    });
+
+    // Update snap manager when nodes change
+    this.sceneGraph.on('node:created', () => this.updateSnapManagerNodes());
+    this.sceneGraph.on('node:deleted', () => this.updateSnapManagerNodes());
+    this.sceneGraph.on('node:propertyChanged', () => this.updateSnapManagerNodes());
+
+    // Wire snap context to tool manager for select tool snapping
+    if (this.toolManager && this.snapManager) {
+      const snapManager = this.snapManager;
+      const viewport = this.viewport;
+      this.toolManager.setSnapContext({
+        findSnapPoint: (x: number, y: number, excludeNodeIds?: NodeId[]) => {
+          if (!viewport) return null;
+          const zoom = viewport.getZoom();
+          const excludeSet = excludeNodeIds ? new Set(excludeNodeIds) : undefined;
+          const snap = snapManager.findSnapPoint({ x, y }, zoom, excludeSet);
+          if (snap) {
+            return { x: snap.point.x, y: snap.point.y, type: snap.type };
+          }
+          return null;
+        },
+        findAlignmentGuides: (x: number, y: number, excludeNodeIds?: NodeId[]) => {
+          if (!viewport) return [];
+          const zoom = viewport.getZoom();
+          const excludeSet = excludeNodeIds ? new Set(excludeNodeIds) : undefined;
+          const guides = snapManager.findAlignmentGuides({ x, y }, zoom, excludeSet);
+          return guides.map(g => ({
+            type: g.type,
+            position: g.position,
+            start: g.start,
+            end: g.end,
+          }));
+        },
+        isEnabled: () => snapManager.isEnabled(),
+      });
+    }
+
+    // Mirror tool - mirrors selected nodes (in place or copy)
+    this.mirrorTool = createMirrorTool();
+    this.mirrorTool.setOnMirror((nodeIds, options) => {
+      const newIds: NodeId[] = [];
+
+      for (const nodeId of nodeIds) {
+        const node = this.sceneGraph.getNode(nodeId);
+        if (!node || !('x' in node)) continue;
+
+        const frameNode = node as { x: number; y: number; width?: number; height?: number };
+        const bounds = { x: frameNode.x ?? 0, y: frameNode.y ?? 0, width: frameNode.width ?? 0, height: frameNode.height ?? 0 };
+        const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+        const newBounds = mirrorBounds(frameNode as any, options.axis, center, options.axisPoints);
+
+        if (options.copy) {
+          // Create a mirrored copy
+          const newId = this.sceneGraph.duplicateNode(nodeId, {
+            x: newBounds.x - bounds.x,
+            y: newBounds.y - bounds.y,
+          });
+          if (newId) newIds.push(newId);
+        } else {
+          // Mirror in place
+          this.sceneGraph.updateNode(nodeId, { x: newBounds.x, y: newBounds.y });
+        }
+      }
+      return { originalIds: nodeIds, newIds, success: true };
+    });
+
+    // Array tool - creates arrays of nodes
+    this.arrayTool = createArrayTool();
+    this.arrayTool.setOnArray((nodeIds, options) => {
+      const allNewIds: NodeId[] = [];
+
+      for (const nodeId of nodeIds) {
+        const node = this.sceneGraph.getNode(nodeId);
+        if (!node || !('x' in node)) continue;
+
+        const frameNode = node as { x: number; y: number; width?: number; height?: number };
+        const basePos = { x: frameNode.x ?? 0, y: frameNode.y ?? 0 };
+
+        if (options.type === 'rectangular') {
+          // Calculate positions for rectangular array
+          const positions = calculateRectangularArrayPositions(basePos, options);
+
+          // Create duplicates at each position
+          for (const pos of positions) {
+            const newId = this.sceneGraph.duplicateNode(nodeId, {
+              x: pos.x - basePos.x,
+              y: pos.y - basePos.y,
+            });
+            if (newId) allNewIds.push(newId);
+          }
+        } else if (options.type === 'polar') {
+          // Calculate positions for polar array
+          const positions = calculatePolarArrayPositions(basePos, options);
+
+          // Create duplicates at each position with optional rotation
+          for (const { position, rotation } of positions) {
+            const newId = this.sceneGraph.duplicateNode(nodeId, {
+              x: position.x - basePos.x,
+              y: position.y - basePos.y,
+            });
+            if (newId && rotation !== 0) {
+              // Apply rotation if rotateItems is enabled
+              const newNode = this.sceneGraph.getNode(newId);
+              if (newNode && 'rotation' in newNode) {
+                const currentRotation = (newNode.rotation as number) ?? 0;
+                this.sceneGraph.updateNode(newId, { rotation: currentRotation + rotation });
+              }
+            }
+            if (newId) allNewIds.push(newId);
+          }
+        }
+      }
+
+      return {
+        originalIds: nodeIds,
+        newIds: allNewIds,
+        copyCount: allNewIds.length,
+        success: true,
+      };
+    });
 
     // Register tools
     this.toolManager.registerTool(this.selectTool);
@@ -1481,6 +1801,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.textTool);
     this.toolManager.registerTool(this.textEditTool);
     this.toolManager.registerTool(this.handTool);
+    this.toolManager.registerTool(this.polylineTool);
+    this.toolManager.registerTool(this.arcTool);
+    this.toolManager.registerTool(this.circleTool);
 
     // Set default tool
     this.toolManager.setActiveTool('select');
@@ -2219,6 +2542,25 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.sceneGraph.deleteNode(nodeId);
     }
     this.clearSelection();
+  }
+
+  /**
+   * Update snap manager with current scene graph nodes.
+   */
+  private updateSnapManagerNodes(): void {
+    if (!this.snapManager) return;
+
+    const pageId = this.getCurrentPageId();
+    if (!pageId) return;
+
+    // Collect all nodes on the current page
+    const nodes = new Map<NodeId, import('@scene/nodes/base-node').NodeData>();
+    const descendants = this.sceneGraph.getDescendants(pageId);
+    for (const node of descendants) {
+      nodes.set(node.id, node);
+    }
+
+    this.snapManager.updateNodes(nodes);
   }
 
   private setupEventForwarding(): void {
