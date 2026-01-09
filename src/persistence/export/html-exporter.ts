@@ -135,11 +135,10 @@ export class HTMLExporter {
 
   /**
    * Context for positioning children within parent frames
+   * When true, children need absolute positioning
    */
   private positionContext: {
     needsAbsolute: boolean;
-    parentX: number;
-    parentY: number;
   } | null = null;
 
   /**
@@ -227,10 +226,11 @@ export class HTMLExporter {
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
 
     // Check if this frame needs absolute positioning (from parent context)
+    // Node x,y are already relative to parent in the scene graph
     if (this.positionContext?.needsAbsolute) {
       classes.push('absolute');
-      const left = (node.x ?? 0) - this.positionContext.parentX;
-      const top = (node.y ?? 0) - this.positionContext.parentY;
+      const left = node.x ?? 0;
+      const top = node.y ?? 0;
       classes.push(`left-[${Math.round(left)}px]`);
       classes.push(`top-[${Math.round(top)}px]`);
     }
@@ -261,11 +261,7 @@ export class HTMLExporter {
     // Save and set position context for children
     const previousContext = this.positionContext;
     if (childrenNeedAbsolute) {
-      this.positionContext = {
-        needsAbsolute: true,
-        parentX: node.x ?? 0,
-        parentY: node.y ?? 0,
-      };
+      this.positionContext = { needsAbsolute: true };
     } else {
       this.positionContext = null;
     }
@@ -321,10 +317,11 @@ export class HTMLExporter {
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
 
     // Check if this node needs absolute positioning (from parent context)
+    // Node x,y are already relative to parent in the scene graph
     if (this.positionContext?.needsAbsolute) {
       classes.push('absolute');
-      const left = (node.x ?? 0) - this.positionContext.parentX;
-      const top = (node.y ?? 0) - this.positionContext.parentY;
+      const left = node.x ?? 0;
+      const top = node.y ?? 0;
       classes.push(`left-[${Math.round(left)}px]`);
       classes.push(`top-[${Math.round(top)}px]`);
     }
@@ -350,10 +347,11 @@ export class HTMLExporter {
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
 
     // Check if this node needs absolute positioning (from parent context)
+    // Node x,y are already relative to parent in the scene graph
     if (this.positionContext?.needsAbsolute) {
       classes.push('absolute');
-      const left = (node.x ?? 0) - this.positionContext.parentX;
-      const top = (node.y ?? 0) - this.positionContext.parentY;
+      const left = node.x ?? 0;
+      const top = node.y ?? 0;
       classes.push(`left-[${Math.round(left)}px]`);
       classes.push(`top-[${Math.round(top)}px]`);
     }
@@ -386,10 +384,11 @@ export class HTMLExporter {
     const classes = nodeToUtilityClasses(node as NodeData, this.options.classOptions);
 
     // Check if this node needs absolute positioning (from parent context)
+    // Node x,y are already relative to parent in the scene graph
     if (this.positionContext?.needsAbsolute) {
       classes.push('absolute');
-      const left = ((node as { x?: number }).x ?? 0) - this.positionContext.parentX;
-      const top = ((node as { y?: number }).y ?? 0) - this.positionContext.parentY;
+      const left = (node as { x?: number }).x ?? 0;
+      const top = (node as { y?: number }).y ?? 0;
       classes.push(`left-[${Math.round(left)}px]`);
       classes.push(`top-[${Math.round(top)}px]`);
     }

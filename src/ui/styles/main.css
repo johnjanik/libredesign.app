@@ -748,7 +748,8 @@ body {
 }
 
 .view-switcher-design,
-.view-switcher-code {
+.view-switcher-code,
+.view-switcher-preview {
   overflow: hidden;
   transition: width 0.05s ease;
 }

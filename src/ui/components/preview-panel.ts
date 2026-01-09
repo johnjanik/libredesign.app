@@ -242,12 +242,14 @@ export class PreviewPanel {
 
       <div class="preview-viewport" style="
         flex: 1;
-        overflow: auto;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 24px;
         background: ${this.options.backgroundColor};
+        min-width: 0;
+        min-height: 0;
       ">
         <div class="preview-iframe-container" style="
           position: relative;
@@ -386,22 +388,38 @@ export class PreviewPanel {
     let width: number;
     let height: number;
 
+    // Get available viewport space
+    const viewport = this.iframeContainer.parentElement;
+    const availableWidth = (viewport?.clientWidth ?? 400) - 48; // Account for padding
+    const availableHeight = (viewport?.clientHeight ?? 400) - 48;
+
     if (this.currentDevice.width === 0) {
       // Responsive mode - fill container
-      width = this.iframeContainer.parentElement?.clientWidth ?? 800;
-      height = this.iframeContainer.parentElement?.clientHeight ?? 600;
-      width = Math.max(320, width - 48);
-      height = Math.max(240, height - 48);
+      width = Math.max(320, availableWidth);
+      height = Math.max(240, availableHeight);
     } else {
       // Fixed device size
       width = this.isLandscape ? this.currentDevice.height : this.currentDevice.width;
       height = this.isLandscape ? this.currentDevice.width : this.currentDevice.height;
     }
 
-    // Apply zoom
-    const scale = this.currentZoom / 100;
+    // Apply user zoom
+    let scale = this.currentZoom / 100;
+
+    // Auto-fit: scale down if device doesn't fit in available space
     const scaledWidth = width * scale;
     const scaledHeight = height * scale;
+
+    if (scaledWidth > availableWidth || scaledHeight > availableHeight) {
+      const fitScaleX = availableWidth / width;
+      const fitScaleY = availableHeight / height;
+      const fitScale = Math.min(fitScaleX, fitScaleY);
+      // Only scale down, don't scale up beyond user's zoom setting
+      scale = Math.min(scale, fitScale);
+    }
+
+    const finalWidth = width * scale;
+    const finalHeight = height * scale;
 
     this.iframe.style.width = `${width}px`;
     this.iframe.style.height = `${height}px`;
@@ -409,13 +427,14 @@ export class PreviewPanel {
     this.iframe.style.transformOrigin = 'top left';
 
     // Container size for proper centering
-    this.iframeContainer.style.width = `${scaledWidth}px`;
-    this.iframeContainer.style.height = `${scaledHeight}px`;
+    this.iframeContainer.style.width = `${finalWidth}px`;
+    this.iframeContainer.style.height = `${finalHeight}px`;
 
     // Update dimensions display
     const dimensionsEl = this.element.querySelector('.preview-dimensions-text');
     if (dimensionsEl) {
-      dimensionsEl.textContent = `${width} × ${height}`;
+      const displayScale = Math.round(scale * 100);
+      dimensionsEl.textContent = `${width} × ${height} (${displayScale}%)`;
     }
   }
 
