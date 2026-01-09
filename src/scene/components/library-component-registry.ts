@@ -16,6 +16,7 @@ import { EventEmitter } from '@core/events/event-emitter';
  * Component categories for organization in the library panel
  */
 export type ComponentCategory =
+  | 'device-frames'
   | 'layout'
   | 'navigation'
   | 'typography'
@@ -175,7 +176,7 @@ export class LibraryComponentRegistry extends EventEmitter<LibraryRegistryEvents
    */
   private initializeCategories(): void {
     const categories: ComponentCategory[] = [
-      'layout', 'navigation', 'typography', 'buttons', 'forms',
+      'device-frames', 'layout', 'navigation', 'typography', 'buttons', 'forms',
       'data-display', 'feedback', 'overlays', 'media', 'icons', 'utility'
     ];
     for (const category of categories) {
@@ -320,6 +321,11 @@ export function defineLibraryComponent(
  * Category display information
  */
 export const CATEGORY_INFO: Record<ComponentCategory, { name: string; icon: string; description: string }> = {
+  'device-frames': {
+    name: 'Device Frames',
+    icon: 'lucide:smartphone',
+    description: 'Device screen templates for responsive design',
+  },
   'layout': {
     name: 'Layout',
     icon: 'lucide:layout',
@@ -382,6 +388,7 @@ export const CATEGORY_INFO: Record<ComponentCategory, { name: string; icon: stri
  */
 export function getOrderedCategories(): ComponentCategory[] {
   return [
+    'device-frames',
     'layout',
     'navigation',
     'typography',

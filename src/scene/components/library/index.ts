@@ -10,6 +10,7 @@
 import type { LibraryComponent } from '../library-component-registry';
 
 // Import category getter functions
+import { getDeviceFramesComponents } from './device-frames';
 import { getButtonsComponents } from './buttons';
 import { getLayoutComponents } from './layout';
 import { getFormsComponents } from './forms';
@@ -24,6 +25,7 @@ import { getUtilityComponents } from './utility';
 
 // Re-export category getters
 export {
+  getDeviceFramesComponents,
   getButtonsComponents,
   getLayoutComponents,
   getFormsComponents,
@@ -181,10 +183,11 @@ export {
 } from './utility';
 
 /**
- * Get all library components (99 total)
+ * Get all library components (128 total)
  */
 export function getAllLibraryComponents(): LibraryComponent[] {
   return [
+    ...getDeviceFramesComponents(), // 29 components
     ...getButtonsComponents(),      // 6 components
     ...getLayoutComponents(),       // 12 components
     ...getFormsComponents(),        // 16 components
@@ -204,6 +207,7 @@ export function getAllLibraryComponents(): LibraryComponent[] {
  */
 export function getComponentsByCategory(category: string): LibraryComponent[] {
   switch (category) {
+    case 'device-frames': return getDeviceFramesComponents();
     case 'buttons': return getButtonsComponents();
     case 'layout': return getLayoutComponents();
     case 'forms': return getFormsComponents();
@@ -223,6 +227,7 @@ export function getComponentsByCategory(category: string): LibraryComponent[] {
  * All available categories
  */
 export const LIBRARY_CATEGORIES = [
+  { id: 'device-frames', name: 'Device Frames', icon: 'lucide:smartphone' },
   { id: 'buttons', name: 'Buttons', icon: 'lucide:square' },
   { id: 'layout', name: 'Layout', icon: 'lucide:layout' },
   { id: 'forms', name: 'Forms', icon: 'lucide:text-cursor-input' },

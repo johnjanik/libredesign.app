@@ -48,6 +48,9 @@ const ICONS = {
  * Category icons (using simple SVG representations)
  */
 const CATEGORY_ICONS: Record<ComponentCategory, string> = {
+  'device-frames': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+  </svg>`,
   'layout': `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
     <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
@@ -400,6 +403,7 @@ export class ComponentLibraryPanel {
     // Component preview (simple colored box based on category)
     const preview = document.createElement('div');
     const categoryColors: Record<ComponentCategory, string> = {
+      'device-frames': '#06b6d4',
       'layout': '#4f46e5',
       'navigation': '#0ea5e9',
       'typography': '#8b5cf6',

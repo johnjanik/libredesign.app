@@ -134,6 +134,15 @@ export class HTMLExporter {
   }
 
   /**
+   * Context for positioning children within parent frames
+   */
+  private positionContext: {
+    needsAbsolute: boolean;
+    parentX: number;
+    parentY: number;
+  } | null = null;
+
+  /**
    * Convert a node to HTML
    */
   private nodeToHTML(node: NodeData, depth: number): string {
@@ -216,18 +225,49 @@ export class HTMLExporter {
 
     // Generate classes
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
-    this.trackClasses(classes);
 
-    // Build attributes
-    const attrs = this.buildAttributes(node, classes);
+    // Check if this frame needs absolute positioning (from parent context)
+    if (this.positionContext?.needsAbsolute) {
+      classes.push('absolute');
+      const left = (node.x ?? 0) - this.positionContext.parentX;
+      const top = (node.y ?? 0) - this.positionContext.parentY;
+      classes.push(`left-[${Math.round(left)}px]`);
+      classes.push(`top-[${Math.round(top)}px]`);
+    }
+
+    this.trackClasses(classes);
 
     // Get children
     const childIds = this.sceneGraph.getChildIds(node.id);
     const hasChildren = childIds.length > 0;
 
+    // Determine if children need absolute positioning (no auto-layout)
+    const hasAutoLayout = node.autoLayout && node.autoLayout.mode !== 'NONE';
+    const childrenNeedAbsolute = hasChildren && !hasAutoLayout;
+
+    // Add relative positioning if children need absolute positioning
+    if (childrenNeedAbsolute) {
+      classes.push('relative');
+    }
+
+    // Build attributes
+    const attrs = this.buildAttributes(node, classes);
+
     if (!hasChildren) {
       // Self-closing or empty
       return `${indent}<${tag}${attrs}></${tag}>`;
+    }
+
+    // Save and set position context for children
+    const previousContext = this.positionContext;
+    if (childrenNeedAbsolute) {
+      this.positionContext = {
+        needsAbsolute: true,
+        parentX: node.x ?? 0,
+        parentY: node.y ?? 0,
+      };
+    } else {
+      this.positionContext = null;
     }
 
     // Render children
@@ -238,6 +278,9 @@ export class HTMLExporter {
       })
       .filter(Boolean)
       .join(newline);
+
+    // Restore previous context
+    this.positionContext = previousContext;
 
     return `${indent}<${tag}${attrs}>${newline}${childrenHTML}${newline}${indent}</${tag}>`;
   }
@@ -276,6 +319,16 @@ export class HTMLExporter {
 
     // Generate classes
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
+
+    // Check if this node needs absolute positioning (from parent context)
+    if (this.positionContext?.needsAbsolute) {
+      classes.push('absolute');
+      const left = (node.x ?? 0) - this.positionContext.parentX;
+      const top = (node.y ?? 0) - this.positionContext.parentY;
+      classes.push(`left-[${Math.round(left)}px]`);
+      classes.push(`top-[${Math.round(top)}px]`);
+    }
+
     this.trackClasses(classes);
 
     // Build attributes
@@ -295,6 +348,16 @@ export class HTMLExporter {
 
     // Generate classes
     const classes = nodeToUtilityClasses(node, this.options.classOptions);
+
+    // Check if this node needs absolute positioning (from parent context)
+    if (this.positionContext?.needsAbsolute) {
+      classes.push('absolute');
+      const left = (node.x ?? 0) - this.positionContext.parentX;
+      const top = (node.y ?? 0) - this.positionContext.parentY;
+      classes.push(`left-[${Math.round(left)}px]`);
+      classes.push(`top-[${Math.round(top)}px]`);
+    }
+
     this.trackClasses(classes);
 
     // Image src - use placeholder or actual reference
@@ -321,6 +384,16 @@ export class HTMLExporter {
 
     // Generate classes
     const classes = nodeToUtilityClasses(node as NodeData, this.options.classOptions);
+
+    // Check if this node needs absolute positioning (from parent context)
+    if (this.positionContext?.needsAbsolute) {
+      classes.push('absolute');
+      const left = ((node as { x?: number }).x ?? 0) - this.positionContext.parentX;
+      const top = ((node as { y?: number }).y ?? 0) - this.positionContext.parentY;
+      classes.push(`left-[${Math.round(left)}px]`);
+      classes.push(`top-[${Math.round(top)}px]`);
+    }
+
     this.trackClasses(classes);
 
     // Build attributes
@@ -521,6 +594,14 @@ export class HTMLExporter {
         lines.push(`.${cssClass} { box-shadow: ${value.replace(/_/g, ' ')}; }`);
       } else if (cls.startsWith('opacity-[')) {
         lines.push(`.${cssClass} { opacity: ${value}; }`);
+      } else if (cls.startsWith('left-[')) {
+        lines.push(`.${cssClass} { left: ${value}; }`);
+      } else if (cls.startsWith('top-[')) {
+        lines.push(`.${cssClass} { top: ${value}; }`);
+      } else if (cls.startsWith('right-[')) {
+        lines.push(`.${cssClass} { right: ${value}; }`);
+      } else if (cls.startsWith('bottom-[')) {
+        lines.push(`.${cssClass} { bottom: ${value}; }`);
       }
     }
 
