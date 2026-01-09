@@ -1257,3 +1257,52 @@ body {
 .menu-dropdown .menu-dropdown {
   margin-left: 4px;
 }
+
+/* ============================================================================
+   Rulers
+   ============================================================================ */
+
+.designlibre-rulers-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: var(--designlibre-bg-secondary);
+  border-right: 1px solid var(--designlibre-border);
+  border-bottom: 1px solid var(--designlibre-border);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: var(--designlibre-text-muted);
+  user-select: none;
+}
+
+.designlibre-ruler-horizontal {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 0;
+  height: 20px;
+  z-index: 99;
+  pointer-events: none;
+}
+
+.designlibre-ruler-vertical {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  z-index: 99;
+  pointer-events: none;
+}
+
+/* Canvas container adjustment when rulers are visible */
+.canvas-container.with-rulers > canvas {
+  position: absolute !important;
+  top: 20px !important;
+  left: 20px !important;
+}

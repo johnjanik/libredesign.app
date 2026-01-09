@@ -18,6 +18,8 @@ export interface AppSettings {
   // Editor
   syntaxHighlighting: boolean;
   showOrigin: boolean;
+  showRulers: boolean;
+  showGrid: boolean;
   snapToGrid: boolean;
   gridSize: number;
 
@@ -41,6 +43,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   lastProjectId: null,
   syntaxHighlighting: true,
   showOrigin: false,
+  showRulers: true,
+  showGrid: false,
   snapToGrid: true,
   gridSize: 8,
   autoSave: true,

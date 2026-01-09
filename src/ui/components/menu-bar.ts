@@ -6,6 +6,7 @@
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
 import { MenuDefinition, separator, menuItem, submenuItem } from './menu-types';
 import { MenuDropdown } from './menu-dropdown';
+import { getSetting, setSetting } from '@core/settings/app-settings';
 
 export interface MenuBarOptions {
   runtime: DesignLibreRuntime;
@@ -129,6 +130,17 @@ export class MenuBar {
       this.activeDropdown = null;
       this.activeMenuId = null;
     }
+  }
+
+  /**
+   * Toggle a view setting (showGrid, showRulers) and dispatch event.
+   */
+  private toggleViewSetting(key: 'showGrid' | 'showRulers'): void {
+    const newValue = !getSetting(key);
+    setSetting(key, newValue);
+    window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+      detail: { [key]: newValue },
+    }));
   }
 
   private setupEventListeners(): void {
@@ -322,9 +334,17 @@ export class MenuBar {
           menuItem('pixel-3x', '3x', { radioGroup: 'pixel-preview' }),
         ]),
         separator(),
-        menuItem('show-grid', 'Grid', { accelerator: "Ctrl+'", checked: false }),
+        menuItem('show-grid', 'Grid', {
+          accelerator: "Ctrl+'",
+          checked: getSetting('showGrid'),
+          action: () => this.toggleViewSetting('showGrid'),
+        }),
         menuItem('show-guides', 'Guides', { accelerator: 'Ctrl+;', checked: true }),
-        menuItem('show-rulers', 'Rulers', { accelerator: 'Ctrl+R', checked: true }),
+        menuItem('show-rulers', 'Rulers', {
+          accelerator: 'Ctrl+R',
+          checked: getSetting('showRulers'),
+          action: () => this.toggleViewSetting('showRulers'),
+        }),
         menuItem('show-artboard-bounds', 'Artboard Bounds', { checked: true }),
         menuItem('show-pixel-grid', 'Pixel Grid (Zoom > 800%)', { checked: false }),
         separator(),

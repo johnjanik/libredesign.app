@@ -5,6 +5,8 @@
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
+import { Rulers } from './rulers';
+import { getSetting } from '@core/settings/app-settings';
 
 /**
  * Canvas container options
@@ -16,6 +18,10 @@ export interface CanvasContainerOptions {
   showPixelGrid?: boolean | undefined;
   /** Grid color */
   gridColor?: string | undefined;
+  /** Show design grid */
+  showGrid?: boolean | undefined;
+  /** Show rulers */
+  showRulers?: boolean | undefined;
   /** Show origin marker at world (0,0) for debugging */
   showOrigin?: boolean | undefined;
   /** Origin marker color */
@@ -29,6 +35,8 @@ interface ResolvedCanvasContainerOptions {
   backgroundColor: string;
   showPixelGrid: boolean;
   gridColor: string;
+  showGrid: boolean;
+  showRulers: boolean;
   showOrigin: boolean;
   originColor: string;
 }
@@ -41,6 +49,7 @@ export class CanvasContainer {
   private container: HTMLElement;
   private canvas: HTMLCanvasElement | null = null;
   private overlayCanvas: HTMLCanvasElement | null = null;
+  private rulers: Rulers | null = null;
   private options: ResolvedCanvasContainerOptions;
   private animationFrameId: number | null = null;
   private isRunning = false;
@@ -58,6 +67,8 @@ export class CanvasContainer {
       backgroundColor: options.backgroundColor ?? this.loadCanvasBackgroundSetting(),
       showPixelGrid: options.showPixelGrid ?? true,
       gridColor: options.gridColor ?? 'rgba(255, 255, 255, 0.1)',
+      showGrid: options.showGrid ?? getSetting('showGrid'),
+      showRulers: options.showRulers ?? getSetting('showRulers'),
       showOrigin: options.showOrigin ?? this.loadShowOriginSetting(),
       originColor: options.originColor ?? '#ff0000',
     };
@@ -131,15 +142,36 @@ export class CanvasContainer {
 
     // Listen for settings changes
     this.settingsHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { showOrigin?: boolean; canvasBackground?: string };
+      const detail = (e as CustomEvent).detail as {
+        showOrigin?: boolean;
+        canvasBackground?: string;
+        showGrid?: boolean;
+        showRulers?: boolean;
+      };
       if (detail.showOrigin !== undefined) {
         this.setShowOrigin(detail.showOrigin);
       }
       if (detail.canvasBackground !== undefined) {
         this.setBackgroundColor(detail.canvasBackground);
       }
+      if (detail.showGrid !== undefined) {
+        this.setShowGrid(detail.showGrid);
+      }
+      if (detail.showRulers !== undefined) {
+        this.setShowRulers(detail.showRulers);
+      }
     };
     window.addEventListener('designlibre-settings-changed', this.settingsHandler);
+
+    // Initialize rulers
+    const viewport = this.runtime.getViewport();
+    if (viewport) {
+      this.rulers = new Rulers({
+        viewport,
+        container: this.container,
+      });
+      this.rulers.setVisible(this.options.showRulers);
+    }
 
     // Set up drag-drop for library components
     this.setupLibraryDragDrop();
@@ -288,6 +320,11 @@ export class CanvasContainer {
     // Scale for DPR (coordinates will be in CSS pixels after this)
     ctx.scale(scaleX, scaleY);
 
+    // Draw design grid
+    if (this.options.showGrid) {
+      this.drawGrid(ctx);
+    }
+
     // Draw pixel grid at high zoom
     if (this.options.showPixelGrid) {
       this.drawPixelGrid(ctx);
@@ -429,6 +466,60 @@ export class CanvasContainer {
     }
   }
 
+  /**
+   * Draw design grid based on gridSize setting.
+   * Visible at all zoom levels (with adaptive rendering).
+   */
+  private drawGrid(ctx: CanvasRenderingContext2D): void {
+    const viewport = this.runtime.getViewport();
+    if (!viewport) return;
+
+    const zoom = viewport.getZoom();
+    const offset = viewport.getOffset();
+    const gridSize = getSetting('gridSize');
+
+    // Calculate screen-space grid spacing
+    const screenGridSize = gridSize * zoom;
+
+    // Don't render if grid lines would be too dense (< 4 pixels apart)
+    if (screenGridSize < 4) return;
+
+    const cssWidth = this.overlayCanvas!.width / window.devicePixelRatio;
+    const cssHeight = this.overlayCanvas!.height / window.devicePixelRatio;
+
+    // Get visible world bounds
+    const bounds = viewport.getVisibleBounds();
+
+    // Round to nearest grid line
+    const startX = Math.floor(bounds.minX / gridSize) * gridSize;
+    const startY = Math.floor(bounds.minY / gridSize) * gridSize;
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+
+    // Draw vertical lines
+    for (let worldX = startX; worldX <= bounds.maxX; worldX += gridSize) {
+      const screenX = worldX * zoom + offset.x;
+      if (screenX < 0 || screenX > cssWidth) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(screenX, 0);
+      ctx.lineTo(screenX, cssHeight);
+      ctx.stroke();
+    }
+
+    // Draw horizontal lines
+    for (let worldY = startY; worldY <= bounds.maxY; worldY += gridSize) {
+      const screenY = worldY * zoom + offset.y;
+      if (screenY < 0 || screenY > cssHeight) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(0, screenY);
+      ctx.lineTo(cssWidth, screenY);
+      ctx.stroke();
+    }
+  }
+
   private drawCrosshairs(ctx: CanvasRenderingContext2D): void {
     const width = this.overlayCanvas!.width / window.devicePixelRatio;
     const height = this.overlayCanvas!.height / window.devicePixelRatio;
@@ -465,11 +556,15 @@ export class CanvasContainer {
 
     // Get all nodes and filter for text nodes
     const allNodeIds = sceneGraph.getAllNodeIds();
-    const textNodes = allNodeIds
-      .map(id => sceneGraph.getNode(id))
-      .filter((node): node is NonNullable<typeof node> => node !== null && node.type === 'TEXT');
+    const textNodeIds = allNodeIds.filter(id => {
+      const node = sceneGraph.getNode(id);
+      return node !== null && node.type === 'TEXT';
+    });
 
-    for (const node of textNodes) {
+    for (const nodeId of textNodeIds) {
+      const node = sceneGraph.getNode(nodeId);
+      if (!node) continue;
+
       const textNode = node as unknown as {
         id: string;
         x?: number;
@@ -496,8 +591,12 @@ export class CanvasContainer {
       if (textNode.visible === false) continue;
       if (!textNode.characters || textNode.characters.length === 0) continue;
 
-      const x = textNode.x ?? 0;
-      const y = textNode.y ?? 0;
+      // Get world bounds to render at correct position (accounting for parent transforms)
+      const worldBounds = sceneGraph.getWorldBounds(nodeId);
+      if (!worldBounds) continue;
+
+      const x = worldBounds.x;
+      const y = worldBounds.y;
       const opacity = textNode.opacity ?? 1;
 
       // Get text style
@@ -601,6 +700,22 @@ export class CanvasContainer {
   }
 
   /**
+   * Toggle design grid.
+   */
+  setShowGrid(show: boolean): void {
+    this.options.showGrid = show;
+    this.render();
+  }
+
+  /**
+   * Toggle rulers.
+   */
+  setShowRulers(show: boolean): void {
+    this.options.showRulers = show;
+    this.rulers?.setVisible(show);
+  }
+
+  /**
    * Dispose of the container.
    */
   dispose(): void {
@@ -614,6 +729,11 @@ export class CanvasContainer {
     if (this.settingsHandler) {
       window.removeEventListener('designlibre-settings-changed', this.settingsHandler);
       this.settingsHandler = null;
+    }
+
+    if (this.rulers) {
+      this.rulers.dispose();
+      this.rulers = null;
     }
 
     if (this.overlayCanvas) {
