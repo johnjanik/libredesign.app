@@ -218,7 +218,7 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Clearance rules | Implemented | `src/core/types/pcb.ts` (DesignRules) |
 | Track width rules | Implemented | `src/core/types/pcb.ts` (DesignRules) |
 | Via rules | Implemented | `src/core/types/pcb.ts` (DesignRules) |
-| DRC (Design Rule Check) | Types Only | `src/core/types/pcb.ts` |
+| DRC (Design Rule Check) | Implemented | `src/pcb/pcb-manager.ts` |
 
 ---
 
@@ -302,10 +302,10 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Phase 3: Schematic | 14 | 14 | 100% |
 | Phase 4: Hatching | 7 | 9 | 78% |
 | Phase 5: Blocks | 6 | 9 | 67% |
-| Phase 6: PCB | 10 | 11 | 91% |
+| Phase 6: PCB | 11 | 11 | 100% |
 | Phase 7: Mechanical | 13 | 13 | 100% |
 | Phase 8: Import/Export | 6 | 10 | 60% |
-| **Total** | **83** | **94** | **88%** |
+| **Total** | **84** | **94** | **89%** |
 
 ### Not Yet Implemented
 
@@ -316,7 +316,6 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Field insertion (auto-updating) | 4 | Low |
 | Dynamic block stretch actions | 5 | Medium |
 | Dynamic block parameters | 5 | Low |
-| DRC implementation | 6 | High |
 | PDF vector import | 8 | Medium |
 | KiCad import | 8 | Medium |
 | Eagle import | 8 | Low |
