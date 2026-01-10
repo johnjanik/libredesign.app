@@ -22,6 +22,43 @@ export type VariableType = 'boolean' | 'number' | 'string' | 'color';
 export type VariableScope = 'document' | 'page' | 'component';
 
 /**
+ * Variable kind - regular state or computed/derived
+ */
+export type VariableKind = 'state' | 'computed';
+
+/**
+ * Number constraints for numeric variables
+ */
+export interface NumberConstraints {
+  min?: number;
+  max?: number;
+  step?: number;
+  precision?: number;
+}
+
+/**
+ * String constraints for string variables
+ */
+export interface StringConstraints {
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
+  options?: string[]; // Enum-like options
+}
+
+/**
+ * Computed variable expression
+ */
+export interface ComputedExpression {
+  /** Variable IDs this computed value depends on */
+  dependencies: string[];
+  /** Expression string (e.g., "price * quantity") */
+  expression: string;
+  /** Pre-parsed AST for evaluation (internal) */
+  parsedExpression?: unknown;
+}
+
+/**
  * Variable definition
  */
 export interface VariableDefinition {
@@ -35,10 +72,20 @@ export interface VariableDefinition {
   readonly defaultValue: VariableValue;
   /** Variable scope */
   readonly scope: VariableScope;
+  /** Variable kind - state or computed */
+  readonly kind: VariableKind;
   /** Description for documentation */
   readonly description?: string;
   /** Group/category for organization */
   readonly group?: string;
+  /** Component ID if scope is 'component' */
+  readonly componentId?: string;
+  /** Number constraints for numeric variables */
+  readonly numberConstraints?: NumberConstraints;
+  /** String constraints for string variables */
+  readonly stringConstraints?: StringConstraints;
+  /** Computed expression (for kind='computed') */
+  readonly computedExpression?: ComputedExpression;
 }
 
 /**
@@ -112,20 +159,114 @@ export interface ConditionGroup {
 // =============================================================================
 
 /**
+ * Component instance key for scoped variables
+ */
+export type ComponentInstanceKey = string; // `${componentId}:${instanceId}`
+
+/**
  * Manages prototype variables
  */
 export class VariableManager extends EventEmitter<VariableManagerEvents> {
   /** Variable definitions indexed by ID */
   private definitions = new Map<string, VariableDefinition>();
 
-  /** Current variable values (runtime state) */
+  /** Current variable values (runtime state) - document/page scope */
   private values = new Map<string, VariableValue>();
+
+  /** Component-scoped variable instances: Map<instanceKey, Map<variableId, value>> */
+  private componentInstances = new Map<ComponentInstanceKey, Map<string, VariableValue>>();
 
   /** Variables indexed by group */
   private byGroup = new Map<string, Set<string>>();
 
+  /** Variables indexed by component ID */
+  private byComponent = new Map<string, Set<string>>();
+
+  /** Computed variable dependency graph */
+  private dependencyGraph = new Map<string, Set<string>>();
+
   constructor() {
     super();
+  }
+
+  // ===========================================================================
+  // Component Instance Management
+  // ===========================================================================
+
+  /**
+   * Create a new component instance with its own variable state
+   */
+  createComponentInstance(componentId: string, instanceId: string): ComponentInstanceKey {
+    const key: ComponentInstanceKey = `${componentId}:${instanceId}`;
+
+    // Get all variables scoped to this component
+    const componentVars = this.byComponent.get(componentId);
+    if (componentVars) {
+      const instanceValues = new Map<string, VariableValue>();
+      for (const varId of componentVars) {
+        const def = this.definitions.get(varId);
+        if (def) {
+          instanceValues.set(varId, def.defaultValue);
+        }
+      }
+      this.componentInstances.set(key, instanceValues);
+    }
+
+    return key;
+  }
+
+  /**
+   * Remove a component instance
+   */
+  removeComponentInstance(instanceKey: ComponentInstanceKey): void {
+    this.componentInstances.delete(instanceKey);
+  }
+
+  /**
+   * Get all instances for a component
+   */
+  getComponentInstances(componentId: string): ComponentInstanceKey[] {
+    const instances: ComponentInstanceKey[] = [];
+    for (const key of this.componentInstances.keys()) {
+      if (key.startsWith(`${componentId}:`)) {
+        instances.push(key);
+      }
+    }
+    return instances;
+  }
+
+  /**
+   * Get a component-scoped variable's value for a specific instance
+   */
+  getComponentValue(instanceKey: ComponentInstanceKey, variableId: string): VariableValue | undefined {
+    return this.componentInstances.get(instanceKey)?.get(variableId);
+  }
+
+  /**
+   * Set a component-scoped variable's value for a specific instance
+   */
+  setComponentValue(instanceKey: ComponentInstanceKey, variableId: string, value: VariableValue): void {
+    const instanceValues = this.componentInstances.get(instanceKey);
+    if (!instanceValues) return;
+
+    const definition = this.definitions.get(variableId);
+    if (!definition || definition.scope !== 'component') return;
+
+    const coercedValue = this.coerceValue(value, definition.type);
+    const constrainedValue = this.applyConstraints(coercedValue, definition);
+    const oldValue = instanceValues.get(variableId);
+
+    if (oldValue !== constrainedValue) {
+      instanceValues.set(variableId, constrainedValue);
+      this.emit('value:changed', {
+        id: variableId,
+        oldValue: oldValue ?? definition.defaultValue,
+        newValue: constrainedValue,
+      });
+
+      // Recompute dependent computed variables for this instance
+      this.recomputeDependentsForInstance(instanceKey, variableId);
+    }
   }
 
   // ===========================================================================
@@ -232,17 +373,24 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
     const definition = this.definitions.get(id);
     if (!definition) return;
 
+    // Don't allow setting computed variables directly
+    if (definition.kind === 'computed') return;
+
     // Type coercion based on definition type
     const coercedValue = this.coerceValue(value, definition.type);
+    const constrainedValue = this.applyConstraints(coercedValue, definition);
     const oldValue = this.values.get(id);
 
-    if (oldValue !== coercedValue) {
-      this.values.set(id, coercedValue);
+    if (oldValue !== constrainedValue) {
+      this.values.set(id, constrainedValue);
       this.emit('value:changed', {
         id,
         oldValue: oldValue ?? definition.defaultValue,
-        newValue: coercedValue,
+        newValue: constrainedValue,
       });
+
+      // Recompute any dependent computed variables
+      this.recomputeDependents(id);
     }
   }
 
@@ -432,7 +580,41 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
     this.definitions.clear();
     this.values.clear();
     this.byGroup.clear();
+    this.byComponent.clear();
+    this.componentInstances.clear();
+    this.dependencyGraph.clear();
     this.emit('variables:cleared');
+  }
+
+  // ===========================================================================
+  // Component Queries
+  // ===========================================================================
+
+  /**
+   * Get variables scoped to a specific component
+   */
+  getByComponent(componentId: string): VariableDefinition[] {
+    const ids = this.byComponent.get(componentId);
+    if (!ids) return [];
+    return Array.from(ids)
+      .map(id => this.definitions.get(id))
+      .filter((d): d is VariableDefinition => d !== undefined);
+  }
+
+  /**
+   * Get all computed variables
+   */
+  getComputedVariables(): VariableDefinition[] {
+    return Array.from(this.definitions.values())
+      .filter(d => d.kind === 'computed');
+  }
+
+  /**
+   * Get all state variables (non-computed)
+   */
+  getStateVariables(): VariableDefinition[] {
+    return Array.from(this.definitions.values())
+      .filter(d => d.kind === 'state');
   }
 
   // ===========================================================================
@@ -440,16 +622,48 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
   // ===========================================================================
 
   private indexVariable(definition: VariableDefinition): void {
+    // Index by group
     const group = definition.group ?? 'Ungrouped';
     if (!this.byGroup.has(group)) {
       this.byGroup.set(group, new Set());
     }
     this.byGroup.get(group)!.add(definition.id);
+
+    // Index by component if component-scoped
+    if (definition.scope === 'component' && definition.componentId) {
+      if (!this.byComponent.has(definition.componentId)) {
+        this.byComponent.set(definition.componentId, new Set());
+      }
+      this.byComponent.get(definition.componentId)!.add(definition.id);
+    }
+
+    // Build dependency graph for computed variables
+    if (definition.kind === 'computed' && definition.computedExpression) {
+      for (const depId of definition.computedExpression.dependencies) {
+        if (!this.dependencyGraph.has(depId)) {
+          this.dependencyGraph.set(depId, new Set());
+        }
+        this.dependencyGraph.get(depId)!.add(definition.id);
+      }
+    }
   }
 
   private unindexVariable(definition: VariableDefinition): void {
+    // Remove from group index
     const group = definition.group ?? 'Ungrouped';
     this.byGroup.get(group)?.delete(definition.id);
+
+    // Remove from component index
+    if (definition.scope === 'component' && definition.componentId) {
+      this.byComponent.get(definition.componentId)?.delete(definition.id);
+    }
+
+    // Remove from dependency graph
+    if (definition.kind === 'computed' && definition.computedExpression) {
+      for (const depId of definition.computedExpression.dependencies) {
+        this.dependencyGraph.get(depId)?.delete(definition.id);
+      }
+    }
   }
 
   private coerceValue(value: VariableValue, type: VariableType): VariableValue {
@@ -466,6 +680,221 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
     }
   }
 
+  /**
+   * Apply constraints to a value
+   */
+  private applyConstraints(value: VariableValue, definition: VariableDefinition): VariableValue {
+    if (definition.type === 'number' && typeof value === 'number') {
+      const constraints = definition.numberConstraints;
+      if (constraints) {
+        let result = value;
+        if (constraints.min !== undefined && result < constraints.min) {
+          result = constraints.min;
+        }
+        if (constraints.max !== undefined && result > constraints.max) {
+          result = constraints.max;
+        }
+        if (constraints.step !== undefined && constraints.step > 0) {
+          const min = constraints.min ?? 0;
+          result = Math.round((result - min) / constraints.step) * constraints.step + min;
+        }
+        if (constraints.precision !== undefined) {
+          result = Number(result.toFixed(constraints.precision));
+        }
+        return result;
+      }
+    }
+
+    if (definition.type === 'string' && typeof value === 'string') {
+      const constraints = definition.stringConstraints;
+      if (constraints) {
+        let result = value;
+        if (constraints.maxLength !== undefined && result.length > constraints.maxLength) {
+          result = result.slice(0, constraints.maxLength);
+        }
+        if (constraints.options && constraints.options.length > 0) {
+          // If options are specified, value must be one of them
+          if (!constraints.options.includes(result)) {
+            result = constraints.options[0]!;
+          }
+        }
+        return result;
+      }
+    }
+
+    return value;
+  }
+
+  /**
+   * Recompute all variables that depend on the changed variable
+   */
+  private recomputeDependents(changedId: string): void {
+    const dependents = this.dependencyGraph.get(changedId);
+    if (!dependents) return;
+
+    for (const depId of dependents) {
+      this.computeValue(depId);
+    }
+  }
+
+  /**
+   * Recompute dependents for a specific component instance
+   */
+  private recomputeDependentsForInstance(instanceKey: ComponentInstanceKey, changedId: string): void {
+    const dependents = this.dependencyGraph.get(changedId);
+    if (!dependents) return;
+
+    for (const depId of dependents) {
+      const definition = this.definitions.get(depId);
+      if (definition?.scope === 'component') {
+        this.computeValueForInstance(instanceKey, depId);
+      }
+    }
+  }
+
+  /**
+   * Compute the value of a computed variable (document/page scope)
+   */
+  private computeValue(variableId: string): void {
+    const definition = this.definitions.get(variableId);
+    if (!definition || definition.kind !== 'computed' || !definition.computedExpression) {
+      return;
+    }
+
+    const result = this.evaluateExpression(definition.computedExpression.expression);
+    if (result !== undefined) {
+      const coerced = this.coerceValue(result, definition.type);
+      const oldValue = this.values.get(variableId);
+      if (oldValue !== coerced) {
+        this.values.set(variableId, coerced);
+        this.emit('value:changed', {
+          id: variableId,
+          oldValue: oldValue ?? definition.defaultValue,
+          newValue: coerced,
+        });
+        // Cascade to dependents
+        this.recomputeDependents(variableId);
+      }
+    }
+  }
+
+  /**
+   * Compute value for a component instance
+   */
+  private computeValueForInstance(instanceKey: ComponentInstanceKey, variableId: string): void {
+    const definition = this.definitions.get(variableId);
+    if (!definition || definition.kind !== 'computed' || !definition.computedExpression) {
+      return;
+    }
+
+    const instanceValues = this.componentInstances.get(instanceKey);
+    if (!instanceValues) return;
+
+    const result = this.evaluateExpressionForInstance(
+      definition.computedExpression.expression,
+      instanceKey
+    );
+    if (result !== undefined) {
+      const coerced = this.coerceValue(result, definition.type);
+      const oldValue = instanceValues.get(variableId);
+      if (oldValue !== coerced) {
+        instanceValues.set(variableId, coerced);
+        this.emit('value:changed', {
+          id: variableId,
+          oldValue: oldValue ?? definition.defaultValue,
+          newValue: coerced,
+        });
+        this.recomputeDependentsForInstance(instanceKey, variableId);
+      }
+    }
+  }
+
+  /**
+   * Evaluate a computed expression (simple expression evaluator)
+   */
+  private evaluateExpression(expression: string): VariableValue | undefined {
+    try {
+      // Build a context with all variable values
+      const context: Record<string, VariableValue> = {};
+      for (const [id, def] of this.definitions) {
+        const value = this.values.get(id) ?? def.defaultValue;
+        // Use variable name as key for expression evaluation
+        context[def.name] = value;
+        // Also use id for direct reference
+        context[id] = value;
+      }
+
+      // Simple safe expression evaluation
+      return this.safeEval(expression, context);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Evaluate expression for a component instance
+   */
+  private evaluateExpressionForInstance(
+    expression: string,
+    instanceKey: ComponentInstanceKey
+  ): VariableValue | undefined {
+    try {
+      const instanceValues = this.componentInstances.get(instanceKey);
+      const context: Record<string, VariableValue> = {};
+
+      // First add document/page scoped variables
+      for (const [id, def] of this.definitions) {
+        if (def.scope !== 'component') {
+          const value = this.values.get(id) ?? def.defaultValue;
+          context[def.name] = value;
+          context[id] = value;
+        }
+      }
+
+      // Then add component-scoped variables (from this instance)
+      if (instanceValues) {
+        for (const [id, value] of instanceValues) {
+          const def = this.definitions.get(id);
+          if (def) {
+            context[def.name] = value;
+            context[id] = value;
+          }
+        }
+      }
+
+      return this.safeEval(expression, context);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Safe expression evaluator (handles basic arithmetic and comparisons)
+   */
+  private safeEval(expression: string, context: Record<string, VariableValue>): VariableValue {
+    // Replace variable references with their values
+    let expr = expression;
+    for (const [name, value] of Object.entries(context)) {
+      const regex = new RegExp(`\\b${name}\\b`, 'g');
+      if (typeof value === 'string') {
+        expr = expr.replace(regex, JSON.stringify(value));
+      } else {
+        expr = expr.replace(regex, String(value));
+      }
+    }
+
+    // Only allow safe operations: +, -, *, /, %, <, >, <=, >=, ==, !=, &&, ||, !, ?, :, (, ), numbers, strings, booleans
+    const safePattern = /^[\d\s+\-*/%<>=!&|?:().,"'true false]+$/;
+    if (!safePattern.test(expr)) {
+      throw new Error('Unsafe expression');
+    }
+
+    // Use Function constructor for evaluation (safer than eval)
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const fn = new Function(`return (${expr})`);
+    return fn() as VariableValue;
+  }
+
   // ===========================================================================
   // Factory Helpers
   // ===========================================================================
@@ -476,16 +905,25 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
   static createBoolean(
     name: string,
     defaultValue: boolean = false,
-    options: { group?: string; description?: string } = {}
+    options: {
+      group?: string;
+      description?: string;
+      scope?: VariableScope;
+      componentId?: string;
+    } = {}
   ): VariableDefinition {
-    return {
+    let def: VariableDefinition = {
       id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
       type: 'boolean',
+      kind: 'state',
       defaultValue,
-      scope: 'document',
-      ...options,
+      scope: options.scope ?? 'document',
     };
+    if (options.componentId) def = { ...def, componentId: options.componentId };
+    if (options.group) def = { ...def, group: options.group };
+    if (options.description) def = { ...def, description: options.description };
+    return def;
   }
 
   /**
@@ -494,16 +932,27 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
   static createNumber(
     name: string,
     defaultValue: number = 0,
-    options: { group?: string; description?: string } = {}
+    options: {
+      group?: string;
+      description?: string;
+      scope?: VariableScope;
+      componentId?: string;
+      constraints?: NumberConstraints;
+    } = {}
   ): VariableDefinition {
-    return {
+    let def: VariableDefinition = {
       id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
       type: 'number',
+      kind: 'state',
       defaultValue,
-      scope: 'document',
-      ...options,
+      scope: options.scope ?? 'document',
     };
+    if (options.componentId) def = { ...def, componentId: options.componentId };
+    if (options.group) def = { ...def, group: options.group };
+    if (options.description) def = { ...def, description: options.description };
+    if (options.constraints) def = { ...def, numberConstraints: options.constraints };
+    return def;
   }
 
   /**
@@ -512,16 +961,27 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
   static createString(
     name: string,
     defaultValue: string = '',
-    options: { group?: string; description?: string } = {}
+    options: {
+      group?: string;
+      description?: string;
+      scope?: VariableScope;
+      componentId?: string;
+      constraints?: StringConstraints;
+    } = {}
   ): VariableDefinition {
-    return {
+    let def: VariableDefinition = {
       id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
       type: 'string',
+      kind: 'state',
       defaultValue,
-      scope: 'document',
-      ...options,
+      scope: options.scope ?? 'document',
     };
+    if (options.componentId) def = { ...def, componentId: options.componentId };
+    if (options.group) def = { ...def, group: options.group };
+    if (options.description) def = { ...def, description: options.description };
+    if (options.constraints) def = { ...def, stringConstraints: options.constraints };
+    return def;
   }
 
   /**
@@ -530,16 +990,73 @@ export class VariableManager extends EventEmitter<VariableManagerEvents> {
   static createColor(
     name: string,
     defaultValue: string = '#000000',
-    options: { group?: string; description?: string } = {}
+    options: {
+      group?: string;
+      description?: string;
+      scope?: VariableScope;
+      componentId?: string;
+    } = {}
   ): VariableDefinition {
-    return {
+    let def: VariableDefinition = {
       id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
       type: 'color',
+      kind: 'state',
       defaultValue,
-      scope: 'document',
-      ...options,
+      scope: options.scope ?? 'document',
     };
+    if (options.componentId) def = { ...def, componentId: options.componentId };
+    if (options.group) def = { ...def, group: options.group };
+    if (options.description) def = { ...def, description: options.description };
+    return def;
+  }
+
+  /**
+   * Create a computed variable definition
+   */
+  static createComputed(
+    name: string,
+    type: VariableType,
+    expression: string,
+    dependencies: string[],
+    options: {
+      group?: string;
+      description?: string;
+      scope?: VariableScope;
+      componentId?: string;
+    } = {}
+  ): VariableDefinition {
+    // Compute default value based on type
+    let defaultValue: VariableValue;
+    switch (type) {
+      case 'boolean':
+        defaultValue = false;
+        break;
+      case 'number':
+        defaultValue = 0;
+        break;
+      case 'string':
+      case 'color':
+        defaultValue = '';
+        break;
+    }
+
+    let def: VariableDefinition = {
+      id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      name,
+      type,
+      kind: 'computed',
+      defaultValue,
+      scope: options.scope ?? 'document',
+      computedExpression: {
+        expression,
+        dependencies,
+      },
+    };
+    if (options.componentId) def = { ...def, componentId: options.componentId };
+    if (options.group) def = { ...def, group: options.group };
+    if (options.description) def = { ...def, description: options.description };
+    return def;
   }
 }
 

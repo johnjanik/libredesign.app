@@ -19,6 +19,7 @@ import type {
 import { nodeToUtilityClasses } from './utility-class-generator';
 import { formatNum } from './format-utils';
 import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
+import type { VariableDefinition, VariableType } from '@prototype/variable-manager';
 
 /**
  * Detected prop from node name or text content
@@ -53,6 +54,8 @@ export interface ReactExportOptions {
   includeStory: boolean;
   /** Indentation */
   indent: string;
+  /** Variable definitions for state-aware code generation */
+  variables?: VariableDefinition[];
 }
 
 const DEFAULT_OPTIONS: ReactExportOptions = {
@@ -99,6 +102,9 @@ export class ReactComponentGenerator {
   private detectedProps: Map<string, DetectedProp> = new Map();
   private warnings: string[] = [];
   private cssClasses: Map<string, string> = new Map();
+  private variables: VariableDefinition[] = [];
+  private variableMap: Map<string, VariableDefinition> = new Map();
+  private usedVariableIds: Set<string> = new Set();
 
   constructor(sceneGraph: SceneGraph, options: Partial<ReactExportOptions> = {}) {
     this.sceneGraph = sceneGraph;
@@ -112,6 +118,19 @@ export class ReactComponentGenerator {
     this.detectedProps.clear();
     this.warnings = [];
     this.cssClasses.clear();
+    this.usedVariableIds.clear();
+
+    // Store variables for state-aware code generation
+    this.variables = this.options.variables ?? [];
+    this.variableMap.clear();
+    for (const v of this.variables) {
+      this.variableMap.set(v.id, v);
+    }
+
+    // Collect used variables from all nodes
+    for (const nodeId of nodeIds) {
+      this.collectUsedVariables(nodeId);
+    }
 
     // Generate JSX for all nodes
     const jsxParts: string[] = [];
@@ -638,14 +657,124 @@ export class ReactComponentGenerator {
   }
 
   /**
+   * Collect used variables from a node's state bindings
+   */
+  private collectUsedVariables(nodeId: NodeId): void {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return;
+
+    // Get semantic metadata with state bindings
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData;
+    const semantic = getSemanticMetadata(pluginData);
+
+    if (semantic?.stateBindings) {
+      for (const binding of semantic.stateBindings) {
+        if (this.variableMap.has(binding.variableId)) {
+          this.usedVariableIds.add(binding.variableId);
+        }
+      }
+    }
+
+    // Recursively process children
+    const childIds = this.sceneGraph.getChildIds(nodeId);
+    for (const childId of childIds) {
+      this.collectUsedVariables(childId);
+    }
+  }
+
+  /**
+   * Generate useState hook declarations for state variables
+   */
+  private generateStateHooks(indent: string): string[] {
+    const lines: string[] = [];
+
+    for (const variableId of this.usedVariableIds) {
+      const variable = this.variableMap.get(variableId);
+      if (!variable || variable.kind !== 'state') continue;
+
+      const safeName = this.sanitizeVariableName(variable.name);
+      const setterName = `set${safeName.charAt(0).toUpperCase()}${safeName.slice(1)}`;
+      const tsType = this.options.typescript ? `<${this.variableTypeToTS(variable.type)}>` : '';
+      const defaultValue = this.formatStateDefaultValue(variable.defaultValue, variable.type);
+
+      lines.push(`${indent}const [${safeName}, ${setterName}] = useState${tsType}(${defaultValue});`);
+    }
+
+    return lines;
+  }
+
+  /**
+   * Convert VariableType to TypeScript type
+   */
+  private variableTypeToTS(type: VariableType): string {
+    switch (type) {
+      case 'boolean':
+        return 'boolean';
+      case 'number':
+        return 'number';
+      case 'string':
+        return 'string';
+      case 'color':
+        return 'string';
+      default:
+        return 'unknown';
+    }
+  }
+
+  /**
+   * Format default value for useState hook
+   */
+  private formatStateDefaultValue(value: boolean | number | string, type: VariableType): string {
+    switch (type) {
+      case 'boolean':
+        return String(value);
+      case 'number':
+        return String(value);
+      case 'string':
+      case 'color':
+        return `'${this.escapeJSString(String(value))}'`;
+      default:
+        return 'undefined';
+    }
+  }
+
+  /**
+   * Escape JavaScript string
+   */
+  private escapeJSString(str: string): string {
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+  }
+
+  /**
+   * Sanitize variable name for valid JavaScript identifier
+   */
+  private sanitizeVariableName(name: string): string {
+    // Remove invalid characters and ensure starts with letter
+    let sanitized = name.replace(/[^a-zA-Z0-9_]/g, '');
+    if (/^[0-9]/.test(sanitized)) {
+      sanitized = '_' + sanitized;
+    }
+    // Convert to camelCase
+    return sanitized.charAt(0).toLowerCase() + sanitized.slice(1);
+  }
+
+  /**
    * Generate the full component code
    */
   private generateComponentCode(jsxContent: string): string {
     const { componentName, typescript, includeProps, defaultExport, forwardRef, memo, indent } = this.options;
     const lines: string[] = [];
 
+    // Check if we have state variables
+    const hasStateVariables = this.usedVariableIds.size > 0;
+
     // Imports
     const reactImports: string[] = [];
+    if (hasStateVariables) reactImports.push('useState');
     if (forwardRef) reactImports.push('forwardRef');
     if (memo) reactImports.push('memo');
 
@@ -685,6 +814,13 @@ export class ReactComponentGenerator {
     } else {
       const fnType = typescript && propsType ? `: React.FC<${propsType}>` : '';
       lines.push(`const ${componentName}${fnType} = (${propsParam}) => {`);
+    }
+
+    // Add state hooks if we have state variables
+    const stateHooks = this.generateStateHooks(indent);
+    if (stateHooks.length > 0) {
+      lines.push(...stateHooks);
+      lines.push('');
     }
 
     lines.push(`${indent}return (`);

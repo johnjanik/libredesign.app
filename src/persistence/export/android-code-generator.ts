@@ -10,6 +10,7 @@ import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
 import { formatNum } from './format-utils';
 import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
+import type { VariableDefinition, VariableType } from '@prototype/variable-manager';
 
 /**
  * Android code generation options
@@ -33,6 +34,8 @@ export interface AndroidCodeGeneratorOptions {
   useTokens?: boolean | undefined;
   /** Token object name for generated references (default: 'AppTokens') */
   tokenPrefix?: string | undefined;
+  /** Variable definitions for state-aware code generation */
+  variables?: VariableDefinition[] | undefined;
 }
 
 /**
@@ -64,6 +67,8 @@ export class AndroidCodeGenerator {
   private extractedDimens: Map<number, string> = new Map();
   private useTokens = false;
   private tokenPrefix = 'AppTokens';
+  private variables: VariableDefinition[] = [];
+  private variableMap: Map<string, VariableDefinition> = new Map();
 
   constructor(sceneGraph: SceneGraph) {
     this.sceneGraph = sceneGraph;
@@ -84,6 +89,13 @@ export class AndroidCodeGenerator {
     // Store token options for use in helper methods
     this.useTokens = options.useTokens ?? false;
     this.tokenPrefix = options.tokenPrefix ?? 'AppTokens';
+
+    // Store variables for state-aware code generation
+    this.variables = options.variables ?? [];
+    this.variableMap.clear();
+    for (const v of this.variables) {
+      this.variableMap.set(v.id, v);
+    }
 
     // Reset extraction state
     this.colorIndex = 0;
@@ -176,11 +188,21 @@ export class AndroidCodeGenerator {
       parts.push('');
     }
 
+    // Collect used variables for state generation
+    const usedVariableIds = this.collectUsedVariables(nodeId);
+    const hasStateVariables = usedVariableIds.size > 0;
+
     parts.push('import androidx.compose.foundation.background');
     parts.push('import androidx.compose.foundation.layout.*');
     parts.push('import androidx.compose.foundation.shape.RoundedCornerShape');
     parts.push('import androidx.compose.material3.Text');
     parts.push('import androidx.compose.runtime.Composable');
+    if (hasStateVariables) {
+      parts.push('import androidx.compose.runtime.getValue');
+      parts.push('import androidx.compose.runtime.mutableStateOf');
+      parts.push('import androidx.compose.runtime.remember');
+      parts.push('import androidx.compose.runtime.setValue');
+    }
     parts.push('import androidx.compose.ui.Alignment');
     parts.push('import androidx.compose.ui.Modifier');
     parts.push('import androidx.compose.ui.draw.clip');
@@ -206,6 +228,16 @@ export class AndroidCodeGenerator {
     // Main composable
     parts.push('@Composable');
     parts.push(`fun ${funcName}() {`);
+
+    // Generate state variable declarations
+    if (hasStateVariables) {
+      const stateDecls = this.generateComposeStateDeclarations(usedVariableIds);
+      if (stateDecls) {
+        parts.push(stateDecls);
+        parts.push('');
+      }
+    }
+
     parts.push(this.generateComposeBody(nodeId, 4));
     parts.push('}');
 
@@ -1144,6 +1176,105 @@ export class AndroidCodeGenerator {
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/\n/g, '\\n');
+  }
+
+  // ===========================================================================
+  // State Generation Helpers
+  // ===========================================================================
+
+  /**
+   * Collect all variable IDs used in state bindings throughout the node tree
+   */
+  private collectUsedVariables(nodeId: NodeId): Set<string> {
+    const usedVars = new Set<string>();
+
+    const traverse = (id: NodeId) => {
+      const node = this.sceneGraph.getNode(id);
+      if (!node) return;
+
+      // Get semantic metadata
+      const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData;
+      const semantic = getSemanticMetadata(pluginData);
+      if (semantic?.stateBindings) {
+        for (const binding of semantic.stateBindings) {
+          usedVars.add(binding.variableId);
+        }
+      }
+
+      // Traverse children
+      const children = this.sceneGraph.getChildIds(id);
+      for (const childId of children) {
+        traverse(childId);
+      }
+    };
+
+    traverse(nodeId);
+    return usedVars;
+  }
+
+  /**
+   * Generate Compose state declarations
+   */
+  private generateComposeStateDeclarations(usedVariableIds: Set<string>): string {
+    const lines: string[] = [];
+
+    for (const varId of usedVariableIds) {
+      const variable = this.variableMap.get(varId);
+      if (!variable) continue;
+
+      const kotlinType = this.variableTypeToKotlin(variable.type);
+      const defaultValue = this.formatKotlinDefaultValue(variable.defaultValue, variable.type);
+      const varName = this.sanitizeVariableName(variable.name);
+
+      lines.push(`    var ${varName} by remember { mutableStateOf<${kotlinType}>(${defaultValue}) }`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Convert variable type to Kotlin type
+   */
+  private variableTypeToKotlin(type: VariableType): string {
+    switch (type) {
+      case 'boolean': return 'Boolean';
+      case 'number': return 'Double';
+      case 'string': return 'String';
+      case 'color': return 'Color';
+      default: return 'Any';
+    }
+  }
+
+  /**
+   * Format a default value for Kotlin
+   */
+  private formatKotlinDefaultValue(value: boolean | number | string, type: VariableType): string {
+    switch (type) {
+      case 'boolean':
+        return value ? 'true' : 'false';
+      case 'number':
+        return String(value);
+      case 'string':
+        return `"${this.escapeString(String(value))}"`;
+      case 'color':
+        return 'Color.White';
+      default:
+        return String(value);
+    }
+  }
+
+  /**
+   * Sanitize a variable name for Kotlin (camelCase)
+   */
+  private sanitizeVariableName(name: string): string {
+    let result = name.replace(/[^a-zA-Z0-9]+/g, '_');
+    if (result.length > 0 && result[0]) {
+      result = result[0].toLowerCase() + result.slice(1);
+    }
+    if (/^[0-9]/.test(result)) {
+      result = '_' + result;
+    }
+    return result || 'value';
   }
 }
 

@@ -38,6 +38,8 @@ import {
   type SemanticNodeType,
   type SemanticMetadata,
   type AccessibilityConfig,
+  type StateBinding,
+  type BindingTransform,
   SEMANTIC_PLUGIN_KEY,
   SEMANTIC_TYPE_DEFAULTS,
   getSemanticMetadata,
@@ -2353,6 +2355,9 @@ export class InspectorPanel {
 
     // Variables section
     this.renderVariablesSection();
+
+    // State bindings section (for connecting properties to variables)
+    this.renderStateBindingsSection(node);
   }
 
   /**
@@ -2423,6 +2428,482 @@ export class InspectorPanel {
 
     section.appendChild(addBtn);
     this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render the State Bindings section - connects node properties to variables
+   */
+  private renderStateBindingsSection(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const variableManager = this.runtime.getVariableManager?.();
+    const allVariables = variableManager?.getAllDefinitions() ?? [];
+
+    // Skip if no variables defined
+    if (allVariables.length === 0) return;
+
+    const section = this.createSection('State Bindings');
+
+    // Get existing state bindings from semantic metadata
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semanticData = getSemanticMetadata(pluginData);
+    const stateBindings = semanticData?.stateBindings ?? [];
+
+    // Bindable properties based on node type
+    const bindableProperties = this.getBindableProperties(node);
+
+    // Render existing bindings
+    if (stateBindings.length > 0) {
+      const bindingsList = document.createElement('div');
+      bindingsList.style.cssText = `display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;`;
+
+      for (const binding of stateBindings) {
+        bindingsList.appendChild(this.renderStateBindingRow(node, binding, allVariables));
+      }
+      section.appendChild(bindingsList);
+    }
+
+    // Add binding button
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px 10px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text-muted, #888888);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+    addBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Bind property to variable
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.borderColor = 'var(--designlibre-primary, #3b82f6)';
+      addBtn.style.color = 'var(--designlibre-primary, #3b82f6)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addBtn.style.color = 'var(--designlibre-text-muted, #888888)';
+    });
+    addBtn.addEventListener('click', () => {
+      this.showAddStateBindingUI(node, section, addBtn, bindableProperties, allVariables);
+    });
+
+    section.appendChild(addBtn);
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Get bindable properties for a node based on its type
+   */
+  private getBindableProperties(node: NodeData): Array<{ path: string[]; label: string; type: 'string' | 'number' | 'boolean' | 'color' }> {
+    const properties: Array<{ path: string[]; label: string; type: 'string' | 'number' | 'boolean' | 'color' }> = [];
+
+    // Common properties
+    properties.push(
+      { path: ['visible'], label: 'Visible', type: 'boolean' },
+      { path: ['opacity'], label: 'Opacity', type: 'number' },
+      { path: ['x'], label: 'X Position', type: 'number' },
+      { path: ['y'], label: 'Y Position', type: 'number' },
+      { path: ['width'], label: 'Width', type: 'number' },
+      { path: ['height'], label: 'Height', type: 'number' },
+      { path: ['rotation'], label: 'Rotation', type: 'number' }
+    );
+
+    // Text-specific properties
+    if (node.type === 'TEXT') {
+      properties.push(
+        { path: ['characters'], label: 'Text Content', type: 'string' },
+        { path: ['fontSize'], label: 'Font Size', type: 'number' }
+      );
+    }
+
+    // Fill color (if node has fills)
+    if ('fills' in node) {
+      properties.push(
+        { path: ['fills', '0', 'color'], label: 'Fill Color', type: 'color' }
+      );
+    }
+
+    // Stroke color
+    if ('strokes' in node) {
+      properties.push(
+        { path: ['strokes', '0', 'color'], label: 'Stroke Color', type: 'color' },
+        { path: ['strokeWeight'], label: 'Stroke Weight', type: 'number' }
+      );
+    }
+
+    // Corner radius
+    if ('cornerRadius' in node) {
+      properties.push(
+        { path: ['cornerRadius'], label: 'Corner Radius', type: 'number' }
+      );
+    }
+
+    return properties;
+  }
+
+  /**
+   * Render a single state binding row
+   */
+  private renderStateBindingRow(
+    node: NodeData,
+    binding: StateBinding,
+    allVariables: VariableDefinition[]
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-size: 11px;
+    `;
+
+    // Property label
+    const propertyLabel = document.createElement('span');
+    propertyLabel.style.cssText = `
+      color: var(--designlibre-text-muted, #888888);
+      flex-shrink: 0;
+    `;
+    propertyLabel.textContent = binding.propertyPath.join('.');
+    row.appendChild(propertyLabel);
+
+    // Arrow
+    const arrow = document.createElement('span');
+    arrow.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    `;
+    arrow.style.cssText = `opacity: 0.5; flex-shrink: 0;`;
+    row.appendChild(arrow);
+
+    // Variable name
+    const variable = allVariables.find(v => v.id === binding.variableId);
+    const variableName = document.createElement('span');
+    variableName.style.cssText = `
+      color: var(--designlibre-primary, #3b82f6);
+      font-weight: 500;
+      flex: 1;
+    `;
+    variableName.textContent = variable?.name ?? binding.variableId;
+    row.appendChild(variableName);
+
+    // Transform badge
+    if (binding.transform !== 'direct') {
+      const transformBadge = document.createElement('span');
+      transformBadge.style.cssText = `
+        padding: 2px 6px;
+        background: var(--designlibre-bg-tertiary, #3d3d3d);
+        border-radius: 4px;
+        font-size: 10px;
+        color: var(--designlibre-text-muted, #888888);
+      `;
+      transformBadge.textContent = binding.transform;
+      row.appendChild(transformBadge);
+    }
+
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.cssText = `
+      padding: 2px;
+      background: transparent;
+      border: none;
+      color: var(--designlibre-text-muted, #888888);
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    `;
+    deleteBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    `;
+    deleteBtn.addEventListener('mouseenter', () => { deleteBtn.style.opacity = '1'; });
+    deleteBtn.addEventListener('mouseleave', () => { deleteBtn.style.opacity = '0.6'; });
+    deleteBtn.addEventListener('click', () => {
+      this.removeStateBinding(node, binding);
+    });
+    row.appendChild(deleteBtn);
+
+    return row;
+  }
+
+  /**
+   * Show UI for adding a new state binding
+   */
+  private showAddStateBindingUI(
+    node: NodeData,
+    container: HTMLElement,
+    addBtn: HTMLElement,
+    bindableProperties: Array<{ path: string[]; label: string; type: 'string' | 'number' | 'boolean' | 'color' }>,
+    allVariables: VariableDefinition[]
+  ): void {
+    addBtn.style.display = 'none';
+
+    const form = document.createElement('div');
+    form.style.cssText = `
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `;
+
+    // Property selector
+    const propertyLabel = document.createElement('label');
+    propertyLabel.textContent = 'Property';
+    propertyLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(propertyLabel);
+
+    const propertySelect = document.createElement('select');
+    propertySelect.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    for (const prop of bindableProperties) {
+      const option = document.createElement('option');
+      option.value = prop.path.join('.');
+      option.textContent = prop.label;
+      option.dataset['type'] = prop.type;
+      propertySelect.appendChild(option);
+    }
+    form.appendChild(propertySelect);
+
+    // Variable selector
+    const variableLabel = document.createElement('label');
+    variableLabel.textContent = 'Variable';
+    variableLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(variableLabel);
+
+    const variableSelect = document.createElement('select');
+    variableSelect.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    for (const variable of allVariables) {
+      const option = document.createElement('option');
+      option.value = variable.id;
+      option.textContent = `${variable.name} (${variable.type})`;
+      variableSelect.appendChild(option);
+    }
+    form.appendChild(variableSelect);
+
+    // Transform selector
+    const transformLabel = document.createElement('label');
+    transformLabel.textContent = 'Transform';
+    transformLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(transformLabel);
+
+    const transformSelect = document.createElement('select');
+    transformSelect.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    const transforms: Array<{ value: BindingTransform; label: string }> = [
+      { value: 'direct', label: 'Direct (use value as-is)' },
+      { value: 'not', label: 'Not (boolean negation)' },
+      { value: 'equals', label: 'Equals (compare to value)' },
+      { value: 'notEquals', label: 'Not Equals' },
+      { value: 'expression', label: 'Expression' },
+      { value: 'format', label: 'Format string' },
+    ];
+    for (const t of transforms) {
+      const option = document.createElement('option');
+      option.value = t.value;
+      option.textContent = t.label;
+      transformSelect.appendChild(option);
+    }
+    form.appendChild(transformSelect);
+
+    // Compare value input (shown for equals/notEquals)
+    const compareValueContainer = document.createElement('div');
+    compareValueContainer.style.cssText = `display: none; flex-direction: column; gap: 4px;`;
+    const compareValueLabel = document.createElement('label');
+    compareValueLabel.textContent = 'Compare Value';
+    compareValueLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    compareValueContainer.appendChild(compareValueLabel);
+    const compareValueInput = document.createElement('input');
+    compareValueInput.type = 'text';
+    compareValueInput.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    compareValueContainer.appendChild(compareValueInput);
+    form.appendChild(compareValueContainer);
+
+    // Expression input (shown for expression transform)
+    const expressionContainer = document.createElement('div');
+    expressionContainer.style.cssText = `display: none; flex-direction: column; gap: 4px;`;
+    const expressionLabel = document.createElement('label');
+    expressionLabel.textContent = 'Expression';
+    expressionLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    expressionContainer.appendChild(expressionLabel);
+    const expressionInput = document.createElement('input');
+    expressionInput.type = 'text';
+    expressionInput.placeholder = 'e.g., value * 100';
+    expressionInput.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    expressionContainer.appendChild(expressionInput);
+    form.appendChild(expressionContainer);
+
+    // Show/hide compare/expression based on transform
+    transformSelect.addEventListener('change', () => {
+      const val = transformSelect.value as BindingTransform;
+      compareValueContainer.style.display = (val === 'equals' || val === 'notEquals') ? 'flex' : 'none';
+      expressionContainer.style.display = val === 'expression' ? 'flex' : 'none';
+    });
+
+    // Buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = `display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;`;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      addBtn.style.display = 'flex';
+    });
+    btnRow.appendChild(cancelBtn);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Add Binding';
+    saveBtn.style.cssText = `
+      padding: 6px 12px;
+      background: var(--designlibre-primary, #3b82f6);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    saveBtn.addEventListener('click', () => {
+      const selectedProp = bindableProperties.find(p => p.path.join('.') === propertySelect.value);
+      if (!selectedProp) return;
+
+      const transform = transformSelect.value as BindingTransform;
+      const binding: StateBinding = {
+        propertyPath: selectedProp.path,
+        variableId: variableSelect.value,
+        transform,
+      };
+
+      if (transform === 'equals' || transform === 'notEquals') {
+        binding.compareValue = compareValueInput.value;
+      }
+      if (transform === 'expression') {
+        binding.expression = expressionInput.value;
+      }
+
+      this.addStateBinding(node, binding);
+      form.remove();
+      addBtn.style.display = 'flex';
+    });
+    btnRow.appendChild(saveBtn);
+
+    form.appendChild(btnRow);
+    container.insertBefore(form, addBtn);
+  }
+
+  /**
+   * Add a state binding to a node
+   */
+  private addStateBinding(node: NodeData, binding: StateBinding): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    let semanticData = getSemanticMetadata(pluginData);
+
+    if (!semanticData) {
+      semanticData = createSemanticMetadata('Custom');
+    }
+
+    const existingBindings = semanticData.stateBindings ?? [];
+    const updatedBindings = [...existingBindings, binding];
+
+    const updatedMetadata: SemanticMetadata = {
+      ...semanticData,
+      stateBindings: updatedBindings,
+    };
+
+    const updatedPluginData = setSemanticMetadata(pluginData, updatedMetadata);
+    sceneGraph.updateNode(node.id, { pluginData: updatedPluginData } as Partial<NodeData>);
+    this.updateContent();
+  }
+
+  /**
+   * Remove a state binding from a node
+   */
+  private removeStateBinding(node: NodeData, bindingToRemove: StateBinding): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semanticData = getSemanticMetadata(pluginData);
+
+    if (!semanticData || !semanticData.stateBindings) return;
+
+    const updatedBindings = semanticData.stateBindings.filter(
+      b => !(b.propertyPath.join('.') === bindingToRemove.propertyPath.join('.') &&
+             b.variableId === bindingToRemove.variableId)
+    );
+
+    let updatedMetadata: SemanticMetadata = { ...semanticData };
+    if (updatedBindings.length > 0) {
+      updatedMetadata = { ...updatedMetadata, stateBindings: updatedBindings };
+    } else {
+      // Remove stateBindings property entirely
+      const { stateBindings: _, ...rest } = updatedMetadata;
+      updatedMetadata = rest as SemanticMetadata;
+    }
+
+    const updatedPluginData = setSemanticMetadata(pluginData, updatedMetadata);
+    sceneGraph.updateNode(node.id, { pluginData: updatedPluginData } as Partial<NodeData>);
+    this.updateContent();
   }
 
   /**
@@ -2791,6 +3272,7 @@ export class InspectorPanel {
           id: `var_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
           name,
           type: selectedType,
+          kind: 'state',
           defaultValue,
           scope: 'document',
         };

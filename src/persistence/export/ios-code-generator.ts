@@ -11,6 +11,7 @@ import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
 import { formatNum } from './format-utils';
 import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
+import type { VariableDefinition, VariableType } from '@prototype/variable-manager';
 
 /**
  * iOS code generation options
@@ -32,6 +33,8 @@ export interface IOSCodeGeneratorOptions {
   useTokens?: boolean | undefined;
   /** Token prefix for generated references (default: 'DesignTokens') */
   tokenPrefix?: string | undefined;
+  /** Variable definitions for state-aware code generation */
+  variables?: VariableDefinition[] | undefined;
 }
 
 /**
@@ -59,6 +62,8 @@ export class IOSCodeGenerator {
   private extractedColors: Map<string, { name: string; rgba: RGBA }> = new Map();
   private useTokens = false;
   private tokenPrefix = 'DesignTokens';
+  private variables: VariableDefinition[] = [];
+  private variableMap: Map<string, VariableDefinition> = new Map();
 
   constructor(sceneGraph: SceneGraph) {
     this.sceneGraph = sceneGraph;
@@ -78,6 +83,13 @@ export class IOSCodeGenerator {
     // Store token options for use in helper methods
     this.useTokens = options.useTokens ?? false;
     this.tokenPrefix = options.tokenPrefix ?? 'DesignTokens';
+
+    // Store variables for state-aware code generation
+    this.variables = options.variables ?? [];
+    this.variableMap.clear();
+    for (const v of this.variables) {
+      this.variableMap.set(v.id, v);
+    }
 
     // Reset extraction state
     this.colorIndex = 0;
@@ -155,6 +167,9 @@ export class IOSCodeGenerator {
 
     const structName = `${prefix}${this.sanitizeName(node.name || node.type)}View`;
 
+    // Collect all state bindings from the node tree
+    const usedVariableIds = this.collectUsedVariables(nodeId);
+
     const parts: string[] = [];
 
     // Header comment
@@ -169,6 +184,16 @@ export class IOSCodeGenerator {
 
     // Main struct
     parts.push(`struct ${structName}: View {`);
+
+    // Generate @State declarations for used variables
+    if (usedVariableIds.size > 0) {
+      const stateDecls = this.generateSwiftUIStateDeclarations(usedVariableIds);
+      if (stateDecls) {
+        parts.push(stateDecls);
+        parts.push('');
+      }
+    }
+
     parts.push('    var body: some View {');
     parts.push(this.generateSwiftUIBody(nodeId, 8));
     parts.push('    }');
@@ -183,6 +208,116 @@ export class IOSCodeGenerator {
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Collect all variable IDs used in state bindings throughout the node tree
+   */
+  private collectUsedVariables(nodeId: NodeId): Set<string> {
+    const usedVars = new Set<string>();
+
+    const traverse = (id: NodeId) => {
+      const node = this.sceneGraph.getNode(id);
+      if (!node) return;
+
+      // Get semantic metadata
+      const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData;
+      const semantic = getSemanticMetadata(pluginData);
+      if (semantic?.stateBindings) {
+        for (const binding of semantic.stateBindings) {
+          usedVars.add(binding.variableId);
+        }
+      }
+
+      // Traverse children
+      const children = this.sceneGraph.getChildIds(id);
+      for (const childId of children) {
+        traverse(childId);
+      }
+    };
+
+    traverse(nodeId);
+    return usedVars;
+  }
+
+  /**
+   * Generate @State variable declarations for SwiftUI
+   */
+  private generateSwiftUIStateDeclarations(usedVariableIds: Set<string>): string {
+    const lines: string[] = [];
+
+    for (const varId of usedVariableIds) {
+      const variable = this.variableMap.get(varId);
+      if (!variable) continue;
+
+      const swiftType = this.variableTypeToSwift(variable.type);
+      const defaultValue = this.formatSwiftDefaultValue(variable.defaultValue, variable.type);
+      const varName = this.sanitizeVariableName(variable.name);
+
+      lines.push(`    @State private var ${varName}: ${swiftType} = ${defaultValue}`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Convert variable type to Swift type
+   */
+  private variableTypeToSwift(type: VariableType): string {
+    switch (type) {
+      case 'boolean': return 'Bool';
+      case 'number': return 'Double';
+      case 'string': return 'String';
+      case 'color': return 'Color';
+      default: return 'Any';
+    }
+  }
+
+  /**
+   * Format a default value for Swift
+   */
+  private formatSwiftDefaultValue(value: boolean | number | string, type: VariableType): string {
+    switch (type) {
+      case 'boolean':
+        return value ? 'true' : 'false';
+      case 'number':
+        return String(value);
+      case 'string':
+        return `"${this.escapeSwiftString(String(value))}"`;
+      case 'color':
+        return `.white`; // TODO: Parse color string to Color
+      default:
+        return String(value);
+    }
+  }
+
+  /**
+   * Escape special characters for Swift strings
+   */
+  private escapeSwiftString(str: string): string {
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
+  }
+
+  /**
+   * Sanitize a variable name for Swift (camelCase, no special chars)
+   */
+  private sanitizeVariableName(name: string): string {
+    // Replace non-alphanumeric with underscores, convert to camelCase
+    let result = name.replace(/[^a-zA-Z0-9]+/g, '_');
+    // Ensure starts with lowercase
+    if (result.length > 0 && result[0]) {
+      result = result[0].toLowerCase() + result.slice(1);
+    }
+    // Ensure doesn't start with number
+    if (/^[0-9]/.test(result)) {
+      result = '_' + result;
+    }
+    return result || 'value';
   }
 
   private generateSwiftUIBody(nodeId: NodeId, indent: number): string {
