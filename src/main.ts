@@ -6,6 +6,7 @@
 
 import { createDesignLibreRuntime } from '@runtime/designlibre-runtime';
 import { createToolbar } from '@ui/components/toolbar';
+import { createToolOptionsPanel } from '@ui/components/tool-options-panel';
 import { createCanvasContainer } from '@ui/components/canvas-container';
 import { createRightSidebarContainer, type RightSidebarContainer } from '@ui/components/right-sidebar-container';
 import { createLeftSidebar } from '@ui/components/left-sidebar';
@@ -171,6 +172,9 @@ async function initializeApp(config: AppConfig): Promise<void> {
 
   // Create toolbar FIRST (before view switcher captures canvas)
   createToolbar(runtime, canvasContainer, { position: 'bottom' });
+
+  // Create tool options panel (shows context-sensitive options for active tool)
+  createToolOptionsPanel(runtime);
 
   // Create workspace manager for new UI
   const workspaceManager = createWorkspaceManager();

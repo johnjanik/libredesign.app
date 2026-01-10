@@ -5,6 +5,7 @@
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
+import { AlignmentPanel, createAlignmentPanel } from './alignment-panel';
 
 /**
  * Tool definition
@@ -100,6 +101,155 @@ const TOOL_ICONS: Record<string, string> = {
   dropdown: `<svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
     <path d="M7 10l5 5 5-5z"/>
   </svg>`,
+  polyline: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="4,18 8,10 14,14 20,6"/>
+  </svg>`,
+  arc: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 20 A 16 16 0 0 1 20 4"/>
+  </svg>`,
+  circle: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="12" r="1" fill="currentColor"/>
+  </svg>`,
+  align: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="4" y1="4" x2="4" y2="20"/>
+    <rect x="7" y="6" width="10" height="4" rx="1"/>
+    <rect x="7" y="14" width="6" height="4" rx="1"/>
+  </svg>`,
+  nodeEdit: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 20 Q12 4 20 20"/>
+    <circle cx="4" cy="20" r="2" fill="currentColor"/>
+    <circle cx="20" cy="20" r="2" fill="currentColor"/>
+    <circle cx="12" cy="4" r="2"/>
+    <line x1="4" y1="20" x2="12" y2="4" stroke-dasharray="2 2"/>
+    <line x1="12" y1="4" x2="20" y2="20" stroke-dasharray="2 2"/>
+  </svg>`,
+  skew: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M6 4 L18 4 L22 20 L10 20 Z"/>
+    <line x1="6" y1="4" x2="2" y2="12" stroke-dasharray="2 2"/>
+    <line x1="10" y1="20" x2="6" y2="12" stroke-dasharray="2 2"/>
+  </svg>`,
+  dimension: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="4" y1="8" x2="4" y2="16"/>
+    <line x1="20" y1="8" x2="20" y2="16"/>
+    <line x1="4" y1="12" x2="20" y2="12"/>
+    <polygon points="4,12 7,10 7,14" fill="currentColor"/>
+    <polygon points="20,12 17,10 17,14" fill="currentColor"/>
+    <text x="12" y="10" font-size="6" text-anchor="middle" fill="currentColor">24</text>
+  </svg>`,
+
+  // Modification tools
+  trim: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="4" y1="20" x2="20" y2="4"/>
+    <line x1="4" y1="4" x2="10" y2="10" stroke-dasharray="2 2"/>
+    <path d="M14 14 L20 20"/>
+  </svg>`,
+  extend: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="4" y1="12" x2="14" y2="12"/>
+    <line x1="14" y1="12" x2="20" y2="12" stroke-dasharray="2 2"/>
+    <polygon points="18,10 22,12 18,14" fill="currentColor"/>
+  </svg>`,
+  fillet: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 20 L4 10 Q4 4 10 4 L20 4"/>
+    <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
+  </svg>`,
+  chamfer: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 20 L4 10 L10 4 L20 4"/>
+    <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+  </svg>`,
+  mirror: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="12" y1="4" x2="12" y2="20" stroke-dasharray="4 2"/>
+    <path d="M6 6 L4 12 L6 18 L10 12 Z"/>
+    <path d="M18 6 L20 12 L18 18 L14 12 Z" opacity="0.5"/>
+  </svg>`,
+  array: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="2" y="2" width="5" height="5" rx="1"/>
+    <rect x="9" y="2" width="5" height="5" rx="1" opacity="0.7"/>
+    <rect x="16" y="2" width="5" height="5" rx="1" opacity="0.4"/>
+    <rect x="2" y="9" width="5" height="5" rx="1" opacity="0.7"/>
+    <rect x="9" y="9" width="5" height="5" rx="1" opacity="0.4"/>
+  </svg>`,
+
+  // Construction tools
+  constructionLine: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="4 2"/>
+    <circle cx="8" cy="12" r="2" fill="currentColor"/>
+    <circle cx="16" cy="12" r="2" fill="currentColor"/>
+  </svg>`,
+  referencePoint: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="3"/>
+    <line x1="12" y1="6" x2="12" y2="3"/>
+    <line x1="12" y1="21" x2="12" y2="18"/>
+    <line x1="6" y1="12" x2="3" y2="12"/>
+    <line x1="21" y1="12" x2="18" y2="12"/>
+  </svg>`,
+
+  // Extended annotation tools
+  hatch: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <line x1="6" y1="10" x2="10" y2="6"/>
+    <line x1="6" y1="14" x2="14" y2="6"/>
+    <line x1="6" y1="18" x2="18" y2="6"/>
+    <line x1="10" y1="18" x2="18" y2="10"/>
+    <line x1="14" y1="18" x2="18" y2="14"/>
+  </svg>`,
+  angleMeasure: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 20 L4 8 L16 20"/>
+    <path d="M4 14 Q8 14 10 18" stroke-dasharray="2 1"/>
+  </svg>`,
+
+  // Block tools
+  blockInsert: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="4" width="16" height="16" rx="2"/>
+    <line x1="12" y1="8" x2="12" y2="16"/>
+    <line x1="8" y1="12" x2="16" y2="12"/>
+  </svg>`,
+
+  // Schematic tools
+  wire: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 12 L8 12 L8 6 L16 6 L16 12 L20 12"/>
+    <circle cx="4" cy="12" r="2" fill="currentColor"/>
+    <circle cx="20" cy="12" r="2" fill="currentColor"/>
+  </svg>`,
+  netLabel: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M4 8 L4 16 L14 16 L18 12 L14 8 Z"/>
+  </svg>`,
+
+  // PCB tools
+  trackRouting: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <path d="M4 16 L8 16 L12 8 L20 8" stroke-linecap="round"/>
+    <circle cx="4" cy="16" r="2" fill="currentColor"/>
+  </svg>`,
+  via: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="6"/>
+    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+  </svg>`,
+
+  // Mode icons
+  designMode: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="8" cy="8" r="2"/>
+    <path d="M11 11 L18 18"/>
+  </svg>`,
+  cadMode: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="4" width="16" height="16"/>
+    <line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="2 2"/>
+    <line x1="12" y1="4" x2="12" y2="20" stroke-dasharray="2 2"/>
+  </svg>`,
+  schematicMode: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="8" y="6" width="8" height="12" rx="1"/>
+    <line x1="4" y1="10" x2="8" y2="10"/>
+    <line x1="4" y1="14" x2="8" y2="14"/>
+    <line x1="16" y1="12" x2="20" y2="12"/>
+  </svg>`,
+  pcbMode: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
+    <circle cx="17" cy="7" r="1.5" fill="currentColor"/>
+    <circle cx="7" cy="17" r="1.5" fill="currentColor"/>
+    <circle cx="17" cy="17" r="1.5" fill="currentColor"/>
+    <path d="M7 7 L7 12 L17 12 L17 7"/>
+  </svg>`,
 };
 
 /**
@@ -108,7 +258,10 @@ const TOOL_ICONS: Record<string, string> = {
 const SHAPE_TOOLS: ToolDefinition[] = [
   { id: 'rectangle', name: 'Rectangle', icon: TOOL_ICONS['rectangle']!, shortcut: 'R' },
   { id: 'ellipse', name: 'Ellipse', icon: TOOL_ICONS['ellipse']!, shortcut: 'O' },
+  { id: 'circle', name: 'Circle', icon: TOOL_ICONS['circle']!, shortcut: 'Shift+C' },
   { id: 'line', name: 'Line', icon: TOOL_ICONS['line']!, shortcut: 'L' },
+  { id: 'polyline', name: 'Polyline', icon: TOOL_ICONS['polyline']!, shortcut: 'Shift+L' },
+  { id: 'arc', name: 'Arc', icon: TOOL_ICONS['arc']!, shortcut: 'A' },
   { id: 'polygon', name: 'Polygon', icon: TOOL_ICONS['polygon']!, shortcut: 'Shift+P', options: { sides: 5 } },
   { id: 'star', name: 'Star', icon: TOOL_ICONS['star']!, shortcut: 'Shift+S', options: { points: 5, innerRadius: 0.5 } },
   { id: 'image', name: 'Image/Video', icon: TOOL_ICONS['image']!, shortcut: 'Shift+I' },
@@ -120,6 +273,98 @@ const SHAPE_TOOLS: ToolDefinition[] = [
 const DRAWING_TOOLS: ToolDefinition[] = [
   { id: 'pen', name: 'Pen', icon: TOOL_ICONS['pen']!, shortcut: 'P' },
   { id: 'pencil', name: 'Pencil', icon: TOOL_ICONS['pencil']!, shortcut: 'Shift+P' },
+  { id: 'node-edit', name: 'Edit Path', icon: TOOL_ICONS['nodeEdit']!, shortcut: 'A' },
+];
+
+/**
+ * Transform tools group
+ */
+const TRANSFORM_TOOLS: ToolDefinition[] = [
+  { id: 'skew', name: 'Skew/Shear', icon: TOOL_ICONS['skew']!, shortcut: 'Shift+K' },
+];
+
+/**
+ * Annotation tools group (CAD-style)
+ */
+const ANNOTATION_TOOLS: ToolDefinition[] = [
+  { id: 'dimension', name: 'Dimension', icon: TOOL_ICONS['dimension']!, shortcut: 'D' },
+];
+
+/**
+ * Modification tools group (CAD)
+ */
+const MODIFICATION_TOOLS: ToolDefinition[] = [
+  { id: 'trim', name: 'Trim', icon: TOOL_ICONS['trim']!, shortcut: 'Shift+T' },
+  { id: 'extend', name: 'Extend', icon: TOOL_ICONS['extend']!, shortcut: 'Shift+E' },
+  { id: 'fillet', name: 'Fillet', icon: TOOL_ICONS['fillet']!, shortcut: 'Shift+F' },
+  { id: 'chamfer', name: 'Chamfer', icon: TOOL_ICONS['chamfer']!, shortcut: 'Shift+C' },
+  { id: 'mirror', name: 'Mirror', icon: TOOL_ICONS['mirror']!, shortcut: 'Ctrl+M' },
+  { id: 'array', name: 'Array', icon: TOOL_ICONS['array']!, shortcut: 'Ctrl+Shift+A' },
+];
+
+/**
+ * Construction tools group
+ */
+const CONSTRUCTION_TOOLS: ToolDefinition[] = [
+  { id: 'construction-line', name: 'Construction Line', icon: TOOL_ICONS['constructionLine']!, shortcut: 'X' },
+  { id: 'reference-point', name: 'Reference Point', icon: TOOL_ICONS['referencePoint']!, shortcut: 'Shift+X' },
+];
+
+/**
+ * Extended annotation tools (includes hatch and angle)
+ */
+const EXTENDED_ANNOTATION_TOOLS: ToolDefinition[] = [
+  { id: 'dimension', name: 'Dimension', icon: TOOL_ICONS['dimension']!, shortcut: 'D' },
+  { id: 'hatch', name: 'Hatch', icon: TOOL_ICONS['hatch']!, shortcut: 'Shift+H' },
+  { id: 'angle-measure', name: 'Angle Measure', icon: TOOL_ICONS['angleMeasure']!, shortcut: 'Shift+D' },
+];
+
+/**
+ * Block tools
+ */
+const BLOCK_TOOLS: ToolDefinition[] = [
+  { id: 'block-insert', name: 'Block Insert', icon: TOOL_ICONS['blockInsert']!, shortcut: 'B' },
+];
+
+/**
+ * Schematic tools
+ */
+const SCHEMATIC_TOOLS: ToolDefinition[] = [
+  { id: 'wire', name: 'Wire', icon: TOOL_ICONS['wire']!, shortcut: 'W' },
+  { id: 'net-label', name: 'Net Label', icon: TOOL_ICONS['netLabel']!, shortcut: 'N' },
+];
+
+/**
+ * PCB tools
+ */
+const PCB_TOOLS: ToolDefinition[] = [
+  { id: 'track-routing', name: 'Track Routing', icon: TOOL_ICONS['trackRouting']!, shortcut: 'T' },
+  { id: 'via', name: 'Via', icon: TOOL_ICONS['via']!, shortcut: 'Shift+V' },
+];
+
+/**
+ * Toolbar mode type
+ */
+export type ToolbarMode = 'design' | 'cad' | 'schematic' | 'pcb';
+
+/**
+ * Mode configuration
+ */
+interface ModeConfig {
+  id: ToolbarMode;
+  name: string;
+  icon: string;
+  shortcut: string;
+}
+
+/**
+ * Available modes
+ */
+const TOOLBAR_MODES: ModeConfig[] = [
+  { id: 'design', name: 'Design', icon: TOOL_ICONS['designMode']!, shortcut: 'Alt+1' },
+  { id: 'cad', name: 'CAD', icon: TOOL_ICONS['cadMode']!, shortcut: 'Alt+2' },
+  { id: 'schematic', name: 'Schematic', icon: TOOL_ICONS['schematicMode']!, shortcut: 'Alt+3' },
+  { id: 'pcb', name: 'PCB', icon: TOOL_ICONS['pcbMode']!, shortcut: 'Alt+4' },
 ];
 
 /**
@@ -138,6 +383,8 @@ const STANDALONE_TOOLS: ToolDefinition[] = [
 const TOOL_GROUPS: ToolGroup[] = [
   { id: 'shapes', tools: SHAPE_TOOLS, defaultTool: 'rectangle' },
   { id: 'drawing', tools: DRAWING_TOOLS, defaultTool: 'pen' },
+  { id: 'transform', tools: TRANSFORM_TOOLS, defaultTool: 'skew' },
+  { id: 'annotation', tools: ANNOTATION_TOOLS, defaultTool: 'dimension' },
 ];
 
 /**
@@ -152,6 +399,10 @@ export class Toolbar {
   private activePopup: HTMLElement | null = null;
   private selectedGroupTools: Map<string, string> = new Map();
   private toolOptions: Map<string, ToolOptions> = new Map();
+  private alignmentPanel: AlignmentPanel | null = null;
+  private currentMode: ToolbarMode = 'design';
+  private modeButtons: Map<ToolbarMode, HTMLButtonElement> = new Map();
+  private toolGroupsContainer: HTMLElement | null = null;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -182,11 +433,65 @@ export class Toolbar {
     this.setup();
   }
 
+  /**
+   * Get tool groups for the current mode
+   */
+  private getToolGroupsForMode(): ToolGroup[] {
+    const baseGroups: ToolGroup[] = [
+      { id: 'shapes', tools: SHAPE_TOOLS, defaultTool: 'rectangle' },
+      { id: 'drawing', tools: DRAWING_TOOLS, defaultTool: 'pen' },
+    ];
+
+    switch (this.currentMode) {
+      case 'design':
+        return [
+          ...baseGroups,
+          { id: 'transform', tools: TRANSFORM_TOOLS, defaultTool: 'skew' },
+          { id: 'annotation', tools: ANNOTATION_TOOLS, defaultTool: 'dimension' },
+        ];
+
+      case 'cad':
+        return [
+          ...baseGroups,
+          { id: 'transform', tools: TRANSFORM_TOOLS, defaultTool: 'skew' },
+          { id: 'modification', tools: MODIFICATION_TOOLS, defaultTool: 'trim' },
+          { id: 'construction', tools: CONSTRUCTION_TOOLS, defaultTool: 'construction-line' },
+          { id: 'annotation', tools: EXTENDED_ANNOTATION_TOOLS, defaultTool: 'dimension' },
+          { id: 'blocks', tools: BLOCK_TOOLS, defaultTool: 'block-insert' },
+        ];
+
+      case 'schematic':
+        return [
+          { id: 'schematic', tools: SCHEMATIC_TOOLS, defaultTool: 'wire' },
+          { id: 'blocks', tools: BLOCK_TOOLS, defaultTool: 'block-insert' },
+        ];
+
+      case 'pcb':
+        return [
+          { id: 'pcb', tools: PCB_TOOLS, defaultTool: 'track-routing' },
+          { id: 'shapes', tools: SHAPE_TOOLS.slice(0, 4), defaultTool: 'rectangle' }, // Basic shapes only
+        ];
+
+      default:
+        return baseGroups;
+    }
+  }
+
   private setup(): void {
     // Create toolbar element
     this.element = document.createElement('div');
     this.element.className = 'designlibre-toolbar';
     this.element.style.cssText = this.getToolbarStyles();
+
+    // Add mode switcher at the top
+    const modeSwitcher = this.createModeSwitcher();
+    this.element.appendChild(modeSwitcher);
+
+    // Add separator after mode switcher
+    const modeSeparator = document.createElement('div');
+    modeSeparator.className = 'designlibre-toolbar-separator';
+    modeSeparator.style.cssText = this.getSeparatorStyles();
+    this.element.appendChild(modeSeparator);
 
     // Add standalone tools first (Select, Hand)
     for (const tool of STANDALONE_TOOLS.slice(0, 2)) {
@@ -195,13 +500,20 @@ export class Toolbar {
       this.element.appendChild(button);
     }
 
-    // Add tool groups with popups
-    for (const group of TOOL_GROUPS) {
-      const groupButton = this.createToolGroupButton(group);
-      this.element.appendChild(groupButton);
-    }
+    // Create container for mode-specific tool groups
+    this.toolGroupsContainer = document.createElement('div');
+    this.toolGroupsContainer.className = 'designlibre-tool-groups';
+    this.toolGroupsContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    `;
+    this.element.appendChild(this.toolGroupsContainer);
 
-    // Add remaining standalone tools (Text)
+    // Render tool groups for current mode
+    this.renderToolGroups();
+
+    // Add remaining standalone tools (Frame, Text)
     for (const tool of STANDALONE_TOOLS.slice(2)) {
       const button = this.createToolButton(tool);
       this.buttons.set(tool.id, button);
@@ -222,6 +534,12 @@ export class Toolbar {
     // Listen for tool changes
     this.runtime.on('tool:changed', ({ tool }) => {
       this.setActiveButton(tool);
+    });
+
+    // Listen for mode change requests from keyboard shortcuts
+    this.runtime.on('toolbar:set-mode', (event: unknown) => {
+      const { mode } = event as { mode: ToolbarMode };
+      this.setMode(mode);
     });
 
     // Set initial active state
@@ -267,6 +585,135 @@ export class Toolbar {
     return this.options.position === 'top' || this.options.position === 'bottom'
       ? 'width: 1px; height: 24px; background: var(--designlibre-border, #3d3d3d); margin: 0 4px;'
       : 'width: 24px; height: 1px; background: var(--designlibre-border, #3d3d3d); margin: 4px 0;';
+  }
+
+  /**
+   * Create mode switcher UI
+   */
+  private createModeSwitcher(): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'designlibre-mode-switcher';
+    container.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      padding: 2px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+    `;
+
+    for (const mode of TOOLBAR_MODES) {
+      const button = document.createElement('button');
+      button.className = 'designlibre-mode-button';
+      button.title = `${mode.name} Mode (${mode.shortcut})`;
+      button.innerHTML = mode.icon;
+
+      const isActive = mode.id === this.currentMode;
+      button.style.cssText = `
+        width: 32px;
+        height: 32px;
+        border: none;
+        border-radius: 4px;
+        background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+        color: ${isActive ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      `;
+
+      button.addEventListener('mouseenter', () => {
+        if (mode.id !== this.currentMode) {
+          button.style.backgroundColor = 'var(--designlibre-bg-hover, #3d3d3d)';
+          button.style.color = 'var(--designlibre-text-primary, #e4e4e4)';
+        }
+      });
+
+      button.addEventListener('mouseleave', () => {
+        if (mode.id !== this.currentMode) {
+          button.style.backgroundColor = 'transparent';
+          button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+        }
+      });
+
+      button.addEventListener('click', () => {
+        this.setMode(mode.id);
+      });
+
+      this.modeButtons.set(mode.id, button);
+      container.appendChild(button);
+    }
+
+    return container;
+  }
+
+  /**
+   * Set the current toolbar mode
+   */
+  setMode(mode: ToolbarMode): void {
+    if (mode === this.currentMode) return;
+
+    this.currentMode = mode;
+
+    // Update mode button styles
+    for (const [modeId, button] of this.modeButtons) {
+      const isActive = modeId === mode;
+      button.style.backgroundColor = isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent';
+      button.style.color = isActive ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-secondary, #a0a0a0)';
+    }
+
+    // Re-render tool groups for new mode
+    this.renderToolGroups();
+
+    // Emit mode change event
+    this.runtime.emit('toolbar:mode-changed', { mode });
+  }
+
+  /**
+   * Get the current toolbar mode
+   */
+  getMode(): ToolbarMode {
+    return this.currentMode;
+  }
+
+  /**
+   * Render tool groups for current mode
+   */
+  private renderToolGroups(): void {
+    if (!this.toolGroupsContainer) return;
+
+    // Clear existing groups
+    this.toolGroupsContainer.innerHTML = '';
+
+    // All possible group IDs to clear
+    const allGroupIds = [
+      'shapes', 'drawing', 'transform', 'annotation',
+      'modification', 'construction', 'blocks',
+      'schematic', 'pcb'
+    ];
+    for (const id of allGroupIds) {
+      this.buttons.delete(id);
+    }
+
+    // Get groups for current mode
+    const groups = this.getToolGroupsForMode();
+
+    // Initialize selected tools for new groups
+    for (const group of groups) {
+      if (!this.selectedGroupTools.has(group.id)) {
+        this.selectedGroupTools.set(group.id, group.defaultTool);
+      }
+    }
+
+    // Create buttons for each group
+    for (const group of groups) {
+      const groupButton = this.createToolGroupButton(group);
+      this.toolGroupsContainer.appendChild(groupButton);
+    }
+
+    // Re-apply active state
+    this.setActiveButton(this.runtime.getActiveTool());
   }
 
   private createToolButton(tool: ToolDefinition): HTMLButtonElement {
@@ -671,6 +1118,20 @@ export class Toolbar {
     redoBtn.id = 'toolbar-redo-btn';
     this.element.appendChild(redoBtn);
 
+    // Add separator before alignment
+    const separator1 = document.createElement('div');
+    separator1.className = 'designlibre-toolbar-separator';
+    separator1.style.cssText = this.getSeparatorStyles();
+    this.element.appendChild(separator1);
+
+    // Alignment button
+    const alignIcon = TOOL_ICONS['align']!;
+    const alignBtn = this.createActionButton(alignIcon, 'Align & Distribute', (e) => {
+      this.toggleAlignmentPanel(e);
+    });
+    alignBtn.id = 'toolbar-align-btn';
+    this.element.appendChild(alignBtn);
+
     // Add separator before zoom controls
     const separator2 = document.createElement('div');
     separator2.className = 'designlibre-toolbar-separator';
@@ -750,7 +1211,7 @@ export class Toolbar {
   private createActionButton(
     icon: string,
     title: string,
-    onClick: () => void
+    onClick: (e: MouseEvent) => void
   ): HTMLButtonElement {
     const button = document.createElement('button');
     button.className = 'designlibre-toolbar-action';
@@ -784,10 +1245,52 @@ export class Toolbar {
     return button;
   }
 
+  /**
+   * Toggle the alignment panel visibility
+   */
+  private toggleAlignmentPanel(e: MouseEvent): void {
+    if (this.alignmentPanel?.isVisible()) {
+      this.alignmentPanel.hide();
+      return;
+    }
+
+    // Create panel if it doesn't exist
+    if (!this.alignmentPanel) {
+      this.alignmentPanel = createAlignmentPanel(this.runtime);
+    }
+
+    // Position panel next to the button
+    const button = e.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+
+    // Position based on toolbar orientation
+    let x: number;
+    let y: number;
+
+    if (this.options.position === 'left') {
+      x = rect.right + 8;
+      y = rect.top;
+    } else if (this.options.position === 'right') {
+      x = rect.left - 220; // Panel width + margin
+      y = rect.top;
+    } else if (this.options.position === 'top') {
+      x = rect.left;
+      y = rect.bottom + 8;
+    } else {
+      x = rect.left;
+      y = rect.top - 300; // Approximate panel height
+    }
+
+    this.alignmentPanel.show(x, y);
+  }
+
   private setActiveButton(toolId: string): void {
+    // Get current mode's tool groups
+    const currentGroups = this.getToolGroupsForMode();
+
     // Find which group (if any) contains this tool
     let groupId: string | null = null;
-    for (const group of TOOL_GROUPS) {
+    for (const group of currentGroups) {
       if (group.tools.some(t => t.id === toolId)) {
         groupId = group.id;
         break;
@@ -810,8 +1313,8 @@ export class Toolbar {
       }
     }
 
-    // Update group buttons
-    for (const group of TOOL_GROUPS) {
+    // Update group buttons for current mode
+    for (const group of currentGroups) {
       const button = this.buttons.get(group.id);
       if (button) {
         if (group.id === groupId) {

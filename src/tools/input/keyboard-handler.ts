@@ -214,6 +214,39 @@ export class KeyboardHandler extends EventEmitter<KeyboardHandlerEvents> {
       { action: 'alignRight', key: 'ArrowRight', ctrl: true, alt: true },
       { action: 'alignTop', key: 'ArrowUp', ctrl: true, alt: true },
       { action: 'alignBottom', key: 'ArrowDown', ctrl: true, alt: true },
+
+      // Toolbar modes
+      { action: 'mode:design', key: '1', alt: true },
+      { action: 'mode:cad', key: '2', alt: true },
+      { action: 'mode:schematic', key: '3', alt: true },
+      { action: 'mode:pcb', key: '4', alt: true },
+
+      // CAD tools (available in CAD mode)
+      { action: 'tool:trim', key: 't', shift: true },
+      { action: 'tool:extend', key: 'e', shift: true },
+      { action: 'tool:fillet', key: 'f', shift: true },
+      { action: 'tool:chamfer', key: 'c', shift: true },
+      { action: 'tool:mirror', key: 'm', ctrl: true },
+      { action: 'tool:array', key: 'a', ctrl: true, shift: true },
+
+      // Construction tools
+      { action: 'tool:construction-line', key: 'x' },
+      { action: 'tool:reference-point', key: 'x', shift: true },
+
+      // Annotation tools
+      { action: 'tool:dimension', key: 'd' },
+      { action: 'tool:hatch', key: 'h', shift: true },
+
+      // Block tools
+      { action: 'tool:block-insert', key: 'b' },
+
+      // Schematic tools
+      { action: 'tool:wire', key: 'w' },
+      { action: 'tool:net-label', key: 'n' },
+
+      // PCB tools
+      { action: 'tool:track-routing', key: 't', alt: true },
+      { action: 'tool:via', key: 'v', shift: true },
     ]);
   }
 

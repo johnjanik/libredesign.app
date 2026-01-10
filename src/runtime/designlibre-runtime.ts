@@ -29,7 +29,10 @@ import { PolylineTool, createPolylineTool } from '@tools/drawing/polyline-tool';
 import { ArcTool, createArcTool } from '@tools/drawing/arc-tool';
 import { CircleTool, createCircleTool } from '@tools/drawing/circle-tool';
 import { TextEditTool, createTextEditTool } from '@tools/text';
+import { NodeEditTool, createNodeEditTool } from '@tools/path';
 import { SnapManager, createSnapManager } from '@tools/snapping';
+import { SkewTool, createSkewTool } from '@tools/transform/skew-tool';
+import { DimensionTool, createDimensionTool } from '@tools/annotation/dimension-tool';
 import { MirrorTool, createMirrorTool, mirrorBounds } from '@tools/modification/mirror-tool';
 import {
   ArrayTool,
@@ -37,6 +40,18 @@ import {
   calculateRectangularArrayPositions,
   calculatePolarArrayPositions,
 } from '@tools/modification/array-tool';
+import { TrimTool, createTrimTool } from '@tools/modification/trim-tool';
+import { ExtendTool, createExtendTool } from '@tools/modification/extend-tool';
+import { FilletTool, createFilletTool } from '@tools/modification/fillet-tool';
+import { ChamferTool, createChamferTool } from '@tools/modification/chamfer-tool';
+import { ConstructionLineTool, createConstructionLineTool } from '@tools/construction/construction-line-tool';
+import { ReferencePointTool, createReferencePointTool } from '@tools/construction/reference-point-tool';
+import { HatchTool, createHatchTool } from '@tools/annotation/hatch-tool';
+import { BlockInsertionTool, createBlockInsertionTool } from '@tools/block/block-insertion-tool';
+import { WireTool, createWireTool } from '@tools/schematic/wire-tool';
+import { NetLabelTool } from '@tools/schematic/net-label-tool';
+import { TrackRoutingTool, createTrackRoutingTool } from '@tools/pcb/track-routing-tool';
+import { ViaTool, createViaTool } from '@tools/pcb/via-tool';
 import { HandTool, createHandTool } from '@tools/navigation/hand-tool';
 import { PointerHandler, createPointerHandler } from '@tools/input/pointer-handler';
 import { KeyboardHandler, createKeyboardHandler } from '@tools/input/keyboard-handler';
@@ -192,15 +207,30 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private imageTool: ImageTool | null = null;
   private textTool: TextTool | null = null;
   private textEditTool: TextEditTool | null = null;
+  private nodeEditTool: NodeEditTool | null = null;
   private handTool: HandTool | null = null;
   private polylineTool: PolylineTool | null = null;
   private arcTool: ArcTool | null = null;
   private circleTool: CircleTool | null = null;
+  private skewTool: SkewTool | null = null;
+  private dimensionTool: DimensionTool | null = null;
 
   // CAD tools
   private snapManager: SnapManager | null = null;
   private mirrorTool: MirrorTool | null = null;
   private arrayTool: ArrayTool | null = null;
+  private trimTool: TrimTool | null = null;
+  private extendTool: ExtendTool | null = null;
+  private filletTool: FilletTool | null = null;
+  private chamferTool: ChamferTool | null = null;
+  private constructionLineTool: ConstructionLineTool | null = null;
+  private referencePointTool: ReferencePointTool | null = null;
+  private hatchTool: HatchTool | null = null;
+  private blockInsertionTool: BlockInsertionTool | null = null;
+  private wireTool: WireTool | null = null;
+  private netLabelTool: NetLabelTool | null = null;
+  private trackRoutingTool: TrackRoutingTool | null = null;
+  private viaTool: ViaTool | null = null;
 
   // State
   private state: RuntimeState = {
@@ -1057,6 +1087,34 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
+   * Get the fillet tool.
+   */
+  getFilletTool(): FilletTool | null {
+    return this.filletTool;
+  }
+
+  /**
+   * Get the chamfer tool.
+   */
+  getChamferTool(): ChamferTool | null {
+    return this.chamferTool;
+  }
+
+  /**
+   * Get the track routing tool.
+   */
+  getTrackRoutingTool(): TrackRoutingTool | null {
+    return this.trackRoutingTool;
+  }
+
+  /**
+   * Get the via tool.
+   */
+  getViaTool(): ViaTool | null {
+    return this.viaTool;
+  }
+
+  /**
    * Get the last used fill color for shapes.
    */
   getLastUsedFillColor(): { r: number; g: number; b: number; a: number } {
@@ -1562,6 +1620,16 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.setTool('select');
     });
 
+    // Node edit tool for editing vector paths
+    this.nodeEditTool = createNodeEditTool();
+    this.nodeEditTool.setOnPathChange((nodeId, path) => {
+      // Update the vector paths in the scene graph
+      this.sceneGraph.updateNode(nodeId, {
+        vectorPaths: [path],
+      });
+    });
+    // Note: selection changes are handled through the selection manager
+
     // Hand tool for panning
     this.handTool = createHandTool();
 
@@ -1784,6 +1852,60 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       };
     });
 
+    // Skew tool - applies horizontal/vertical shear transforms
+    this.skewTool = createSkewTool({
+      onSkewUpdate: (nodeId, skewX, skewY) => {
+        // Skew is stored as custom properties - not yet part of standard NodeData
+        // For now, log the skew values - full integration requires extending node types
+        console.log('Skew update:', nodeId, { skewX, skewY });
+        // TODO: When node types support skew, uncomment:
+        // this.sceneGraph.updateNode(nodeId, { skewX, skewY });
+      },
+    });
+
+    // Dimension tool - creates linear/angular/radial dimensions
+    this.dimensionTool = createDimensionTool({
+      onDimensionCreate: (data, startPoint, endPoint) => {
+        // For now, create a visual representation as a vector path
+        // In the future, this would create a proper DIMENSION node type
+        const pageId = this.getCurrentPageId();
+        if (!pageId) return;
+
+        // Create dimension as annotation (vector group for now)
+        console.log('Dimension created:', {
+          type: data.dimensionType,
+          orientation: data.orientation,
+          offset: data.offset,
+          startPoint,
+          endPoint,
+        });
+      },
+    });
+
+    // CAD Modification Tools
+    this.trimTool = createTrimTool();
+    this.extendTool = createExtendTool();
+    this.filletTool = createFilletTool({ radius: 10 });
+    this.chamferTool = createChamferTool({ distance1: 10, distance2: 10 });
+
+    // Construction Tools
+    this.constructionLineTool = createConstructionLineTool();
+    this.referencePointTool = createReferencePointTool();
+
+    // Hatch Tool
+    this.hatchTool = createHatchTool();
+
+    // Block Tools
+    this.blockInsertionTool = createBlockInsertionTool();
+
+    // Schematic Tools
+    this.wireTool = createWireTool();
+    this.netLabelTool = new NetLabelTool();
+
+    // PCB Tools
+    this.trackRoutingTool = createTrackRoutingTool();
+    this.viaTool = createViaTool();
+
     // Register tools
     this.toolManager.registerTool(this.selectTool);
     this.toolManager.registerTool(this.moveTool);
@@ -1800,10 +1922,37 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.imageTool);
     this.toolManager.registerTool(this.textTool);
     this.toolManager.registerTool(this.textEditTool);
+    this.toolManager.registerTool(this.nodeEditTool);
     this.toolManager.registerTool(this.handTool);
     this.toolManager.registerTool(this.polylineTool);
     this.toolManager.registerTool(this.arcTool);
     this.toolManager.registerTool(this.circleTool);
+    this.toolManager.registerTool(this.skewTool);
+    this.toolManager.registerTool(this.dimensionTool);
+
+    // CAD Modification tools
+    this.toolManager.registerTool(this.trimTool);
+    this.toolManager.registerTool(this.extendTool);
+    this.toolManager.registerTool(this.filletTool);
+    this.toolManager.registerTool(this.chamferTool);
+
+    // Construction tools
+    this.toolManager.registerTool(this.constructionLineTool);
+    this.toolManager.registerTool(this.referencePointTool);
+
+    // Annotation tools
+    this.toolManager.registerTool(this.hatchTool);
+
+    // Block tools
+    this.toolManager.registerTool(this.blockInsertionTool);
+
+    // Schematic tools
+    this.toolManager.registerTool(this.wireTool);
+    this.toolManager.registerTool(this.netLabelTool);
+
+    // PCB tools
+    this.toolManager.registerTool(this.trackRoutingTool);
+    this.toolManager.registerTool(this.viaTool);
 
     // Set default tool
     this.toolManager.setActiveTool('select');
@@ -2271,6 +2420,91 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         break;
       case 'zoomToSelection':
         this.zoomToSelectionInternal();
+        break;
+
+      // ========================================
+      // Toolbar Modes
+      // ========================================
+      case 'mode:design':
+        this.emit('toolbar:set-mode', { mode: 'design' });
+        break;
+      case 'mode:cad':
+        this.emit('toolbar:set-mode', { mode: 'cad' });
+        break;
+      case 'mode:schematic':
+        this.emit('toolbar:set-mode', { mode: 'schematic' });
+        break;
+      case 'mode:pcb':
+        this.emit('toolbar:set-mode', { mode: 'pcb' });
+        break;
+
+      // ========================================
+      // CAD Modification Tools
+      // ========================================
+      case 'tool:trim':
+        this.setTool('trim');
+        break;
+      case 'tool:extend':
+        this.setTool('extend');
+        break;
+      case 'tool:fillet':
+        this.setTool('fillet');
+        break;
+      case 'tool:chamfer':
+        this.setTool('chamfer');
+        break;
+      case 'tool:mirror':
+        this.setTool('mirror');
+        break;
+      case 'tool:array':
+        this.setTool('array');
+        break;
+
+      // ========================================
+      // Construction Tools
+      // ========================================
+      case 'tool:construction-line':
+        this.setTool('construction-line');
+        break;
+      case 'tool:reference-point':
+        this.setTool('reference-point');
+        break;
+
+      // ========================================
+      // Annotation Tools
+      // ========================================
+      case 'tool:dimension':
+        this.setTool('dimension');
+        break;
+      case 'tool:hatch':
+        this.setTool('hatch');
+        break;
+
+      // ========================================
+      // Block Tools
+      // ========================================
+      case 'tool:block-insert':
+        this.setTool('block-insert');
+        break;
+
+      // ========================================
+      // Schematic Tools
+      // ========================================
+      case 'tool:wire':
+        this.setTool('wire');
+        break;
+      case 'tool:net-label':
+        this.setTool('net-label');
+        break;
+
+      // ========================================
+      // PCB Tools
+      // ========================================
+      case 'tool:track-routing':
+        this.setTool('track-routing');
+        break;
+      case 'tool:via':
+        this.setTool('via');
         break;
     }
   }
