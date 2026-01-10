@@ -1895,6 +1895,7 @@ export class InspectorPanel {
               const newStrokes = [...strokes];
               newStrokes[i] = { ...solidStroke, color } as SolidPaint;
               this.updateNode(nodeId, { strokes: newStrokes });
+              this.runtime.setLastUsedStrokeColor(color);
             }
           ));
         }
@@ -1906,6 +1907,7 @@ export class InspectorPanel {
     // Stroke weight
     section.appendChild(this.createLabeledNumberField('Weight', node.strokeWeight ?? 1, 'px', (v) => {
       this.updateNode(nodeId, { strokeWeight: v });
+      this.runtime.setLastUsedStrokeWeight(v);
     }));
 
     // Stroke style (dash pattern)

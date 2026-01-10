@@ -77,6 +77,9 @@ export class Renderer extends EventEmitter<RendererEvents> {
   private isRendering = false;
   private showOriginCrosshair = false;
 
+  // Stroke geometry cache (keyed by "nodeId:strokeWeight")
+  private strokeGeomCache = new Map<string, { vertices: Float32Array; indices: Uint16Array }>();
+
   // Stats
   private lastFrameTime = 0;
   private frameCount = 0;
@@ -675,7 +678,113 @@ export class Renderer extends EventEmitter<RendererEvents> {
       this.ctx.bindVertexArray(null);
     }
 
-    // Note: Stroke rendering skipped for now - would require stroke VAO with normals
+    // Render strokes
+    const strokeWeight = node.strokeWeight ?? 1;
+    for (const stroke of node.strokes ?? []) {
+      if (!stroke.visible || stroke.type !== 'SOLID') continue;
+
+      const opacity = (node.opacity ?? 1) * (stroke.opacity ?? 1);
+
+      // Use cached stroke geometry if available
+      const cacheKey = `${node.id}:${strokeWeight}`;
+      let strokeGeom = this.strokeGeomCache.get(cacheKey);
+      if (!strokeGeom) {
+        strokeGeom = this.tessellateStroke(path, strokeWeight);
+        this.strokeGeomCache.set(cacheKey, strokeGeom);
+      }
+      if (strokeGeom.indices.length === 0) continue;
+
+      const shader = this.shaders.use('fill');
+
+      this.ctx.bindVertexArray(this.fillVAO);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.fillVBO);
+      gl.bufferData(gl.ARRAY_BUFFER, strokeGeom.vertices, gl.DYNAMIC_DRAW);
+
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.fillIBO);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, strokeGeom.indices, gl.DYNAMIC_DRAW);
+
+      this.setMatrixUniform(shader, 'uViewProjection', viewProjection);
+      this.setMatrixUniform(shader, 'uTransform', renderTransform);
+      this.setColorUniform(shader, 'uColor', stroke.color);
+      gl.uniform1f(shader.uniforms.get('uOpacity')!, opacity);
+
+      this.ctx.drawElements(gl.TRIANGLES, strokeGeom.indices.length, gl.UNSIGNED_SHORT, 0);
+      this.drawCallCount++;
+      this.triangleCount += strokeGeom.indices.length / 3;
+
+      this.ctx.bindVertexArray(null);
+    }
+  }
+
+  /**
+   * Tessellate a path into stroke geometry (thick lines as triangles).
+   */
+  private tessellateStroke(path: VectorPath, strokeWeight: number): { vertices: Float32Array; indices: Uint16Array } {
+    const halfWidth = strokeWeight / 2;
+    const vertices: number[] = [];
+    const indices: number[] = [];
+
+    // Extract points from path
+    const points: { x: number; y: number }[] = [];
+    for (const cmd of path.commands) {
+      if (cmd.type === 'M' || cmd.type === 'L') {
+        points.push({ x: cmd.x, y: cmd.y });
+      } else if (cmd.type === 'C') {
+        // Approximate cubic bezier with line segments (64 segments for smooth curves)
+        const lastPt = points[points.length - 1] || { x: 0, y: 0 };
+        const segments = 64;
+        for (let i = 1; i <= segments; i++) {
+          const t = i / segments;
+          const t2 = t * t;
+          const t3 = t2 * t;
+          const mt = 1 - t;
+          const mt2 = mt * mt;
+          const mt3 = mt2 * mt;
+          points.push({
+            x: mt3 * lastPt.x + 3 * mt2 * t * cmd.x1 + 3 * mt * t2 * cmd.x2 + t3 * cmd.x,
+            y: mt3 * lastPt.y + 3 * mt2 * t * cmd.y1 + 3 * mt * t2 * cmd.y2 + t3 * cmd.y,
+          });
+        }
+      }
+    }
+
+    if (points.length < 2) {
+      return { vertices: new Float32Array([]), indices: new Uint16Array([]) };
+    }
+
+    // Generate stroke geometry
+    let vertexIndex = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i]!;
+      const p1 = points[i + 1]!;
+
+      // Direction vector
+      const dx = p1.x - p0.x;
+      const dy = p1.y - p0.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 0.001) continue;
+
+      // Perpendicular (normal) vector
+      const nx = -dy / len * halfWidth;
+      const ny = dx / len * halfWidth;
+
+      // Four corners of the line quad
+      const v0 = vertexIndex;
+      vertices.push(p0.x + nx, p0.y + ny);  // top-left
+      vertices.push(p0.x - nx, p0.y - ny);  // bottom-left
+      vertices.push(p1.x - nx, p1.y - ny);  // bottom-right
+      vertices.push(p1.x + nx, p1.y + ny);  // top-right
+      vertexIndex += 4;
+
+      // Two triangles for the quad
+      indices.push(v0, v0 + 1, v0 + 2);
+      indices.push(v0, v0 + 2, v0 + 3);
+    }
+
+    return {
+      vertices: new Float32Array(vertices),
+      indices: new Uint16Array(indices),
+    };
   }
 
   /**
@@ -957,10 +1066,33 @@ export class Renderer extends EventEmitter<RendererEvents> {
   // =========================================================================
 
   /**
+   * Invalidate stroke geometry cache for a specific node.
+   * Call this when a node's path or stroke weight changes.
+   */
+  invalidateStrokeCache(nodeId: NodeId): void {
+    // Remove all cache entries for this node
+    for (const key of this.strokeGeomCache.keys()) {
+      if (key.startsWith(`${nodeId}:`)) {
+        this.strokeGeomCache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Clear all stroke geometry cache.
+   */
+  clearStrokeCache(): void {
+    this.strokeGeomCache.clear();
+  }
+
+  /**
    * Dispose of the renderer.
    */
   dispose(): void {
     this.stopRenderLoop();
+
+    // Clean up stroke cache
+    this.strokeGeomCache.clear();
 
     // Clean up fill resources
     if (this.fillVAO) {

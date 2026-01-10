@@ -263,6 +263,10 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   // Last used fill color for shapes (default: #D4D2D0)
   private lastUsedFillColor = { r: 0.831, g: 0.824, b: 0.816, a: 1 };
 
+  // Last used stroke color and weight for lines/paths (default: black, 2px)
+  private lastUsedStrokeColor = { r: 0, g: 0, b: 0, a: 1 };
+  private lastUsedStrokeWeight = 2;
+
   // Options
   private options: RuntimeOptions;
 
@@ -1134,6 +1138,34 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.lastUsedFillColor = { ...color };
   }
 
+  /**
+   * Get the last used stroke color for lines/paths.
+   */
+  getLastUsedStrokeColor(): { r: number; g: number; b: number; a: number } {
+    return { ...this.lastUsedStrokeColor };
+  }
+
+  /**
+   * Set the last used stroke color for lines/paths.
+   */
+  setLastUsedStrokeColor(color: { r: number; g: number; b: number; a: number }): void {
+    this.lastUsedStrokeColor = { ...color };
+  }
+
+  /**
+   * Get the last used stroke weight for lines/paths.
+   */
+  getLastUsedStrokeWeight(): number {
+    return this.lastUsedStrokeWeight;
+  }
+
+  /**
+   * Set the last used stroke weight for lines/paths.
+   */
+  setLastUsedStrokeWeight(weight: number): void {
+    this.lastUsedStrokeWeight = weight;
+  }
+
   // =========================================================================
   // Cleanup
   // =========================================================================
@@ -1316,8 +1348,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height,
         vectorPaths: [adjustedPath],
         fills: [],
-        strokes: [solidPaint(rgba(0, 0, 0, 1))],
-        strokeWeight: 2,
+        strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
+        strokeWeight: this.lastUsedStrokeWeight,
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -1395,8 +1427,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height,
         vectorPaths: [{ windingRule: path.windingRule, commands: translatedCommands }],
         fills: [],
-        strokes: [solidPaint(rgba(0, 0, 0, 1))],
-        strokeWeight: 2,
+        strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
+        strokeWeight: this.lastUsedStrokeWeight,
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -1534,8 +1566,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height: data.bounds.height,
         vectorPaths: [{ windingRule: data.path.windingRule, commands: translatedCommands }],
         fills: [],
-        strokes: [solidPaint(rgba(0, 0, 0, 1))],
-        strokeWeight: 2,
+        strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
+        strokeWeight: this.lastUsedStrokeWeight,
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -1662,8 +1694,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height: maxY - minY || 1,
         vectorPaths: [path],
         fills: closed ? [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))] : [],
-        strokes: [solidPaint(rgba(0, 0, 0, 1))],
-        strokeWeight: 2,
+        strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
+        strokeWeight: this.lastUsedStrokeWeight,
       });
 
       this.selectionManager.select([nodeId], 'replace');
@@ -1689,8 +1721,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height: bounds.height || 1,
         vectorPaths: [path],
         fills: [],
-        strokes: [solidPaint(rgba(0, 0, 0, 1))],
-        strokeWeight: 2,
+        strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
+        strokeWeight: this.lastUsedStrokeWeight,
       });
 
       this.selectionManager.select([nodeId], 'replace');
