@@ -2044,6 +2044,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private wireInputHandlers(): void {
     if (!this.pointerHandler || !this.keyboardHandler || !this.toolManager) return;
 
+    // Listen for cursor changes from tool manager
+    this.toolManager.on('cursor:changed', ({ cursor }) => {
+      if (this.canvas) {
+        this.canvas.style.cursor = cursor;
+      }
+    });
+
     // Pointer events
     this.pointerHandler.on('pointerdown', (event) => {
       // Middle mouse button (button 1) for pan/zoom

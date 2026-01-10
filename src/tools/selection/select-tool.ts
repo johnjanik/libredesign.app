@@ -34,10 +34,15 @@ interface SnapGuide {
 }
 
 /**
+ * Rotation corner position
+ */
+type RotationCorner = 'nw' | 'ne' | 'sw' | 'se';
+
+/**
  * Select tool state
  */
 interface SelectToolState {
-  mode: 'idle' | 'clicking' | 'marquee' | 'resizing' | 'moving';
+  mode: 'idle' | 'clicking' | 'marquee' | 'resizing' | 'moving' | 'rotating';
   marqueeStart: Point | null;
   marqueeEnd: Point | null;
   clickTarget: NodeId | null;
@@ -55,6 +60,14 @@ interface SelectToolState {
   // Snapping state
   activeSnap: { x: number; y: number; type: string } | null;
   activeGuides: SnapGuide[];
+  // Rotation state
+  rotationCorner: RotationCorner | null;
+  rotationPivot: Point | null;
+  rotationStartAngle: number;
+  rotationCurrentAngle: number;
+  rotationStartRotations: Map<NodeId, number> | null;
+  rotationStartPositions: Map<NodeId, Point> | null;
+  rotationCursorPoint: Point | null;
 }
 
 /**
@@ -79,9 +92,18 @@ export class SelectTool extends BaseTool {
     originalSelection: null,
     activeSnap: null,
     activeGuides: [],
+    rotationCorner: null,
+    rotationPivot: null,
+    rotationStartAngle: 0,
+    rotationCurrentAngle: 0,
+    rotationStartRotations: null,
+    rotationStartPositions: null,
+    rotationCursorPoint: null,
   };
 
   private readonly handleSize = 8;
+  private readonly rotationZoneInner = 12; // Inner radius (outside resize handles)
+  private readonly rotationZoneOuter = 28; // Outer radius for rotation zone
 
   // Callbacks for external actions
   private onSelectionChange: ((nodeIds: NodeId[]) => void) | undefined;
@@ -117,6 +139,13 @@ export class SelectTool extends BaseTool {
       originalSelection: null,
       activeSnap: null,
       activeGuides: [],
+      rotationCorner: null,
+      rotationPivot: null,
+      rotationStartAngle: 0,
+      rotationCurrentAngle: 0,
+      rotationStartRotations: null,
+      rotationStartPositions: null,
+      rotationCursorPoint: null,
     };
   }
 
@@ -124,9 +153,49 @@ export class SelectTool extends BaseTool {
     super.onPointerDown(event, context);
 
     const worldPoint = { x: event.worldX, y: event.worldY };
-
-    // First, check if clicking on a resize handle of a selected node
     const zoom = context.viewport.getZoom();
+
+    // Check for rotation zone FIRST (outside corners of combined selection bounds)
+    const selectionBounds = this.getSelectionBounds(context);
+    if (selectionBounds && context.selectedNodeIds.length > 0) {
+      const rotationCorner = this.hitTestRotationZone(worldPoint, selectionBounds, zoom);
+      if (rotationCorner) {
+        // Start rotation
+        const pivot: Point = {
+          x: selectionBounds.x + selectionBounds.width / 2,
+          y: selectionBounds.y + selectionBounds.height / 2,
+        };
+
+        this.state.mode = 'rotating';
+        this.state.rotationCorner = rotationCorner;
+        this.state.rotationPivot = pivot;
+        this.state.rotationStartAngle = this.calculateAngle(pivot, worldPoint);
+        this.state.rotationCurrentAngle = 0;
+        this.state.rotationCursorPoint = worldPoint;
+
+        // Store initial rotations and positions for all selected nodes
+        this.state.rotationStartRotations = new Map();
+        this.state.rotationStartPositions = new Map();
+        for (const nodeId of context.selectedNodeIds) {
+          const node = context.sceneGraph.getNode(nodeId);
+          if (node) {
+            const rotation = ('rotation' in node) ? (node as { rotation: number }).rotation : 0;
+            this.state.rotationStartRotations.set(nodeId, rotation);
+            if ('x' in node && 'y' in node && 'width' in node && 'height' in node) {
+              const n = node as { x: number; y: number; width: number; height: number };
+              // Store center position
+              this.state.rotationStartPositions.set(nodeId, {
+                x: n.x + n.width / 2,
+                y: n.y + n.height / 2,
+              });
+            }
+          }
+        }
+        return true;
+      }
+    }
+
+    // Check if clicking on a resize handle of a selected node
     for (const nodeId of context.selectedNodeIds) {
       // Use world bounds to account for parent transforms
       const worldBounds = context.sceneGraph.getWorldBounds(nodeId);
@@ -198,6 +267,46 @@ export class SelectTool extends BaseTool {
     // Clear snapping state
     this.state.activeSnap = null;
     this.state.activeGuides = [];
+
+    // Handle rotation
+    if (this.state.mode === 'rotating' && this.state.rotationPivot && this.state.rotationStartRotations && this.state.rotationStartPositions) {
+      this.state.rotationCursorPoint = worldPoint;
+
+      // Calculate current angle and delta
+      const currentAngle = this.calculateAngle(this.state.rotationPivot, worldPoint);
+      let deltaAngle = currentAngle - this.state.rotationStartAngle;
+
+      // Snap to 45° increments when Shift is held
+      if (event.shiftKey) {
+        const totalAngle = this.state.rotationStartAngle + deltaAngle;
+        const snappedTotal = this.snapAngle(totalAngle, 45);
+        deltaAngle = snappedTotal - this.state.rotationStartAngle;
+      }
+
+      this.state.rotationCurrentAngle = deltaAngle;
+
+      // Apply rotation to all selected nodes
+      for (const nodeId of context.selectedNodeIds) {
+        const startRotation = this.state.rotationStartRotations.get(nodeId) ?? 0;
+        const startCenter = this.state.rotationStartPositions.get(nodeId);
+        const node = context.sceneGraph.getNode(nodeId);
+
+        if (node && startCenter && 'width' in node && 'height' in node) {
+          const n = node as { width: number; height: number };
+
+          // Rotate the node's center around the pivot
+          const newCenter = this.rotatePoint(startCenter, this.state.rotationPivot, deltaAngle);
+
+          // Update node position (center-based)
+          context.sceneGraph.updateNode(nodeId, {
+            x: newCenter.x - n.width / 2,
+            y: newCenter.y - n.height / 2,
+            rotation: startRotation + deltaAngle,
+          });
+        }
+      }
+      return;
+    }
 
     if (this.state.mode === 'resizing' && this.state.resizeTarget && this.state.resizeStartBounds && this.state.resizeStartPoint && this.state.activeHandle) {
       // Calculate new bounds based on handle being dragged
@@ -297,9 +406,12 @@ export class SelectTool extends BaseTool {
       this.state.marqueeEnd = worldPoint;
 
       // Update selection based on marquee
+      // Window selection (left-to-right): only fully contained objects
+      // Crossing selection (right-to-left): any intersecting objects
       const marqueeRect = this.getMarqueeRect();
       if (marqueeRect) {
-        const nodesInMarquee = this.findNodesInRect(marqueeRect, context.sceneGraph);
+        const windowSelection = this.isWindowSelection();
+        const nodesInMarquee = this.findNodesInRect(marqueeRect, context.sceneGraph, windowSelection);
         this.updateSelection(nodesInMarquee, context);
       }
     }
@@ -374,11 +486,19 @@ export class SelectTool extends BaseTool {
   onPointerUp(event: PointerEventData, context: ToolContext): void {
     super.onPointerUp(event, context);
 
+    if (this.state.mode === 'rotating') {
+      // Rotation complete - could add undo entry here if history manager is available
+      // context.historyManager?.commit('Rotate');
+    }
+
     if (this.state.mode === 'marquee') {
       // Finalize marquee selection
+      // Window selection (left-to-right): only fully contained objects
+      // Crossing selection (right-to-left): any intersecting objects
       const marqueeRect = this.getMarqueeRect();
       if (marqueeRect) {
-        const nodesInMarquee = this.findNodesInRect(marqueeRect, context.sceneGraph);
+        const windowSelection = this.isWindowSelection();
+        const nodesInMarquee = this.findNodesInRect(marqueeRect, context.sceneGraph, windowSelection);
 
         if (event.shiftKey) {
           // Add to existing selection
@@ -416,17 +536,22 @@ export class SelectTool extends BaseTool {
   }
 
   getCursor(point: Point, context: ToolContext): ToolCursor {
-    // Check if hovering over a resize handle
     const zoom = context.viewport.getZoom();
-    for (const nodeId of context.selectedNodeIds) {
-      // Use world bounds to account for parent transforms
-      const worldBounds = context.sceneGraph.getWorldBounds(nodeId);
-      if (worldBounds) {
-        const handle = this.hitTestHandles(point, worldBounds, zoom);
 
-        if (handle) {
-          return this.getHandleCursor(handle);
-        }
+    // Get combined selection bounds for rotation zone detection
+    const selectionBounds = this.getSelectionBounds(context);
+
+    if (selectionBounds && context.selectedNodeIds.length > 0) {
+      // Check rotation zone FIRST (outside corners)
+      const rotationCorner = this.hitTestRotationZone(point, selectionBounds, zoom);
+      if (rotationCorner) {
+        return 'grab'; // Use grab cursor for rotation (or could use custom 'rotate')
+      }
+
+      // Check resize handles
+      const handle = this.hitTestHandles(point, selectionBounds, zoom);
+      if (handle) {
+        return this.getHandleCursor(handle);
       }
     }
 
@@ -439,6 +564,35 @@ export class SelectTool extends BaseTool {
     return hitNodeId ? 'pointer' : 'default';
   }
 
+  /**
+   * Get combined bounds of all selected nodes
+   */
+  private getSelectionBounds(context: ToolContext): Rect | null {
+    if (context.selectedNodeIds.length === 0) return null;
+
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
+    for (const nodeId of context.selectedNodeIds) {
+      const bounds = context.sceneGraph.getWorldBounds(nodeId);
+      if (bounds) {
+        minX = Math.min(minX, bounds.x);
+        minY = Math.min(minY, bounds.y);
+        maxX = Math.max(maxX, bounds.x + bounds.width);
+        maxY = Math.max(maxY, bounds.y + bounds.height);
+      }
+    }
+
+    if (!isFinite(minX)) return null;
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+
   render(ctx: CanvasRenderingContext2D, context: ToolContext): void {
     // Render marquee selection box
     if (this.state.mode === 'marquee' && this.state.marqueeStart && this.state.marqueeEnd) {
@@ -446,15 +600,31 @@ export class SelectTool extends BaseTool {
       if (rect) {
         ctx.save();
 
-        // Draw selection rectangle
-        ctx.strokeStyle = '#0066ff';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+        const windowSelection = this.isWindowSelection();
 
-        // Fill with semi-transparent blue
-        ctx.fillStyle = 'rgba(0, 102, 255, 0.1)';
-        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        if (windowSelection) {
+          // Window selection (left-to-right): solid blue border
+          // Only objects fully contained within the box will be selected
+          ctx.strokeStyle = '#0066ff';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([]); // Solid line
+          ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+          // Fill with semi-transparent blue
+          ctx.fillStyle = 'rgba(0, 102, 255, 0.1)';
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        } else {
+          // Crossing selection (right-to-left): dashed green border
+          // Any object that intersects the box will be selected
+          ctx.strokeStyle = '#00aa44';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]); // Dashed line
+          ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+          // Fill with semi-transparent green
+          ctx.fillStyle = 'rgba(0, 170, 68, 0.1)';
+          ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        }
 
         ctx.restore();
       }
@@ -468,6 +638,118 @@ export class SelectTool extends BaseTool {
         (this.state.activeSnap || this.state.activeGuides.length > 0)) {
       this.renderSnapFeedback(ctx, context);
     }
+
+    // Render rotation guides and readout during rotation
+    if (this.state.mode === 'rotating' && this.state.rotationPivot && this.state.rotationCursorPoint) {
+      this.renderRotationFeedback(ctx, context);
+    }
+  }
+
+  /**
+   * Render rotation feedback (angle guides, rotation arc, and angle readout)
+   */
+  private renderRotationFeedback(ctx: CanvasRenderingContext2D, context: ToolContext): void {
+    if (!this.state.rotationPivot || !this.state.rotationCursorPoint) return;
+
+    const zoom = context.viewport.getZoom();
+    const pivot = this.state.rotationPivot;
+    const cursor = this.state.rotationCursorPoint;
+    const deltaAngle = this.state.rotationCurrentAngle;
+
+    ctx.save();
+
+    // Draw snap angle guide lines (45° increments)
+    const guideLength = 60 / zoom;
+    const snapAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+
+    ctx.strokeStyle = 'rgba(0, 102, 255, 0.25)';
+    ctx.lineWidth = 1 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+
+    for (const angle of snapAngles) {
+      const rad = -angle * Math.PI / 180; // Negate for screen coordinates
+      ctx.beginPath();
+      ctx.moveTo(pivot.x, pivot.y);
+      ctx.lineTo(
+        pivot.x + Math.cos(rad) * guideLength,
+        pivot.y + Math.sin(rad) * guideLength
+      );
+      ctx.stroke();
+    }
+
+    ctx.setLineDash([]);
+
+    // Highlight snapped angle if close to a snap point
+    const normalizedDelta = this.normalizeAngle(deltaAngle);
+    for (const snapAngle of snapAngles) {
+      if (Math.abs(normalizedDelta - snapAngle) < 3 || Math.abs(normalizedDelta - snapAngle - 360) < 3) {
+        const rad = -snapAngle * Math.PI / 180;
+        ctx.strokeStyle = '#00FF00'; // Green for active snap
+        ctx.lineWidth = 2 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(pivot.x, pivot.y);
+        ctx.lineTo(
+          pivot.x + Math.cos(rad) * guideLength * 1.2,
+          pivot.y + Math.sin(rad) * guideLength * 1.2
+        );
+        ctx.stroke();
+        break;
+      }
+    }
+
+    // Draw rotation arc from 0 to current angle
+    const arcRadius = 25 / zoom;
+    ctx.strokeStyle = '#0066FF';
+    ctx.lineWidth = 2 / zoom;
+    ctx.beginPath();
+    // Arc from 0 (right/east) to current delta angle
+    const startRad = 0;
+    const endRad = -deltaAngle * Math.PI / 180;
+    ctx.arc(pivot.x, pivot.y, arcRadius, startRad, endRad, deltaAngle > 0);
+    ctx.stroke();
+
+    // Draw line from pivot to cursor
+    ctx.strokeStyle = 'rgba(0, 102, 255, 0.6)';
+    ctx.lineWidth = 1.5 / zoom;
+    ctx.setLineDash([4 / zoom, 2 / zoom]);
+    ctx.beginPath();
+    ctx.moveTo(pivot.x, pivot.y);
+    ctx.lineTo(cursor.x, cursor.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw pivot point indicator
+    ctx.fillStyle = '#0066FF';
+    ctx.beginPath();
+    ctx.arc(pivot.x, pivot.y, 4 / zoom, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw angle readout label with background
+    const labelX = cursor.x + 15 / zoom;
+    const labelY = cursor.y - 15 / zoom;
+    const angleText = `${deltaAngle.toFixed(1)}°`;
+
+    const fontSize = 12 / zoom;
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    const metrics = ctx.measureText(angleText);
+
+    // Background
+    const padding = 4 / zoom;
+    ctx.fillStyle = '#0066FF';
+    ctx.fillRect(
+      labelX - padding,
+      labelY - fontSize - padding / 2,
+      metrics.width + padding * 2,
+      fontSize + padding
+    );
+
+    // Text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(angleText, labelX, labelY - fontSize);
+
+    ctx.restore();
   }
 
   /**
@@ -682,7 +964,14 @@ export class SelectTool extends BaseTool {
     return null;
   }
 
-  private findNodesInRect(rect: Rect, sceneGraph: SceneGraph): NodeId[] {
+  /**
+   * Find nodes within a selection rect.
+   * @param rect The marquee selection rectangle
+   * @param sceneGraph The scene graph to search
+   * @param windowSelection If true (left-to-right drag), only select fully contained objects.
+   *                        If false (right-to-left drag), select any intersecting objects.
+   */
+  private findNodesInRect(rect: Rect, sceneGraph: SceneGraph, windowSelection: boolean): NodeId[] {
     const result: NodeId[] = [];
 
     const doc = sceneGraph.getDocument();
@@ -692,7 +981,7 @@ export class SelectTool extends BaseTool {
     if (pageIds.length === 0) return result;
 
     const pageId = pageIds[0]!;
-    this.findNodesInRectRecursive(pageId, rect, sceneGraph, result);
+    this.findNodesInRectRecursive(pageId, rect, sceneGraph, result, windowSelection);
 
     return result;
   }
@@ -701,7 +990,8 @@ export class SelectTool extends BaseTool {
     nodeId: NodeId,
     rect: Rect,
     sceneGraph: SceneGraph,
-    result: NodeId[]
+    result: NodeId[],
+    windowSelection: boolean
   ): void {
     const node = sceneGraph.getNode(nodeId);
     if (!node) return;
@@ -712,7 +1002,13 @@ export class SelectTool extends BaseTool {
         const n = node as { x: number; y: number; width: number; height: number };
         const bounds = { x: n.x, y: n.y, width: n.width, height: n.height };
 
-        if (this.rectsIntersect(rect, bounds)) {
+        // Window selection (left-to-right): only fully contained objects
+        // Crossing selection (right-to-left): any intersecting objects
+        const isSelected = windowSelection
+          ? this.rectContains(rect, bounds)
+          : this.rectsIntersect(rect, bounds);
+
+        if (isSelected) {
           result.push(nodeId);
         }
       }
@@ -721,7 +1017,7 @@ export class SelectTool extends BaseTool {
     // Check children
     const childIds = sceneGraph.getChildIds(nodeId);
     for (const childId of childIds) {
-      this.findNodesInRectRecursive(childId, rect, sceneGraph, result);
+      this.findNodesInRectRecursive(childId, rect, sceneGraph, result, windowSelection);
     }
   }
 
@@ -755,6 +1051,28 @@ export class SelectTool extends BaseTool {
       a.y + a.height < b.y ||
       b.y + b.height < a.y
     );
+  }
+
+  /**
+   * Check if rect 'a' fully contains rect 'b' (for window selection)
+   */
+  private rectContains(a: Rect, b: Rect): boolean {
+    return (
+      b.x >= a.x &&
+      b.y >= a.y &&
+      b.x + b.width <= a.x + a.width &&
+      b.y + b.height <= a.y + a.height
+    );
+  }
+
+  /**
+   * Determine if current marquee is window selection (left-to-right) or crossing selection (right-to-left)
+   * Window selection: drag from left to right - selects only fully contained objects
+   * Crossing selection: drag from right to left - selects any intersecting objects
+   */
+  private isWindowSelection(): boolean {
+    if (!this.state.marqueeStart || !this.state.marqueeEnd) return true;
+    return this.state.marqueeEnd.x >= this.state.marqueeStart.x;
   }
 
   private selectAll(context: ToolContext): void {
@@ -860,6 +1178,74 @@ export class SelectTool extends BaseTool {
     }
 
     return null;
+  }
+
+  /**
+   * Hit test for rotation zone (outside corners)
+   */
+  private hitTestRotationZone(point: Point, bounds: Rect, zoom: number): RotationCorner | null {
+    const corners: Record<RotationCorner, Point> = {
+      nw: { x: bounds.x, y: bounds.y },
+      ne: { x: bounds.x + bounds.width, y: bounds.y },
+      sw: { x: bounds.x, y: bounds.y + bounds.height },
+      se: { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    };
+
+    const innerRadius = this.rotationZoneInner / zoom;
+    const outerRadius = this.rotationZoneOuter / zoom;
+
+    for (const [corner, pos] of Object.entries(corners)) {
+      const dx = point.x - pos.x;
+      const dy = point.y - pos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > innerRadius && dist <= outerRadius) {
+        return corner as RotationCorner;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Calculate angle from pivot to point (in degrees, 0° = right, counter-clockwise positive)
+   */
+  private calculateAngle(pivot: Point, point: Point): number {
+    const dx = point.x - pivot.x;
+    const dy = point.y - pivot.y;
+    // atan2 gives angle in radians, convert to degrees
+    // Negate y because canvas y increases downward
+    return Math.atan2(-dy, dx) * 180 / Math.PI;
+  }
+
+  /**
+   * Snap angle to nearest increment
+   */
+  private snapAngle(angle: number, increment: number): number {
+    return Math.round(angle / increment) * increment;
+  }
+
+  /**
+   * Normalize angle to 0-360 range
+   */
+  private normalizeAngle(angle: number): number {
+    angle = angle % 360;
+    if (angle < 0) angle += 360;
+    return angle;
+  }
+
+  /**
+   * Rotate a point around a pivot
+   */
+  private rotatePoint(point: Point, pivot: Point, angleDegrees: number): Point {
+    const rad = angleDegrees * Math.PI / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const dx = point.x - pivot.x;
+    const dy = point.y - pivot.y;
+    return {
+      x: pivot.x + dx * cos - dy * sin,
+      y: pivot.y + dx * sin + dy * cos,
+    };
   }
 
   private getHandleCursor(handle: HandlePosition): ToolCursor {
