@@ -261,9 +261,9 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 |-----------------|--------|----------|
 | Fasteners (bolts, nuts, washers) | Implemented | `src/mechanical/libraries/common-fasteners.ts` |
 | Bearings | Implemented | `src/mechanical/libraries/common-bearings.ts` |
-| Gears | **Not Implemented** | - |
-| Welding symbols | **Not Implemented** | - |
-| Surface finish symbols | **Not Implemented** | - |
+| Gears | Implemented | `src/mechanical/libraries/common-gears.ts` |
+| Welding symbols | Implemented | `src/mechanical/libraries/welding-symbols.ts` |
+| Surface finish symbols | Implemented | `src/mechanical/libraries/surface-finish-symbols.ts` |
 
 ---
 
@@ -303,9 +303,9 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Phase 4: Hatching | 7 | 9 | 78% |
 | Phase 5: Blocks | 6 | 9 | 67% |
 | Phase 6: PCB | 10 | 11 | 91% |
-| Phase 7: Mechanical | 10 | 13 | 77% |
+| Phase 7: Mechanical | 13 | 13 | 100% |
 | Phase 8: Import/Export | 6 | 10 | 60% |
-| **Total** | **80** | **94** | **85%** |
+| **Total** | **83** | **94** | **88%** |
 
 ### Not Yet Implemented
 
@@ -317,9 +317,6 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Dynamic block stretch actions | 5 | Medium |
 | Dynamic block parameters | 5 | Low |
 | DRC implementation | 6 | High |
-| Gears library | 7 | Low |
-| Welding symbols | 7 | Low |
-| Surface finish symbols | 7 | Low |
 | PDF vector import | 8 | Medium |
 | KiCad import | 8 | Medium |
 | Eagle import | 8 | Low |
