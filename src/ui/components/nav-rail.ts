@@ -64,6 +64,12 @@ const ICONS = {
     <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
     <path d="M12 7v5l4 2"/>
   </svg>`,
+  lint: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="4" r="2"/>
+    <path d="M12 6v14"/>
+    <path d="M8 8l4 2 4-2"/>
+    <path d="M6 14l6 6 6-6"/>
+  </svg>`,
   search: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <circle cx="11" cy="11" r="8"/>
     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -217,6 +223,13 @@ export class NavRail {
         tooltip: 'Version History',
         onClick: () => this.setActivePanel('history'),
         isActive: () => this.activePanel === 'history',
+      },
+      {
+        id: 'lint',
+        icon: ICONS.lint,
+        tooltip: 'Accessibility & Lint',
+        onClick: () => this.setActivePanel('lint'),
+        isActive: () => this.activePanel === 'lint',
       },
       {
         id: 'search',

@@ -21,6 +21,7 @@ import {
 import { ComponentLibraryPanel } from './component-library-panel';
 import { HistoryPanel } from './history-panel';
 import { AssetsPanel } from './assets-panel';
+import { LintPanel } from './lint-panel';
 import { MenuBar } from './menu-bar';
 
 /**
@@ -139,7 +140,7 @@ export class LeftSidebar {
   // State
   private collapsed = false;
   private documentName = 'Untitled';
-  private activeTab: 'layers' | 'assets' | 'library' | 'components' | 'history' = 'layers';
+  private activeTab: 'layers' | 'assets' | 'library' | 'components' | 'history' | 'lint' = 'layers';
   private leaves: Leaf[] = [{ id: 'leaf-1', name: 'Leaf 1' }];
   private activeLeafId = 'leaf-1';
   private leafCounter = 1;
@@ -157,6 +158,9 @@ export class LeftSidebar {
 
   // Assets panel (lazy-initialized)
   private assetsPanel: AssetsPanel | null = null;
+
+  // Lint panel (lazy-initialized)
+  private lintPanel: LintPanel | null = null;
 
   // Menu bar (lazy-initialized)
   private menuBar: MenuBar | null = null;
@@ -225,7 +229,7 @@ export class LeftSidebar {
     // Listen for panel changes from nav rail
     window.addEventListener('designlibre-panel-changed', ((e: CustomEvent) => {
       const panel = e.detail.panel as typeof this.activeTab;
-      if (['layers', 'assets', 'library', 'components', 'history'].includes(panel)) {
+      if (['layers', 'assets', 'library', 'components', 'history', 'lint'].includes(panel)) {
         this.activeTab = panel;
         this.render();
       }
@@ -424,6 +428,9 @@ export class LeftSidebar {
     } else if (this.activeTab === 'assets') {
       // Assets panel: saved reusable compositions
       this.element.appendChild(this.createAssetsSection());
+    } else if (this.activeTab === 'lint') {
+      // Lint panel: accessibility and semantic checks
+      this.element.appendChild(this.createLintSection());
     } else {
       // Layers panel: show leaves and layers
       this.element.appendChild(this.createLeavesSection());
@@ -469,6 +476,14 @@ export class LeftSidebar {
       });
     }
     return this.assetsPanel.createElement();
+  }
+
+  private createLintSection(): HTMLElement {
+    // Lazy-initialize the lint panel
+    if (!this.lintPanel) {
+      this.lintPanel = new LintPanel(this.runtime);
+    }
+    return this.lintPanel.create();
   }
 
   private createHeader(): HTMLElement {
