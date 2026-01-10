@@ -21,3 +21,6 @@ export * from './code-export';
 
 // Documentation
 export * from './documentation';
+
+// Semantic Linter
+export * from './semantic-linter';

@@ -42,6 +42,9 @@ import {
   type BindingTransform,
   type LLMContextHints,
   type DataBinding,
+  type SemanticEventHandler,
+  type EventType,
+  type ActionType,
   SEMANTIC_PLUGIN_KEY,
   SEMANTIC_TYPE_DEFAULTS,
   getSemanticMetadata,
@@ -2360,6 +2363,9 @@ export class InspectorPanel {
 
     // State bindings section (for connecting properties to variables)
     this.renderStateBindingsSection(node);
+
+    // Event handlers section (for code generation)
+    this.renderEventHandlersSection(node);
   }
 
   /**
@@ -2900,6 +2906,447 @@ export class InspectorPanel {
     } else {
       // Remove stateBindings property entirely
       const { stateBindings: _, ...rest } = updatedMetadata;
+      updatedMetadata = rest as SemanticMetadata;
+    }
+
+    const updatedPluginData = setSemanticMetadata(pluginData, updatedMetadata);
+    sceneGraph.updateNode(node.id, { pluginData: updatedPluginData } as Partial<NodeData>);
+    this.updateContent();
+  }
+
+  // =========================================================================
+  // Event Handlers Section
+  // =========================================================================
+
+  /**
+   * Render the Event Handlers section in the Prototype panel
+   */
+  private renderEventHandlersSection(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const section = this.createSection('Event Handlers');
+
+    // Info text
+    const info = document.createElement('div');
+    info.style.cssText = `
+      font-size: 11px;
+      color: var(--designlibre-text-muted, #888888);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    `;
+    info.textContent = 'Configure event handlers for code generation. These define the interactive behavior of this component.';
+    section.appendChild(info);
+
+    // Get existing event handlers from semantic metadata
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semanticData = getSemanticMetadata(pluginData);
+    const eventHandlers = semanticData?.eventHandlers ?? [];
+
+    // Render existing handlers
+    if (eventHandlers.length > 0) {
+      const handlersList = document.createElement('div');
+      handlersList.style.cssText = `display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px;`;
+
+      for (let i = 0; i < eventHandlers.length; i++) {
+        const handler = eventHandlers[i]!;
+        handlersList.appendChild(this.renderEventHandlerRow(node, handler, i));
+      }
+      section.appendChild(handlersList);
+    }
+
+    // Add handler button
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px 10px;
+      background: transparent;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      color: var(--designlibre-text-muted, #888888);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    `;
+    addBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Add event handler
+    `;
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.borderColor = 'var(--designlibre-primary, #3b82f6)';
+      addBtn.style.color = 'var(--designlibre-primary, #3b82f6)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addBtn.style.color = 'var(--designlibre-text-muted, #888888)';
+    });
+    addBtn.addEventListener('click', () => {
+      this.showAddEventHandlerUI(node, section, addBtn);
+    });
+
+    section.appendChild(addBtn);
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render a single event handler row
+   */
+  private renderEventHandlerRow(
+    node: NodeData,
+    handler: SemanticEventHandler,
+    index: number
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      font-size: 11px;
+    `;
+
+    // Event type badge
+    const eventBadge = document.createElement('span');
+    eventBadge.style.cssText = `
+      padding: 2px 6px;
+      background: var(--designlibre-primary-muted, #1d4ed8);
+      border-radius: 4px;
+      color: var(--designlibre-primary, #3b82f6);
+      font-size: 10px;
+      font-weight: 500;
+    `;
+    eventBadge.textContent = handler.event;
+    row.appendChild(eventBadge);
+
+    // Arrow
+    const arrow = document.createElement('span');
+    arrow.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    `;
+    arrow.style.cssText = `opacity: 0.5; flex-shrink: 0;`;
+    row.appendChild(arrow);
+
+    // Action type
+    const actionSpan = document.createElement('span');
+    actionSpan.style.cssText = `
+      color: var(--designlibre-text, #ffffff);
+      flex: 1;
+    `;
+    actionSpan.textContent = this.formatActionType(handler.actionType, handler.actionConfig);
+    row.appendChild(actionSpan);
+
+    // Handler name (if custom)
+    if (handler.handlerName) {
+      const nameSpan = document.createElement('span');
+      nameSpan.style.cssText = `
+        color: var(--designlibre-text-muted, #888888);
+        font-family: monospace;
+        font-size: 10px;
+      `;
+      nameSpan.textContent = handler.handlerName;
+      row.appendChild(nameSpan);
+    }
+
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.style.cssText = `
+      padding: 2px;
+      background: transparent;
+      border: none;
+      color: var(--designlibre-text-muted, #888888);
+      cursor: pointer;
+      opacity: 0.6;
+      transition: opacity 0.15s;
+    `;
+    deleteBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    `;
+    deleteBtn.addEventListener('mouseenter', () => { deleteBtn.style.opacity = '1'; });
+    deleteBtn.addEventListener('mouseleave', () => { deleteBtn.style.opacity = '0.6'; });
+    deleteBtn.addEventListener('click', () => {
+      this.removeEventHandler(node, index);
+    });
+    row.appendChild(deleteBtn);
+
+    return row;
+  }
+
+  /**
+   * Format action type for display
+   */
+  private formatActionType(actionType: ActionType, config: Record<string, unknown>): string {
+    switch (actionType) {
+      case 'navigate':
+        return `Navigate to ${config['destination'] ?? 'screen'}`;
+      case 'setVariable':
+        return `Set ${config['variableId'] ?? 'variable'}`;
+      case 'toggleVariable':
+        return `Toggle ${config['variableId'] ?? 'variable'}`;
+      case 'incrementVariable':
+        return `Increment ${config['variableId'] ?? 'variable'}`;
+      case 'apiCall':
+        return `API: ${config['method'] ?? 'GET'} ${config['endpoint'] ?? '/api'}`;
+      case 'openUrl':
+        return `Open ${config['url'] ?? 'URL'}`;
+      case 'showModal':
+        return `Show modal`;
+      case 'hideModal':
+        return `Hide modal`;
+      case 'showToast':
+        return `Show toast: ${config['message'] ?? '...'}`;
+      case 'custom':
+        return config['description'] as string ?? 'Custom action';
+      default:
+        return actionType;
+    }
+  }
+
+  /**
+   * Show UI for adding a new event handler
+   */
+  private showAddEventHandlerUI(
+    node: NodeData,
+    container: HTMLElement,
+    addBtn: HTMLElement
+  ): void {
+    addBtn.style.display = 'none';
+
+    const form = document.createElement('div');
+    form.style.cssText = `
+      padding: 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    `;
+
+    // Event type selector
+    const eventLabel = document.createElement('label');
+    eventLabel.textContent = 'Event';
+    eventLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(eventLabel);
+
+    const eventSelect = document.createElement('select');
+    eventSelect.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    const events: Array<{ value: EventType; label: string }> = [
+      { value: 'onPress', label: 'On Press (tap/click)' },
+      { value: 'onLongPress', label: 'On Long Press' },
+      { value: 'onDoublePress', label: 'On Double Press' },
+      { value: 'onHoverEnter', label: 'On Hover Enter' },
+      { value: 'onHoverExit', label: 'On Hover Exit' },
+      { value: 'onFocus', label: 'On Focus' },
+      { value: 'onBlur', label: 'On Blur' },
+      { value: 'onChange', label: 'On Change' },
+      { value: 'onSubmit', label: 'On Submit' },
+      { value: 'onScroll', label: 'On Scroll' },
+      { value: 'onSwipe', label: 'On Swipe' },
+      { value: 'onAppear', label: 'On Appear' },
+      { value: 'onDisappear', label: 'On Disappear' },
+      { value: 'onRefresh', label: 'On Refresh' },
+    ];
+    for (const evt of events) {
+      const option = document.createElement('option');
+      option.value = evt.value;
+      option.textContent = evt.label;
+      eventSelect.appendChild(option);
+    }
+    form.appendChild(eventSelect);
+
+    // Action type selector
+    const actionLabel = document.createElement('label');
+    actionLabel.textContent = 'Action';
+    actionLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(actionLabel);
+
+    const actionSelect = document.createElement('select');
+    actionSelect.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    const actions: Array<{ value: ActionType; label: string }> = [
+      { value: 'custom', label: 'Custom (placeholder)' },
+      { value: 'navigate', label: 'Navigate to screen' },
+      { value: 'setVariable', label: 'Set variable' },
+      { value: 'toggleVariable', label: 'Toggle variable' },
+      { value: 'incrementVariable', label: 'Increment variable' },
+      { value: 'apiCall', label: 'API call' },
+      { value: 'openUrl', label: 'Open URL' },
+      { value: 'showModal', label: 'Show modal' },
+      { value: 'hideModal', label: 'Hide modal' },
+      { value: 'showToast', label: 'Show toast' },
+    ];
+    for (const action of actions) {
+      const option = document.createElement('option');
+      option.value = action.value;
+      option.textContent = action.label;
+      actionSelect.appendChild(option);
+    }
+    form.appendChild(actionSelect);
+
+    // Handler name input
+    const handlerLabel = document.createElement('label');
+    handlerLabel.textContent = 'Handler Name (optional)';
+    handlerLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(handlerLabel);
+
+    const handlerInput = document.createElement('input');
+    handlerInput.type = 'text';
+    handlerInput.placeholder = 'e.g., handleSubmit';
+    handlerInput.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+      font-family: monospace;
+    `;
+    form.appendChild(handlerInput);
+
+    // Description input (for custom actions)
+    const descLabel = document.createElement('label');
+    descLabel.textContent = 'Description / TODO';
+    descLabel.style.cssText = `font-size: 11px; color: var(--designlibre-text-muted, #888888);`;
+    form.appendChild(descLabel);
+
+    const descInput = document.createElement('input');
+    descInput.type = 'text';
+    descInput.placeholder = 'e.g., Validate form and submit to API';
+    descInput.style.cssText = `
+      padding: 6px 8px;
+      background: var(--designlibre-bg-tertiary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+    `;
+    form.appendChild(descInput);
+
+    // Buttons
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = `display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;`;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = `
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text, #ffffff);
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+      addBtn.style.display = 'flex';
+    });
+    btnRow.appendChild(cancelBtn);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.textContent = 'Add Handler';
+    saveBtn.style.cssText = `
+      padding: 6px 12px;
+      background: var(--designlibre-primary, #3b82f6);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    saveBtn.addEventListener('click', () => {
+      const handler: SemanticEventHandler = {
+        event: eventSelect.value as EventType,
+        actionType: actionSelect.value as ActionType,
+        actionConfig: {
+          placeholder: true,
+          description: descInput.value || undefined,
+        },
+      };
+
+      if (handlerInput.value.trim()) {
+        handler.handlerName = handlerInput.value.trim();
+      }
+
+      this.addEventHandler(node, handler);
+      form.remove();
+      addBtn.style.display = 'flex';
+    });
+    btnRow.appendChild(saveBtn);
+
+    form.appendChild(btnRow);
+    container.insertBefore(form, addBtn);
+  }
+
+  /**
+   * Add an event handler to a node
+   */
+  private addEventHandler(node: NodeData, handler: SemanticEventHandler): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    let semanticData = getSemanticMetadata(pluginData);
+
+    if (!semanticData) {
+      semanticData = createSemanticMetadata('Custom');
+    }
+
+    const existingHandlers = semanticData.eventHandlers ?? [];
+    const updatedHandlers = [...existingHandlers, handler];
+
+    const updatedMetadata: SemanticMetadata = {
+      ...semanticData,
+      eventHandlers: updatedHandlers,
+    };
+
+    const updatedPluginData = setSemanticMetadata(pluginData, updatedMetadata);
+    sceneGraph.updateNode(node.id, { pluginData: updatedPluginData } as Partial<NodeData>);
+    this.updateContent();
+  }
+
+  /**
+   * Remove an event handler from a node
+   */
+  private removeEventHandler(node: NodeData, index: number): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const pluginData = (node as NodeData & { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semanticData = getSemanticMetadata(pluginData);
+
+    if (!semanticData || !semanticData.eventHandlers) return;
+
+    const updatedHandlers = semanticData.eventHandlers.filter((_, i) => i !== index);
+
+    let updatedMetadata: SemanticMetadata = { ...semanticData };
+    if (updatedHandlers.length > 0) {
+      updatedMetadata = { ...updatedMetadata, eventHandlers: updatedHandlers };
+    } else {
+      // Remove eventHandlers property entirely
+      const { eventHandlers: _, ...rest } = updatedMetadata;
       updatedMetadata = rest as SemanticMetadata;
     }
 

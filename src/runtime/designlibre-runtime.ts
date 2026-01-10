@@ -8,6 +8,7 @@ import type { NodeId } from '@core/types/common';
 import type { VectorPath, PathCommand } from '@core/types/geometry';
 import { EventEmitter } from '@core/events/event-emitter';
 import { SceneGraph, type CreateNodeOptions } from '@scene/graph/scene-graph';
+import type { NodeData } from '@scene/nodes/base-node';
 import { Renderer, createRenderer } from '@renderer/core/renderer';
 import { Viewport } from '@renderer/core/viewport';
 import { ToolManager, createToolManager } from '@tools/base/tool-manager';
@@ -98,6 +99,11 @@ import {
   createHistoryPersistenceService,
 } from '@persistence/history-persistence';
 import type { Checkpoint, StateSnapshot } from '@core/types/history';
+import { setSemanticMetadata } from '@core/types/semantic-schema';
+import {
+  suggestSemanticType,
+  createSemanticMetadataFromPreset,
+} from '@semantic/semantic-presets';
 
 /**
  * Runtime events
@@ -2204,11 +2210,38 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     );
 
     if (rootNode) {
+      // Apply semantic metadata based on component category and name
+      this.applySemanticMetadataToLibraryComponent(rootNode, component);
+
       // Select the newly created component
       this.selectionManager.select([rootNode]);
     }
 
     return rootNode;
+  }
+
+  /**
+   * Apply semantic metadata to a library component instance
+   */
+  private applySemanticMetadataToLibraryComponent(
+    nodeId: NodeId,
+    component: LibraryComponent
+  ): void {
+    // Suggest semantic type based on component category and name
+    const semanticType = suggestSemanticType(component.category, component.name);
+
+    // Create metadata from preset
+    const metadata = createSemanticMetadataFromPreset(semanticType);
+
+    // Get current pluginData (if any)
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return;
+
+    const existingPluginData = (node as { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const updatedPluginData = setSemanticMetadata(existingPluginData, metadata);
+
+    // Update the node with semantic metadata
+    this.sceneGraph.updateNode(nodeId, { pluginData: updatedPluginData } as Partial<NodeData>);
   }
 
   /**

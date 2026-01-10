@@ -42,6 +42,7 @@ export default defineConfig({
       '@ai': resolve(__dirname, 'src/ai'),
       '@templates': resolve(__dirname, 'src/templates'),
       '@tokens': resolve(__dirname, 'src/tokens'),
+      '@semantic': resolve(__dirname, 'src/semantic'),
     },
   },
 
