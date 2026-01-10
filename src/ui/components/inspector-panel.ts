@@ -40,6 +40,8 @@ import {
   type AccessibilityConfig,
   type StateBinding,
   type BindingTransform,
+  type LLMContextHints,
+  type DataBinding,
   SEMANTIC_PLUGIN_KEY,
   SEMANTIC_TYPE_DEFAULTS,
   getSemanticMetadata,
@@ -4756,6 +4758,12 @@ export class InspectorPanel {
 
     this.renderNodeHeader(node);
 
+    // LLM Context section (for AI-assisted code generation)
+    this.renderLLMContextSection(node);
+
+    // Data Bindings section
+    this.renderDataBindingsSection(node);
+
     // Utility Classes section (new)
     this.renderUtilityClassesSection(node);
 
@@ -6335,6 +6343,712 @@ export class InspectorPanel {
     };
     const newPluginData = setSemanticMetadata(pluginData, newMetadata);
     this.updateNode(nodeId, { pluginData: newPluginData });
+  }
+
+  // =========================================================================
+  // LLM Context Section (Inspect Tab)
+  // =========================================================================
+
+  /**
+   * Render LLM context section for AI-assisted code generation
+   */
+  private renderLLMContextSection(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const section = this.createSection('AI Context');
+    const nodeId = node.id;
+
+    // Get existing semantic metadata
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semantic = getSemanticMetadata(pluginData);
+    const llmContext = semantic?.llmContext ?? {};
+
+    // Description
+    const description = document.createElement('div');
+    description.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    `;
+    description.textContent = 'Add context to help AI understand this element for code generation.';
+    section.appendChild(description);
+
+    // Purpose field
+    const purposeRow = this.createLLMContextField(
+      'Purpose',
+      'What is this element for?',
+      llmContext.purpose ?? '',
+      (value) => this.updateLLMContext(nodeId, pluginData, semantic, 'purpose', value)
+    );
+    section.appendChild(purposeRow);
+
+    // Business Logic Notes (multi-line)
+    const businessNotesRow = this.createLLMContextListField(
+      'Business Logic',
+      'Add implementation notes...',
+      llmContext.businessLogicNotes ?? [],
+      (notes) => this.updateLLMContext(nodeId, pluginData, semantic, 'businessLogicNotes', notes)
+    );
+    section.appendChild(businessNotesRow);
+
+    // API Endpoints
+    const apiEndpointsRow = this.createLLMContextListField(
+      'API Endpoints',
+      'POST /api/users, GET /api/data...',
+      llmContext.apiEndpoints ?? [],
+      (endpoints) => this.updateLLMContext(nodeId, pluginData, semantic, 'apiEndpoints', endpoints)
+    );
+    section.appendChild(apiEndpointsRow);
+
+    // Validation Rules
+    const validationRow = this.createLLMContextListField(
+      'Validation Rules',
+      'Required, min length 8, email format...',
+      llmContext.validationRules ?? [],
+      (rules) => this.updateLLMContext(nodeId, pluginData, semantic, 'validationRules', rules)
+    );
+    section.appendChild(validationRow);
+
+    // TODO Suggestions
+    const todoRow = this.createLLMContextListField(
+      'TODO Suggestions',
+      'Implement error handling, Add analytics...',
+      llmContext.todoSuggestions ?? [],
+      (todos) => this.updateLLMContext(nodeId, pluginData, semantic, 'todoSuggestions', todos)
+    );
+    section.appendChild(todoRow);
+
+    // Data Dependencies
+    const dataDepsRow = this.createLLMContextListField(
+      'Data Dependencies',
+      'User profile, Cart items, Auth state...',
+      llmContext.dataDependencies ?? [],
+      (deps) => this.updateLLMContext(nodeId, pluginData, semantic, 'dataDependencies', deps)
+    );
+    section.appendChild(dataDepsRow);
+
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Create a single-line LLM context field
+   */
+  private createLLMContextField(
+    label: string,
+    placeholder: string,
+    value: string,
+    onChange: (value: string) => void
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `margin-bottom: 12px;`;
+
+    const labelEl = document.createElement('div');
+    labelEl.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 4px;
+    `;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = placeholder;
+    input.value = value;
+    input.style.cssText = `
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+    `;
+    input.addEventListener('change', () => {
+      onChange(input.value.trim());
+    });
+    row.appendChild(input);
+
+    return row;
+  }
+
+  /**
+   * Create a list-based LLM context field with add/remove
+   */
+  private createLLMContextListField(
+    label: string,
+    placeholder: string,
+    items: string[],
+    onChange: (items: string[]) => void
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `margin-bottom: 12px;`;
+
+    const labelEl = document.createElement('div');
+    labelEl.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 4px;
+    `;
+    labelEl.textContent = label;
+    row.appendChild(labelEl);
+
+    // Items container
+    const itemsContainer = document.createElement('div');
+    itemsContainer.style.cssText = `margin-bottom: 8px;`;
+
+    const renderItems = () => {
+      itemsContainer.innerHTML = '';
+      for (let i = 0; i < items.length; i++) {
+        const itemRow = document.createElement('div');
+        itemRow.style.cssText = `
+          display: flex;
+          gap: 4px;
+          margin-bottom: 4px;
+        `;
+
+        const itemInput = document.createElement('input');
+        itemInput.type = 'text';
+        itemInput.value = items[i] ?? '';
+        itemInput.style.cssText = `
+          flex: 1;
+          padding: 6px 8px;
+          border: 1px solid var(--designlibre-border, #3d3d3d);
+          border-radius: 4px;
+          background: var(--designlibre-bg-secondary, #2d2d2d);
+          color: var(--designlibre-text-primary, #e4e4e4);
+          font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+        `;
+        itemInput.addEventListener('change', () => {
+          items[i] = itemInput.value.trim();
+          onChange(items.filter(item => item.length > 0));
+        });
+
+        const removeBtn = document.createElement('button');
+        removeBtn.style.cssText = `
+          width: 24px;
+          height: 24px;
+          padding: 0;
+          border: none;
+          border-radius: 4px;
+          background: transparent;
+          color: var(--designlibre-text-secondary, #a0a0a0);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        `;
+        removeBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+        removeBtn.addEventListener('click', () => {
+          items.splice(i, 1);
+          onChange(items);
+          renderItems();
+        });
+        removeBtn.addEventListener('mouseenter', () => {
+          removeBtn.style.color = '#ff453a';
+        });
+        removeBtn.addEventListener('mouseleave', () => {
+          removeBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+        });
+
+        itemRow.appendChild(itemInput);
+        itemRow.appendChild(removeBtn);
+        itemsContainer.appendChild(itemRow);
+      }
+    };
+
+    renderItems();
+    row.appendChild(itemsContainer);
+
+    // Add new item row
+    const addRow = document.createElement('div');
+    addRow.style.cssText = `display: flex; gap: 4px;`;
+
+    const addInput = document.createElement('input');
+    addInput.type = 'text';
+    addInput.placeholder = placeholder;
+    addInput.style.cssText = `
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-tertiary, #252525);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+    `;
+
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `
+      padding: 6px 10px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      cursor: pointer;
+    `;
+    addBtn.textContent = 'Add';
+    addBtn.addEventListener('click', () => {
+      const value = addInput.value.trim();
+      if (value) {
+        items.push(value);
+        onChange(items);
+        addInput.value = '';
+        renderItems();
+      }
+    });
+    addInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addBtn.click();
+      }
+    });
+
+    addRow.appendChild(addInput);
+    addRow.appendChild(addBtn);
+    row.appendChild(addRow);
+
+    return row;
+  }
+
+  /**
+   * Update LLM context in semantic metadata
+   */
+  private updateLLMContext(
+    nodeId: NodeId,
+    pluginData: Record<string, unknown>,
+    currentMetadata: SemanticMetadata | null,
+    key: keyof LLMContextHints,
+    value: string | string[]
+  ): void {
+    const baseMeta = currentMetadata ?? createSemanticMetadata('Custom');
+    const currentLLM = baseMeta.llmContext ?? {};
+
+    // Handle empty values - remove the key
+    const isEmpty = typeof value === 'string' ? value.length === 0 : value.length === 0;
+
+    let newLLM: LLMContextHints;
+    if (isEmpty) {
+      const { [key]: _, ...rest } = currentLLM;
+      newLLM = rest;
+    } else {
+      newLLM = { ...currentLLM, [key]: value };
+    }
+
+    // Remove llmContext entirely if empty
+    const hasLLMContext = Object.keys(newLLM).length > 0;
+
+    const newMetadata: SemanticMetadata = {
+      ...baseMeta,
+    };
+
+    if (hasLLMContext) {
+      newMetadata.llmContext = newLLM;
+    } else {
+      delete newMetadata.llmContext;
+    }
+
+    const newPluginData = setSemanticMetadata(pluginData, newMetadata);
+    this.updateNode(nodeId, { pluginData: newPluginData });
+  }
+
+  // =========================================================================
+  // Data Bindings Section (Inspect Tab)
+  // =========================================================================
+
+  /**
+   * Render data bindings section for connecting properties to data sources
+   */
+  private renderDataBindingsSection(node: NodeData): void {
+    if (!this.contentElement) return;
+
+    const section = this.createSection('Data Bindings');
+    const nodeId = node.id;
+
+    // Get existing semantic metadata
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semantic = getSemanticMetadata(pluginData);
+    const dataBindings = semantic?.dataBindings ?? [];
+
+    // Description
+    const description = document.createElement('div');
+    description.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    `;
+    description.textContent = 'Connect properties to data sources for dynamic content.';
+    section.appendChild(description);
+
+    // Existing bindings
+    const bindingsContainer = document.createElement('div');
+    bindingsContainer.style.cssText = `margin-bottom: 12px;`;
+
+    if (dataBindings.length === 0) {
+      const emptyState = document.createElement('div');
+      emptyState.style.cssText = `
+        padding: 16px;
+        text-align: center;
+        color: var(--designlibre-text-tertiary, #666);
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        border-radius: 6px;
+      `;
+      emptyState.textContent = 'No data bindings configured';
+      bindingsContainer.appendChild(emptyState);
+    } else {
+      for (let i = 0; i < dataBindings.length; i++) {
+        const binding = dataBindings[i];
+        if (!binding) continue;
+        const bindingRow = this.renderDataBindingRow(binding, i, () => {
+          this.removeDataBinding(nodeId, pluginData, semantic, i);
+        });
+        bindingsContainer.appendChild(bindingRow);
+      }
+    }
+    section.appendChild(bindingsContainer);
+
+    // Add binding button
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px dashed var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      cursor: pointer;
+      transition: all 0.15s;
+    `;
+    addBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 6px;">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Add Data Binding
+    `;
+    addBtn.addEventListener('click', () => {
+      this.showAddDataBindingUI(node, pluginData, semantic);
+    });
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      addBtn.style.color = 'var(--designlibre-accent, #4dabff)';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      addBtn.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+    });
+    section.appendChild(addBtn);
+
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Render a single data binding row
+   */
+  private renderDataBindingRow(
+    binding: DataBinding,
+    _index: number,
+    onRemove: () => void
+  ): HTMLElement {
+    const row = document.createElement('div');
+    row.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    `;
+
+    // Property badge
+    const propertyBadge = document.createElement('span');
+    propertyBadge.style.cssText = `
+      padding: 2px 8px;
+      background: var(--designlibre-accent, #4dabff)20;
+      color: var(--designlibre-accent, #4dabff);
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    `;
+    propertyBadge.textContent = binding.propertyPath.join('.');
+    row.appendChild(propertyBadge);
+
+    // Arrow
+    const arrow = document.createElement('span');
+    arrow.style.cssText = `color: var(--designlibre-text-tertiary, #666); font-size: 12px;`;
+    arrow.textContent = '←';
+    row.appendChild(arrow);
+
+    // Data path
+    const dataPath = document.createElement('span');
+    dataPath.style.cssText = `
+      flex: 1;
+      font-family: 'SF Mono', monospace;
+      font-size: 10px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    `;
+    dataPath.textContent = binding.dataPath;
+    dataPath.title = `${binding.dataSourceId}:${binding.dataPath}`;
+    row.appendChild(dataPath);
+
+    // Remove button
+    const removeBtn = document.createElement('button');
+    removeBtn.style.cssText = `
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--designlibre-text-tertiary, #666);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+    removeBtn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    removeBtn.addEventListener('click', onRemove);
+    removeBtn.addEventListener('mouseenter', () => {
+      removeBtn.style.color = '#ff453a';
+    });
+    removeBtn.addEventListener('mouseleave', () => {
+      removeBtn.style.color = 'var(--designlibre-text-tertiary, #666)';
+    });
+    row.appendChild(removeBtn);
+
+    return row;
+  }
+
+  /**
+   * Show UI to add a new data binding
+   */
+  private showAddDataBindingUI(
+    node: NodeData,
+    pluginData: Record<string, unknown>,
+    semantic: SemanticMetadata | null
+  ): void {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      width: 360px;
+      background: var(--designlibre-bg-primary, #1e1e1e);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 8px;
+      padding: 20px;
+    `;
+
+    // Title
+    const title = document.createElement('h3');
+    title.style.cssText = `
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+    `;
+    title.textContent = 'Add Data Binding';
+    modal.appendChild(title);
+
+    // Property path field
+    const propertyLabel = document.createElement('label');
+    propertyLabel.style.cssText = `
+      display: block;
+      font-size: 11px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 4px;
+    `;
+    propertyLabel.textContent = 'Property Path';
+    modal.appendChild(propertyLabel);
+
+    const propertyInput = document.createElement('input');
+    propertyInput.type = 'text';
+    propertyInput.placeholder = 'e.g., characters, fills.0.color';
+    propertyInput.style.cssText = `
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+    `;
+    modal.appendChild(propertyInput);
+
+    // Data source ID field
+    const sourceLabel = document.createElement('label');
+    sourceLabel.style.cssText = propertyLabel.style.cssText;
+    sourceLabel.textContent = 'Data Source ID';
+    modal.appendChild(sourceLabel);
+
+    const sourceInput = document.createElement('input');
+    sourceInput.type = 'text';
+    sourceInput.placeholder = 'e.g., userApi, localData';
+    sourceInput.style.cssText = propertyInput.style.cssText;
+    modal.appendChild(sourceInput);
+
+    // Data path field
+    const dataPathLabel = document.createElement('label');
+    dataPathLabel.style.cssText = propertyLabel.style.cssText;
+    dataPathLabel.textContent = 'Data Path';
+    modal.appendChild(dataPathLabel);
+
+    const dataPathInput = document.createElement('input');
+    dataPathInput.type = 'text';
+    dataPathInput.placeholder = 'e.g., user.name, items[0].title';
+    dataPathInput.style.cssText = propertyInput.style.cssText;
+    modal.appendChild(dataPathInput);
+
+    // Fallback value field
+    const fallbackLabel = document.createElement('label');
+    fallbackLabel.style.cssText = propertyLabel.style.cssText;
+    fallbackLabel.textContent = 'Fallback Value';
+    modal.appendChild(fallbackLabel);
+
+    const fallbackInput = document.createElement('input');
+    fallbackInput.type = 'text';
+    fallbackInput.placeholder = 'Value when data is unavailable';
+    fallbackInput.style.cssText = propertyInput.style.cssText;
+    modal.appendChild(fallbackInput);
+
+    // Buttons
+    const buttonRow = document.createElement('div');
+    buttonRow.style.cssText = `display: flex; gap: 8px; margin-top: 8px;`;
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText = `
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: 12px;
+      cursor: pointer;
+    `;
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => overlay.remove());
+
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = `
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: var(--designlibre-accent, #4dabff);
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    `;
+    addBtn.textContent = 'Add Binding';
+    addBtn.addEventListener('click', () => {
+      const propertyPath = propertyInput.value.trim().split('.');
+      const dataSourceId = sourceInput.value.trim();
+      const dataPath = dataPathInput.value.trim();
+      const fallbackValue = fallbackInput.value.trim();
+
+      if (propertyPath.length === 0 || !dataSourceId || !dataPath) {
+        return; // TODO: show validation error
+      }
+
+      const newBinding: DataBinding = {
+        propertyPath,
+        dataSourceId,
+        dataPath,
+        fallbackValue,
+      };
+
+      this.addDataBinding(node.id, pluginData, semantic, newBinding);
+      overlay.remove();
+    });
+
+    buttonRow.appendChild(cancelBtn);
+    buttonRow.appendChild(addBtn);
+    modal.appendChild(buttonRow);
+
+    overlay.appendChild(modal);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    document.body.appendChild(overlay);
+    propertyInput.focus();
+  }
+
+  /**
+   * Add a data binding to semantic metadata
+   */
+  private addDataBinding(
+    nodeId: NodeId,
+    pluginData: Record<string, unknown>,
+    currentMetadata: SemanticMetadata | null,
+    binding: DataBinding
+  ): void {
+    const baseMeta = currentMetadata ?? createSemanticMetadata('Custom');
+    const currentBindings = baseMeta.dataBindings ?? [];
+
+    const newMetadata: SemanticMetadata = {
+      ...baseMeta,
+      dataBindings: [...currentBindings, binding],
+    };
+
+    const newPluginData = setSemanticMetadata(pluginData, newMetadata);
+    this.updateNode(nodeId, { pluginData: newPluginData });
+    this.updateContent();
+  }
+
+  /**
+   * Remove a data binding from semantic metadata
+   */
+  private removeDataBinding(
+    nodeId: NodeId,
+    pluginData: Record<string, unknown>,
+    currentMetadata: SemanticMetadata | null,
+    index: number
+  ): void {
+    if (!currentMetadata?.dataBindings) return;
+
+    const newBindings = [...currentMetadata.dataBindings];
+    newBindings.splice(index, 1);
+
+    // Build new metadata without undefined dataBindings
+    let newMetadata: SemanticMetadata;
+    if (newBindings.length > 0) {
+      newMetadata = {
+        ...currentMetadata,
+        dataBindings: newBindings,
+      };
+    } else {
+      // Remove dataBindings entirely
+      const { dataBindings: _, ...rest } = currentMetadata;
+      newMetadata = rest as SemanticMetadata;
+    }
+
+    const newPluginData = setSemanticMetadata(pluginData, newMetadata);
+    this.updateNode(nodeId, { pluginData: newPluginData });
+    this.updateContent();
   }
 
   dispose(): void {
