@@ -500,13 +500,14 @@ export class Toolbar {
       this.element.appendChild(button);
     }
 
-    // Create container for mode-specific tool groups
+    // Create container for mode-specific tool groups (horizontal layout)
     this.toolGroupsContainer = document.createElement('div');
     this.toolGroupsContainer.className = 'designlibre-tool-groups';
     this.toolGroupsContainer.style.cssText = `
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 2px;
+      align-items: center;
     `;
     this.element.appendChild(this.toolGroupsContainer);
 
@@ -595,7 +596,7 @@ export class Toolbar {
     container.className = 'designlibre-mode-switcher';
     container.style.cssText = `
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       gap: 1px;
       padding: 2px;
       background: var(--designlibre-bg-secondary, #2d2d2d);
