@@ -5,6 +5,7 @@
  */
 
 export * from './svg-importer';
+export * from './svg-cad-importer';
 export * from './figma-importer';
 export * from './sketch-importer';
 export * from './designlibre-bundler';
@@ -78,3 +79,60 @@ export type {
   ParsedPropValue,
   ParsedStyle,
 } from './react';
+
+// DXF Import (CAD format)
+export { DXFParser, parseDXF } from './dxf-parser';
+export { DXFImporter, importDXF } from './dxf-importer';
+export type { DXFImportResult, DXFLayerInfo, ImportedNode, DXFImportOptions } from './dxf-importer';
+export { ACI_COLORS, DXF_UNITS, getUnitConversionToMM } from './dxf-types';
+export type {
+  DXFFile,
+  DXFHeader,
+  DXFTables,
+  DXFLayer,
+  DXFLinetype,
+  DXFTextStyle,
+  DXFDimStyle,
+  DXFBlock,
+  DXFEntity,
+  DXFLine,
+  DXFCircle,
+  DXFArc,
+  DXFEllipse,
+  DXFPolyline,
+  DXFSpline,
+  DXFText,
+  DXFMText,
+  DXFDimension,
+  DXFHatch,
+  DXFInsert,
+  DXFSolid,
+  DXFPointEntity,
+  DXFPoint,
+  DXFVertex,
+  DXFColor,
+} from './dxf-types';
+
+// KiCad Import (PCB format)
+export { KiCadParser, parseKiCad } from './kicad-parser';
+export { KiCadImporter, importKiCad, createKiCadImporter } from './kicad-importer';
+export type { KiCadImportOptions, KiCadImportResult } from './kicad-importer';
+export type {
+  SExpr,
+  ParsedSExpr,
+  KiCadPCB,
+  KiCadLayer,
+  KiCadNet,
+  KiCadNetClass,
+  KiCadFootprint,
+  KiCadPad,
+  KiCadSegment,
+  KiCadArc,
+  KiCadVia,
+  KiCadZone,
+  KiCadGraphic,
+  KiCadPoint,
+  KiCadPosition,
+  KiCadSize,
+  KiCadStroke,
+} from './kicad-types';

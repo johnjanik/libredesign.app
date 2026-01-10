@@ -276,7 +276,7 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | DXF | Implemented | `src/persistence/import/dxf-importer.ts` |
 | SVG (enhanced) | Implemented | `src/persistence/import/svg-importer.ts`, `src/persistence/import/svg-cad-importer.ts` |
 | PDF (vector extraction) | **Not Implemented** | - |
-| KiCad | **Not Implemented** | - |
+| KiCad (.kicad_pcb) | Implemented | `src/persistence/import/kicad-importer.ts`, `src/persistence/import/kicad-parser.ts` |
 | Eagle | **Not Implemented** | - |
 
 ### 8.2 Export Formats
@@ -304,8 +304,8 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Phase 5: Blocks | 6 | 9 | 67% |
 | Phase 6: PCB | 11 | 11 | 100% |
 | Phase 7: Mechanical | 13 | 13 | 100% |
-| Phase 8: Import/Export | 6 | 10 | 60% |
-| **Total** | **84** | **94** | **89%** |
+| Phase 8: Import/Export | 7 | 10 | 70% |
+| **Total** | **85** | **94** | **90%** |
 
 ### Not Yet Implemented
 
@@ -317,7 +317,6 @@ This document maps each item from `cad-implementation-roadmap.md` to its impleme
 | Dynamic block stretch actions | 5 | Medium |
 | Dynamic block parameters | 5 | Low |
 | PDF vector import | 8 | Medium |
-| KiCad import | 8 | Medium |
 | Eagle import | 8 | Low |
 | SPICE netlist export | 8 | Medium |
 
