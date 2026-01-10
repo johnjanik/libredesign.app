@@ -24,6 +24,26 @@ import type {
 import type { VariableDefinition, VariableType } from '@prototype/variable-manager';
 import { FramePicker } from './frame-picker';
 import { VariablePicker } from './variable-picker';
+import {
+  reversePath,
+  simplifyPath,
+  flattenPath,
+  outlineStroke,
+  closePath,
+  openPath,
+  getPathStats,
+} from '@core/geometry/path-operations';
+import { breakPathAtAnchor } from '@tools/path/join-split-tool';
+import {
+  type SemanticNodeType,
+  type SemanticMetadata,
+  type AccessibilityConfig,
+  SEMANTIC_PLUGIN_KEY,
+  SEMANTIC_TYPE_DEFAULTS,
+  getSemanticMetadata,
+  setSemanticMetadata,
+  createSemanticMetadata,
+} from '@core/types/semantic-schema';
 
 /** Inspector panel options */
 export interface InspectorPanelOptions {
@@ -970,6 +990,9 @@ export class InspectorPanel {
     // Layout & Position section
     this.renderLayoutSection(node, nodeId);
 
+    // Appearance section (Opacity, Corner Radius)
+    this.renderAppearanceSection(node, nodeId);
+
     // Fill section
     if ('fills' in node) {
       this.renderFillSection(node as FrameNodeData | VectorNodeData, nodeId);
@@ -978,6 +1001,11 @@ export class InspectorPanel {
     // Stroke section
     if ('strokes' in node) {
       this.renderStrokeSection(node as VectorNodeData, nodeId);
+    }
+
+    // Path operations section (for vector nodes)
+    if (node.type === 'VECTOR') {
+      this.renderPathOperationsSection(node as VectorNodeData, nodeId);
     }
 
     // Effects section
@@ -989,6 +1017,9 @@ export class InspectorPanel {
     if (node.type === 'TEXT') {
       this.renderTextSection(node as TextNodeData, nodeId);
     }
+
+    // Semantic Properties section (for code-ready design)
+    this.renderSemanticSection(node, nodeId);
   }
 
   /**
@@ -1659,6 +1690,126 @@ export class InspectorPanel {
     this.contentElement!.appendChild(section);
   }
 
+  /**
+   * Render appearance section with Opacity and Corner Radius controls.
+   */
+  private renderAppearanceSection(node: NodeData, nodeId: NodeId): void {
+    const section = this.createSection('Appearance');
+
+    // Opacity/Transparency control (for all scene nodes)
+    if ('opacity' in node) {
+      const opacityRow = this.createPropertyRow();
+
+      const opacityLabel = document.createElement('span');
+      opacityLabel.textContent = 'Opacity';
+      opacityLabel.style.cssText = `
+        width: 80px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const opacity = (node as { opacity?: number }).opacity ?? 1;
+      const opacityInput = document.createElement('input');
+      opacityInput.type = 'number';
+      opacityInput.min = '0';
+      opacityInput.max = '100';
+      opacityInput.value = String(Math.round(opacity * 100));
+      opacityInput.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        text-align: right;
+      `;
+      opacityInput.addEventListener('change', () => {
+        const val = Math.max(0, Math.min(100, parseInt(opacityInput.value) || 100));
+        opacityInput.value = String(val);
+        this.updateNode(nodeId, { opacity: val / 100 });
+      });
+
+      const opacityUnit = document.createElement('span');
+      opacityUnit.textContent = '%';
+      opacityUnit.style.cssText = `
+        margin-left: 4px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-muted, #6a6a6a);
+      `;
+
+      opacityRow.appendChild(opacityLabel);
+      opacityRow.appendChild(opacityInput);
+      opacityRow.appendChild(opacityUnit);
+      section.appendChild(opacityRow);
+    }
+
+    // Corner Radius control (for FRAME nodes only)
+    if ('cornerRadius' in node) {
+      const radiusRow = this.createPropertyRow();
+
+      // Corner radius icon (rounded corner)
+      const radiusIcon = document.createElement('span');
+      radiusIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 20h4a8 8 0 0 0 8-8V4"/>
+      </svg>`;
+      radiusIcon.style.cssText = `
+        display: flex;
+        align-items: center;
+        color: var(--designlibre-text-secondary, #a0a0a0);
+        margin-right: 4px;
+      `;
+
+      const radiusLabel = document.createElement('span');
+      radiusLabel.textContent = 'Radius';
+      radiusLabel.style.cssText = `
+        flex: 1;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const cornerRadius = (node as { cornerRadius?: number }).cornerRadius ?? 0;
+      const radiusInput = document.createElement('input');
+      radiusInput.type = 'number';
+      radiusInput.min = '0';
+      radiusInput.value = String(Math.round(cornerRadius));
+      radiusInput.style.cssText = `
+        width: 60px;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        text-align: right;
+      `;
+      radiusInput.addEventListener('change', () => {
+        const val = Math.max(0, parseInt(radiusInput.value) || 0);
+        radiusInput.value = String(val);
+        this.updateNode(nodeId, { cornerRadius: val });
+      });
+
+      const radiusUnit = document.createElement('span');
+      radiusUnit.textContent = 'px';
+      radiusUnit.style.cssText = `
+        margin-left: 4px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-muted, #6a6a6a);
+      `;
+
+      radiusRow.appendChild(radiusIcon);
+      radiusRow.appendChild(radiusLabel);
+      radiusRow.appendChild(radiusInput);
+      radiusRow.appendChild(radiusUnit);
+      section.appendChild(radiusRow);
+    }
+
+    // Only append section if it has content
+    if (section.children.length > 1) { // > 1 because section always has the header
+      this.contentElement!.appendChild(section);
+    }
+  }
+
   private renderFillSection(node: FrameNodeData | VectorNodeData, nodeId: NodeId): void {
     const section = this.createSection('Fill');
     const fills = node.fills ?? [];
@@ -1765,6 +1916,207 @@ export class InspectorPanel {
     }));
 
     this.contentElement!.appendChild(section);
+  }
+
+  private renderPathOperationsSection(node: VectorNodeData, nodeId: NodeId): void {
+    const section = this.createSection('Path Operations');
+    const paths = node.vectorPaths ?? [];
+
+    if (paths.length === 0) {
+      const noPath = document.createElement('div');
+      noPath.style.cssText = `color: var(--designlibre-text-secondary); font-size: var(--designlibre-sidebar-font-size-xs, 11px); margin-bottom: 8px;`;
+      noPath.textContent = 'No path data';
+      section.appendChild(noPath);
+      this.contentElement!.appendChild(section);
+      return;
+    }
+
+    // Path stats
+    const primaryPath = paths[0]!;
+    const stats = getPathStats(primaryPath);
+    const statsRow = document.createElement('div');
+    statsRow.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    `;
+    statsRow.textContent = `${stats.anchorCount} anchors • ${stats.segmentCount} ${stats.segmentCount === 1 ? 'segment' : 'segments'} • ${stats.isClosed ? 'Closed' : 'Open'}`;
+    section.appendChild(statsRow);
+
+    // Operation buttons container
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    `;
+
+    // Reverse path button
+    buttonsContainer.appendChild(this.createPathOpButton('Reverse', '↻', () => {
+      const newPaths = paths.map(p => reversePath(p));
+      this.updateNode(nodeId, { vectorPaths: newPaths });
+    }));
+
+    // Close/Open path button
+    const closeOpenLabel = stats.isClosed ? 'Open' : 'Close';
+    const closeOpenIcon = stats.isClosed ? '⊏' : '○';
+    buttonsContainer.appendChild(this.createPathOpButton(closeOpenLabel, closeOpenIcon, () => {
+      const newPaths = paths.map(p => stats.isClosed ? openPath(p) : closePath(p));
+      this.updateNode(nodeId, { vectorPaths: newPaths });
+    }));
+
+    // Simplify button
+    buttonsContainer.appendChild(this.createPathOpButton('Simplify', '⊟', () => {
+      const newPaths = paths.map(p => simplifyPath(p, { tolerance: 2, cornerThreshold: 45 }));
+      this.updateNode(nodeId, { vectorPaths: newPaths });
+    }));
+
+    // Flatten button
+    buttonsContainer.appendChild(this.createPathOpButton('Flatten', '⊞', () => {
+      const newPaths = paths.map(p => flattenPath(p, { tolerance: 1, maxSegmentLength: 20 }));
+      this.updateNode(nodeId, { vectorPaths: newPaths });
+    }));
+
+    // Break button (break closed path at first anchor)
+    if (stats.isClosed) {
+      buttonsContainer.appendChild(this.createPathOpButton('Break', '✂', () => {
+        const newPaths = paths.map(p => breakPathAtAnchor(p, 0));
+        this.updateNode(nodeId, { vectorPaths: newPaths });
+      }));
+    }
+
+    section.appendChild(buttonsContainer);
+
+    // Outline Stroke button (full width)
+    const outlineBtn = document.createElement('button');
+    outlineBtn.style.cssText = `
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    `;
+    outlineBtn.innerHTML = `<span style="font-size: 14px;">◇</span> Outline Stroke`;
+    outlineBtn.title = 'Convert stroke to filled paths';
+    outlineBtn.addEventListener('mouseenter', () => {
+      outlineBtn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      outlineBtn.style.background = 'var(--designlibre-bg-hover, #3d3d3d)';
+    });
+    outlineBtn.addEventListener('mouseleave', () => {
+      outlineBtn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      outlineBtn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    outlineBtn.addEventListener('click', () => {
+      const strokeWeight = node.strokeWeight ?? 1;
+      // Outline all paths and flatten results
+      const outlinedPaths = paths.flatMap(p =>
+        outlineStroke(p, {
+          strokeWeight,
+          cap: 'round',
+          join: 'round',
+          miterLimit: 4,
+        })
+      );
+      // Create new vector node with outlined paths and no stroke
+      this.updateNode(nodeId, {
+        vectorPaths: outlinedPaths,
+        strokes: [],
+        strokeWeight: 0,
+      });
+    });
+    section.appendChild(outlineBtn);
+
+    // Simplify tolerance slider
+    const toleranceRow = document.createElement('div');
+    toleranceRow.style.cssText = `
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--designlibre-border, #3d3d3d);
+    `;
+
+    const toleranceLabel = document.createElement('div');
+    toleranceLabel.style.cssText = `
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    `;
+    const toleranceLabelText = document.createElement('span');
+    toleranceLabelText.textContent = 'Simplify Tolerance';
+    const toleranceValue = document.createElement('span');
+    toleranceValue.textContent = '2px';
+    toleranceLabel.appendChild(toleranceLabelText);
+    toleranceLabel.appendChild(toleranceValue);
+    toleranceRow.appendChild(toleranceLabel);
+
+    const toleranceSlider = document.createElement('input');
+    toleranceSlider.type = 'range';
+    toleranceSlider.min = '0.5';
+    toleranceSlider.max = '10';
+    toleranceSlider.step = '0.5';
+    toleranceSlider.value = '2';
+    toleranceSlider.style.cssText = `
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    `;
+    toleranceSlider.addEventListener('input', () => {
+      toleranceValue.textContent = `${toleranceSlider.value}px`;
+    });
+    toleranceSlider.addEventListener('change', () => {
+      const tolerance = parseFloat(toleranceSlider.value);
+      const newPaths = paths.map(p => simplifyPath(p, { tolerance, cornerThreshold: 45 }));
+      this.updateNode(nodeId, { vectorPaths: newPaths });
+    });
+    toleranceRow.appendChild(toleranceSlider);
+    section.appendChild(toleranceRow);
+
+    this.contentElement!.appendChild(section);
+  }
+
+  private createPathOpButton(label: string, icon: string, onClick: () => void): HTMLElement {
+    const btn = document.createElement('button');
+    btn.style.cssText = `
+      padding: 8px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    `;
+    btn.innerHTML = `<span style="font-size: 12px;">${icon}</span> ${label}`;
+    btn.addEventListener('mouseenter', () => {
+      btn.style.borderColor = 'var(--designlibre-accent, #4dabff)';
+      btn.style.background = 'var(--designlibre-bg-hover, #3d3d3d)';
+    });
+    btn.addEventListener('mouseleave', () => {
+      btn.style.borderColor = 'var(--designlibre-border, #3d3d3d)';
+      btn.style.background = 'var(--designlibre-bg-secondary, #2d2d2d)';
+    });
+    btn.addEventListener('click', onClick);
+    return btn;
   }
 
   private renderEffectsSection(node: FrameNodeData, nodeId: NodeId): void {
@@ -5094,6 +5446,415 @@ export class InspectorPanel {
   }
 
   /** Dispose of the panel */
+  // =========================================================================
+  // Semantic Properties Section (Code-Ready Design)
+  // =========================================================================
+
+  /**
+   * All available semantic node types for the dropdown
+   */
+  private static readonly SEMANTIC_TYPES: SemanticNodeType[] = [
+    'Button',
+    'IconButton',
+    'TextField',
+    'TextArea',
+    'Checkbox',
+    'Toggle',
+    'RadioButton',
+    'Slider',
+    'Picker',
+    'DatePicker',
+    'Text',
+    'Label',
+    'Heading',
+    'Link',
+    'Image',
+    'Icon',
+    'Avatar',
+    'Card',
+    'List',
+    'ListItem',
+    'Grid',
+    'Stack',
+    'Container',
+    'Divider',
+    'Spacer',
+    'NavigationBar',
+    'TabBar',
+    'TabItem',
+    'Toolbar',
+    'Modal',
+    'Sheet',
+    'Alert',
+    'Toast',
+    'Badge',
+    'ProgressBar',
+    'Spinner',
+    'Skeleton',
+    'Custom',
+  ];
+
+  /**
+   * Render semantic properties section for code-ready design.
+   * Allows assigning semantic types and accessibility properties.
+   */
+  private renderSemanticSection(node: NodeData, nodeId: NodeId): void {
+    if (!this.contentElement) return;
+
+    // Get existing semantic metadata from pluginData
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData ?? {};
+    const semanticData = getSemanticMetadata(pluginData);
+
+    // Create collapsible section
+    const section = document.createElement('div');
+    section.style.cssText = `margin-bottom: 20px;`;
+
+    // Section header with collapse toggle
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      margin-bottom: 10px;
+    `;
+
+    const headerLeft = document.createElement('div');
+    headerLeft.style.cssText = `display: flex; align-items: center; gap: 6px;`;
+
+    const expandIcon = document.createElement('span');
+    expandIcon.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>`;
+    expandIcon.style.cssText = `
+      color: var(--designlibre-text-secondary, #a0a0a0);
+      transition: transform 0.15s ease;
+    `;
+    headerLeft.appendChild(expandIcon);
+
+    const header = document.createElement('span');
+    header.style.cssText = `
+      font-weight: 600;
+      font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+    header.textContent = 'Semantic';
+    headerLeft.appendChild(header);
+
+    // Badge showing semantic type if set
+    if (semanticData) {
+      const badge = document.createElement('span');
+      badge.style.cssText = `
+        padding: 2px 6px;
+        font-size: 9px;
+        background: var(--designlibre-accent, #0d99ff);
+        color: white;
+        border-radius: 4px;
+        font-weight: 500;
+      `;
+      badge.textContent = semanticData.semanticType;
+      headerLeft.appendChild(badge);
+    }
+
+    headerRow.appendChild(headerLeft);
+
+    // Expand/collapse content area
+    const content = document.createElement('div');
+    content.style.cssText = `display: block;`;
+
+    // Toggle expand/collapse
+    let expanded = true;
+    headerRow.addEventListener('click', () => {
+      expanded = !expanded;
+      content.style.display = expanded ? 'block' : 'none';
+      expandIcon.style.transform = expanded ? 'rotate(0deg)' : 'rotate(-90deg)';
+    });
+
+    section.appendChild(headerRow);
+
+    // Semantic Type dropdown
+    const typeRow = this.createPropertyRow();
+    const typeLabel = document.createElement('span');
+    typeLabel.textContent = 'Type';
+    typeLabel.style.cssText = `
+      width: 80px;
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      color: var(--designlibre-text-secondary, #a0a0a0);
+    `;
+
+    const typeSelect = document.createElement('select');
+    typeSelect.style.cssText = `
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid var(--designlibre-border, #3d3d3d);
+      border-radius: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      color: var(--designlibre-text-primary, #e4e4e4);
+      font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      cursor: pointer;
+    `;
+
+    // Add empty option
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = '— None —';
+    typeSelect.appendChild(emptyOption);
+
+    // Add all semantic types
+    for (const type of InspectorPanel.SEMANTIC_TYPES) {
+      const option = document.createElement('option');
+      option.value = type;
+      option.textContent = type;
+      if (semanticData?.semanticType === type) {
+        option.selected = true;
+      }
+      typeSelect.appendChild(option);
+    }
+
+    typeSelect.addEventListener('change', () => {
+      const selectedType = typeSelect.value as SemanticNodeType | '';
+      if (selectedType === '') {
+        // Remove semantic metadata
+        const newPluginData = { ...pluginData };
+        delete newPluginData[SEMANTIC_PLUGIN_KEY];
+        this.updateNode(nodeId, { pluginData: newPluginData });
+      } else {
+        // Create or update semantic metadata
+        const newMetadata = createSemanticMetadata(selectedType, {
+          platformSemantics: SEMANTIC_TYPE_DEFAULTS[selectedType],
+          accessibility: semanticData?.accessibility ?? { focusable: false },
+        });
+        const newPluginData = setSemanticMetadata(pluginData, newMetadata);
+        this.updateNode(nodeId, { pluginData: newPluginData });
+      }
+    });
+
+    typeRow.appendChild(typeLabel);
+    typeRow.appendChild(typeSelect);
+    content.appendChild(typeRow);
+
+    // Only show accessibility properties if semantic type is set
+    if (semanticData) {
+      const a11yHeader = document.createElement('div');
+      a11yHeader.style.cssText = `
+        font-size: var(--designlibre-sidebar-font-size-xs, 11px);
+        color: var(--designlibre-text-muted, #6a6a6a);
+        margin: 12px 0 8px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      `;
+      a11yHeader.textContent = 'Accessibility';
+      content.appendChild(a11yHeader);
+
+      // Role dropdown
+      const roleRow = this.createPropertyRow();
+      const roleLabel = document.createElement('span');
+      roleLabel.textContent = 'Role';
+      roleLabel.style.cssText = `
+        width: 80px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const roleInput = document.createElement('input');
+      roleInput.type = 'text';
+      roleInput.value = semanticData.accessibility.role ?? '';
+      roleInput.placeholder = 'button, link, heading...';
+      roleInput.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      `;
+      roleInput.addEventListener('change', () => {
+        const value = roleInput.value.trim();
+        this.updateSemanticAccessibility(nodeId, pluginData, semanticData, 'role', value || null);
+      });
+
+      roleRow.appendChild(roleLabel);
+      roleRow.appendChild(roleInput);
+      content.appendChild(roleRow);
+
+      // Label input
+      const labelRow = this.createPropertyRow();
+      const labelLabel = document.createElement('span');
+      labelLabel.textContent = 'Label';
+      labelLabel.style.cssText = `
+        width: 80px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.value = semanticData.accessibility.label ?? '';
+      labelInput.placeholder = 'Screen reader label';
+      labelInput.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      `;
+      labelInput.addEventListener('change', () => {
+        const value = labelInput.value.trim();
+        this.updateSemanticAccessibility(nodeId, pluginData, semanticData, 'label', value || null);
+      });
+
+      labelRow.appendChild(labelLabel);
+      labelRow.appendChild(labelInput);
+      content.appendChild(labelRow);
+
+      // Description input
+      const descRow = this.createPropertyRow();
+      const descLabel = document.createElement('span');
+      descLabel.textContent = 'Desc';
+      descLabel.style.cssText = `
+        width: 80px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const descInput = document.createElement('input');
+      descInput.type = 'text';
+      descInput.value = semanticData.accessibility.description ?? '';
+      descInput.placeholder = 'Extended description';
+      descInput.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      `;
+      descInput.addEventListener('change', () => {
+        const value = descInput.value.trim();
+        this.updateSemanticAccessibility(nodeId, pluginData, semanticData, 'description', value || null);
+      });
+
+      descRow.appendChild(descLabel);
+      descRow.appendChild(descInput);
+      content.appendChild(descRow);
+
+      // Focusable toggle
+      const focusRow = this.createPropertyRow();
+      const focusLabel = document.createElement('span');
+      focusLabel.textContent = 'Focusable';
+      focusLabel.style.cssText = `
+        flex: 1;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const focusToggle = document.createElement('button');
+      focusToggle.style.cssText = `
+        width: 40px;
+        height: 22px;
+        border-radius: 11px;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        transition: background-color 0.2s;
+        background: ${semanticData.accessibility.focusable ? 'var(--designlibre-accent, #0d99ff)' : 'var(--designlibre-bg-tertiary, #3d3d3d)'};
+      `;
+
+      const focusKnob = document.createElement('span');
+      focusKnob.style.cssText = `
+        position: absolute;
+        top: 2px;
+        left: ${semanticData.accessibility.focusable ? '20px' : '2px'};
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        transition: left 0.2s;
+      `;
+      focusToggle.appendChild(focusKnob);
+
+      focusToggle.addEventListener('click', () => {
+        const newFocusable = !semanticData.accessibility.focusable;
+        focusToggle.style.background = newFocusable
+          ? 'var(--designlibre-accent, #0d99ff)'
+          : 'var(--designlibre-bg-tertiary, #3d3d3d)';
+        focusKnob.style.left = newFocusable ? '20px' : '2px';
+        this.updateSemanticAccessibility(nodeId, pluginData, semanticData, 'focusable', newFocusable);
+      });
+
+      focusRow.appendChild(focusLabel);
+      focusRow.appendChild(focusToggle);
+      content.appendChild(focusRow);
+
+      // Hint input (for screen readers)
+      const hintRow = this.createPropertyRow();
+      const hintLabel = document.createElement('span');
+      hintLabel.textContent = 'Hint';
+      hintLabel.style.cssText = `
+        width: 80px;
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+        color: var(--designlibre-text-secondary, #a0a0a0);
+      `;
+
+      const hintInput = document.createElement('input');
+      hintInput.type = 'text';
+      hintInput.value = semanticData.accessibility.hint ?? '';
+      hintInput.placeholder = 'Activation hint';
+      hintInput.style.cssText = `
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid var(--designlibre-border, #3d3d3d);
+        border-radius: 4px;
+        background: var(--designlibre-bg-secondary, #2d2d2d);
+        color: var(--designlibre-text-primary, #e4e4e4);
+        font-size: var(--designlibre-sidebar-font-size-sm, 12px);
+      `;
+      hintInput.addEventListener('change', () => {
+        const value = hintInput.value.trim();
+        this.updateSemanticAccessibility(nodeId, pluginData, semanticData, 'hint', value || null);
+      });
+
+      hintRow.appendChild(hintLabel);
+      hintRow.appendChild(hintInput);
+      content.appendChild(hintRow);
+    }
+
+    section.appendChild(content);
+    this.contentElement.appendChild(section);
+  }
+
+  /**
+   * Helper to update accessibility properties in semantic metadata
+   */
+  private updateSemanticAccessibility(
+    nodeId: NodeId,
+    pluginData: Record<string, unknown>,
+    currentMetadata: SemanticMetadata,
+    key: keyof AccessibilityConfig,
+    value: string | boolean | number | null
+  ): void {
+    // Build new accessibility config, removing key if value is null
+    const newAccessibility: AccessibilityConfig = { ...currentMetadata.accessibility };
+    if (value === null) {
+      delete newAccessibility[key];
+    } else {
+      (newAccessibility as Record<string, unknown>)[key] = value;
+    }
+
+    const newMetadata: SemanticMetadata = {
+      ...currentMetadata,
+      accessibility: newAccessibility,
+    };
+    const newPluginData = setSemanticMetadata(pluginData, newMetadata);
+    this.updateNode(nodeId, { pluginData: newPluginData });
+  }
+
   dispose(): void {
     for (const unsub of this.unsubscribers) {
       unsub();

@@ -10,6 +10,7 @@ import type { VectorPath } from '@core/types/geometry';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
 import { formatNum } from './format-utils';
+import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
 
 /**
  * iOS code generation options
@@ -536,7 +537,143 @@ export class IOSCodeGenerator {
       }
     }
 
+    // Accessibility modifiers from semantic metadata
+    const accessibilityModifiers = this.generateSwiftUIAccessibility(node, indent);
+    if (accessibilityModifiers) {
+      parts.push(accessibilityModifiers);
+    }
+
     return parts.join('\n');
+  }
+
+  /**
+   * Generate SwiftUI accessibility modifiers from semantic metadata
+   */
+  private generateSwiftUIAccessibility(node: NodeData, indent: number): string {
+    const spaces = ' '.repeat(indent);
+    const parts: string[] = [];
+
+    // Get semantic metadata from pluginData
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData;
+    const semantic = getSemanticMetadata(pluginData);
+
+    if (!semantic) {
+      return '';
+    }
+
+    const a11y = semantic.accessibility;
+
+    // .accessibilityLabel for screen reader label
+    if (a11y.label) {
+      parts.push(`${spaces}.accessibilityLabel("${this.escapeString(a11y.label)}")`);
+    }
+
+    // .accessibilityHint for describing what happens when activated
+    if (a11y.hint) {
+      parts.push(`${spaces}.accessibilityHint("${this.escapeString(a11y.hint)}")`);
+    }
+
+    // .accessibilityValue for current value
+    if (a11y.description) {
+      parts.push(`${spaces}.accessibilityValue("${this.escapeString(a11y.description)}")`);
+    }
+
+    // Add traits based on semantic type
+    const traits = this.getSwiftUIAccessibilityTraits(semantic);
+    if (traits.length > 0) {
+      if (traits.length === 1) {
+        parts.push(`${spaces}.accessibilityAddTraits(.${traits[0]})`);
+      } else {
+        parts.push(`${spaces}.accessibilityAddTraits([${traits.map(t => '.' + t).join(', ')}])`);
+      }
+    }
+
+    // .accessibilityHidden if hidden from accessibility tree
+    if (a11y.hidden) {
+      parts.push(`${spaces}.accessibilityHidden(true)`);
+    }
+
+    // Heading level
+    if (a11y.headingLevel) {
+      parts.push(`${spaces}.accessibilityHeading(.h${a11y.headingLevel})`);
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Get SwiftUI accessibility traits based on semantic type
+   */
+  private getSwiftUIAccessibilityTraits(semantic: SemanticMetadata): string[] {
+    const traits: string[] = [];
+
+    switch (semantic.semanticType) {
+      case 'Button':
+      case 'IconButton':
+        traits.push('isButton');
+        break;
+      case 'Link':
+        traits.push('isLink');
+        break;
+      case 'Heading':
+        traits.push('isHeader');
+        break;
+      case 'Image':
+      case 'Icon':
+      case 'Avatar':
+        traits.push('isImage');
+        break;
+      case 'TextField':
+      case 'TextArea':
+        // TextField has searchField trait if used for search
+        break;
+      case 'TabItem':
+        traits.push('isSelected'); // Would be conditional in real usage
+        break;
+      case 'ProgressBar':
+      case 'Slider':
+        traits.push('updatesFrequently');
+        break;
+    }
+
+    // Add traits from platform semantics if specified
+    const iosTraits = semantic.platformSemantics?.ios?.accessibilityTraits;
+    if (iosTraits) {
+      for (const trait of iosTraits) {
+        const swiftTrait = this.mapAccessibilityTraitToSwiftUI(trait);
+        if (swiftTrait && !traits.includes(swiftTrait)) {
+          traits.push(swiftTrait);
+        }
+      }
+    }
+
+    return traits;
+  }
+
+  /**
+   * Map accessibility trait names to SwiftUI AccessibilityTraits
+   */
+  private mapAccessibilityTraitToSwiftUI(trait: string): string | null {
+    const mapping: Record<string, string> = {
+      'button': 'isButton',
+      'link': 'isLink',
+      'header': 'isHeader',
+      'searchField': 'isSearchField',
+      'image': 'isImage',
+      'selected': 'isSelected',
+      'playsSound': 'playsSound',
+      'keyboardKey': 'isKeyboardKey',
+      'staticText': 'isStaticText',
+      'summaryElement': 'isSummaryElement',
+      'notEnabled': 'isModal', // Closest equivalent
+      'updatesFrequently': 'updatesFrequently',
+      'startsMediaSession': 'startsMediaSession',
+      'adjustable': 'allowsDirectInteraction',
+      'allowsDirectInteraction': 'allowsDirectInteraction',
+      'causesPageTurn': 'causesPageTurn',
+      'tabBar': 'isButton', // TabBar items are buttons
+    };
+    return mapping[trait] ?? null;
   }
 
   // =========================================================================

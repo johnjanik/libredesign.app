@@ -18,6 +18,7 @@ import type {
 } from '@scene/nodes/base-node';
 import { nodeToUtilityClasses } from './utility-class-generator';
 import { formatNum } from './format-utils';
+import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
 
 /**
  * Detected prop from node name or text content
@@ -244,15 +245,18 @@ export class ReactComponentGenerator {
     // Generate styling
     const styling = this.generateStyling(node);
 
+    // Generate accessibility attributes from semantic metadata
+    const accessibility = this.generateAccessibilityAttrs(node);
+
     // Get children
     const childIds = this.sceneGraph.getChildIds(node.id);
     const hasChildren = childIds.length > 0;
 
     if (!hasChildren) {
       if (tag === 'input') {
-        return `${indent}<${tag}${styling} />`;
+        return `${indent}<${tag}${styling}${accessibility} />`;
       }
-      return `${indent}<${tag}${styling}></${tag}>`;
+      return `${indent}<${tag}${styling}${accessibility}></${tag}>`;
     }
 
     // Render children
@@ -264,7 +268,7 @@ export class ReactComponentGenerator {
       .filter(Boolean)
       .join('\n');
 
-    return `${indent}<${tag}${styling}>\n${childrenJSX}\n${indent}</${tag}>`;
+    return `${indent}<${tag}${styling}${accessibility}>\n${childrenJSX}\n${indent}</${tag}>`;
   }
 
   /**
@@ -305,7 +309,10 @@ export class ReactComponentGenerator {
     // Generate styling
     const styling = this.generateStyling(node);
 
-    return `${indent}<${tag}${styling}>${textContent}</${tag}>`;
+    // Generate accessibility attributes from semantic metadata
+    const accessibility = this.generateAccessibilityAttrs(node);
+
+    return `${indent}<${tag}${styling}${accessibility}>${textContent}</${tag}>`;
   }
 
   /**
@@ -335,6 +342,9 @@ export class ReactComponentGenerator {
       extraClasses = ' object-contain';
     }
 
+    // Generate accessibility attributes from semantic metadata
+    const accessibility = this.generateAccessibilityAttrs(node);
+
     if (this.options.styling === 'tailwind' && extraClasses) {
       // Append to className
       const classMatch = styling.match(/className="([^"]*)"/);
@@ -343,11 +353,11 @@ export class ReactComponentGenerator {
           `className="${classMatch[1]}"`,
           `className="${classMatch[1]}${extraClasses}"`
         );
-        return `${indent}<img src=${src} alt=${alt}${newStyling} />`;
+        return `${indent}<img src=${src} alt=${alt}${newStyling}${accessibility} />`;
       }
     }
 
-    return `${indent}<img src=${src} alt=${alt}${styling} />`;
+    return `${indent}<img src=${src} alt=${alt}${styling}${accessibility} />`;
   }
 
   /**
@@ -356,7 +366,8 @@ export class ReactComponentGenerator {
   private shapeToJSX(node: SceneNodeData, depth: number): string {
     const indent = this.options.indent.repeat(depth);
     const styling = this.generateStyling(node);
-    return `${indent}<div${styling} />`;
+    const accessibility = this.generateAccessibilityAttrs(node as NodeData);
+    return `${indent}<div${styling}${accessibility} />`;
   }
 
   /**
@@ -874,6 +885,124 @@ export class ReactComponentGenerator {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  /**
+   * Generate accessibility attributes from semantic metadata
+   */
+  private generateAccessibilityAttrs(node: NodeData): string {
+    // Get semantic metadata from pluginData
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData;
+    const semantic = getSemanticMetadata(pluginData);
+
+    if (!semantic) {
+      return '';
+    }
+
+    const a11y = semantic.accessibility;
+    const attrs: string[] = [];
+
+    // aria-label for screen readers
+    if (a11y.label) {
+      attrs.push(`aria-label="${this.escapeJSX(a11y.label)}"`);
+    }
+
+    // aria-describedby or aria-description
+    if (a11y.description) {
+      attrs.push(`aria-description="${this.escapeJSX(a11y.description)}"`);
+    }
+
+    // role from semantic type or explicit role
+    const role = a11y.role || this.getAriaRole(semantic);
+    if (role) {
+      attrs.push(`role="${role}"`);
+    }
+
+    // aria-hidden if hidden from accessibility tree
+    if (a11y.hidden) {
+      attrs.push('aria-hidden="true"');
+    }
+
+    // aria-disabled for disabled elements
+    if (a11y.disabled) {
+      attrs.push('aria-disabled="true"');
+    }
+
+    // tabIndex for focusable elements
+    if (a11y.focusable) {
+      attrs.push('tabIndex={0}');
+    }
+
+    // aria-level for headings
+    if (a11y.headingLevel) {
+      attrs.push(`aria-level={${a11y.headingLevel}}`);
+    }
+
+    // aria-live for live regions
+    if (a11y.liveRegion && a11y.liveRegion !== 'off') {
+      attrs.push(`aria-live="${a11y.liveRegion}"`);
+    }
+
+    if (attrs.length === 0) {
+      return '';
+    }
+
+    return ' ' + attrs.join(' ');
+  }
+
+  /**
+   * Get ARIA role based on semantic type
+   */
+  private getAriaRole(semantic: SemanticMetadata): string | null {
+    switch (semantic.semanticType) {
+      case 'Button':
+      case 'IconButton':
+        return 'button';
+      case 'Link':
+        return 'link';
+      case 'Heading':
+        return 'heading';
+      case 'Image':
+      case 'Icon':
+      case 'Avatar':
+        return 'img';
+      case 'List':
+        return 'list';
+      case 'ListItem':
+        return 'listitem';
+      case 'NavigationBar':
+        return 'navigation';
+      case 'TabBar':
+        return 'tablist';
+      case 'TabItem':
+        return 'tab';
+      case 'Modal':
+      case 'Sheet':
+        return 'dialog';
+      case 'Alert':
+        return 'alertdialog';
+      case 'ProgressBar':
+        return 'progressbar';
+      case 'Slider':
+        return 'slider';
+      case 'Checkbox':
+        return 'checkbox';
+      case 'Toggle':
+        return 'switch';
+      case 'RadioButton':
+        return 'radio';
+      case 'TextField':
+      case 'TextArea':
+        return 'textbox';
+      case 'Divider':
+        return 'separator';
+      case 'Grid':
+        return 'grid';
+      case 'Toolbar':
+        return 'toolbar';
+      default:
+        return null;
+    }
   }
 }
 

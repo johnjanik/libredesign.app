@@ -9,6 +9,7 @@ import type { RGBA } from '@core/types/color';
 import type { SceneGraph } from '@scene/graph/scene-graph';
 import type { NodeData, FrameNodeData, VectorNodeData, TextNodeData } from '@scene/nodes/base-node';
 import { formatNum } from './format-utils';
+import { getSemanticMetadata, type SemanticMetadata } from '@core/types/semantic-schema';
 
 /**
  * Android code generation options
@@ -605,7 +606,92 @@ export class AndroidCodeGenerator {
       }
     }
 
+    // Accessibility modifiers from semantic metadata
+    const semanticsModifier = this.generateComposeSemantics(node);
+    if (semanticsModifier) {
+      parts.push(semanticsModifier);
+    }
+
     return parts.join('\n' + ' '.repeat(indent));
+  }
+
+  /**
+   * Generate Compose semantics modifier from semantic metadata
+   */
+  private generateComposeSemantics(node: NodeData): string | null {
+    // Get semantic metadata from pluginData
+    const pluginData = (node as { pluginData?: Record<string, unknown> }).pluginData;
+    const semantic = getSemanticMetadata(pluginData);
+
+    if (!semantic) {
+      return null;
+    }
+
+    const a11y = semantic.accessibility;
+    const semanticProps: string[] = [];
+
+    // contentDescription for screen readers
+    if (a11y.label) {
+      semanticProps.push(`contentDescription = "${this.escapeString(a11y.label)}"`);
+    }
+
+    // Role based on semantic type
+    const role = this.getComposeRole(semantic);
+    if (role) {
+      semanticProps.push(`role = Role.${role}`);
+    }
+
+    // stateDescription for describing current state
+    if (a11y.description) {
+      semanticProps.push(`stateDescription = "${this.escapeString(a11y.description)}"`);
+    }
+
+    // heading for header elements
+    if (a11y.headingLevel || semantic.semanticType === 'Heading') {
+      semanticProps.push('heading()');
+    }
+
+    // disabled state
+    if (a11y.disabled) {
+      semanticProps.push('disabled()');
+    }
+
+    if (semanticProps.length === 0) {
+      return null;
+    }
+
+    // Build semantics modifier
+    return `.semantics { ${semanticProps.join('; ')} }`;
+  }
+
+  /**
+   * Get Compose Role based on semantic type
+   */
+  private getComposeRole(semantic: SemanticMetadata): string | null {
+    switch (semantic.semanticType) {
+      case 'Button':
+      case 'IconButton':
+        return 'Button';
+      case 'Checkbox':
+        return 'Checkbox';
+      case 'RadioButton':
+        return 'RadioButton';
+      case 'Toggle':
+        return 'Switch';
+      case 'Image':
+      case 'Icon':
+      case 'Avatar':
+        return 'Image';
+      case 'TabItem':
+        return 'Tab';
+      case 'Slider':
+        // Note: Role.Slider exists but not commonly used
+        return null;
+      case 'ProgressBar':
+        return 'ProgressBar';
+      default:
+        return null;
+    }
   }
 
   // =========================================================================

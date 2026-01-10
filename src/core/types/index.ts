@@ -16,3 +16,6 @@ export * from './paint';
 
 // Effect types
 export * from './effect';
+
+// Semantic types for code-ready design
+export * from './semantic-schema';
