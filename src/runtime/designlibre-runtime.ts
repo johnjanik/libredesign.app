@@ -50,6 +50,7 @@ import { ReferencePointTool, createReferencePointTool } from '@tools/constructio
 import { HatchTool, createHatchTool } from '@tools/annotation/hatch-tool';
 import { BlockInsertionTool, createBlockInsertionTool } from '@tools/block/block-insertion-tool';
 import { BlockManager, createBlockManager } from '@/blocks/block-manager';
+import type { SerializedNode } from '@core/types/page-schema';
 import { WireTool, createWireTool } from '@tools/schematic/wire-tool';
 import { NetLabelTool } from '@tools/schematic/net-label-tool';
 import { TrackRoutingTool, createTrackRoutingTool } from '@tools/pcb/track-routing-tool';
@@ -2169,6 +2170,26 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     // Block Tools
     this.blockInsertionTool = createBlockInsertionTool();
     this.blockManager = createBlockManager();
+
+    // Add default schematic symbol blocks
+    const resistorBlock = this.blockManager.createBlock('Resistor', 'electrical-passive', [
+      { type: 'VECTOR', name: 'body', x: 0, y: 0, width: 60, height: 20 } as SerializedNode,
+    ], {
+      description: 'Resistor symbol',
+      tags: ['resistor', 'passive', 'component'],
+      basePoint: { x: 30, y: 10 },
+    });
+
+    this.blockManager.createBlock('Capacitor', 'electrical-passive', [
+      { type: 'VECTOR', name: 'body', x: 0, y: 0, width: 20, height: 40 } as SerializedNode,
+    ], {
+      description: 'Capacitor symbol',
+      tags: ['capacitor', 'passive', 'component'],
+      basePoint: { x: 10, y: 20 },
+    });
+
+    // Set default block for insertion
+    this.blockInsertionTool.setBlock(resistorBlock);
 
     // Schematic Tools
     this.wireTool = createWireTool();
