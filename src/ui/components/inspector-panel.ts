@@ -6367,6 +6367,33 @@ export class InspectorPanel {
 
   private updateNode(nodeId: NodeId, props: Record<string, unknown>): void {
     const sceneGraph = this.runtime.getSceneGraph();
+    const undoManager = this.runtime.getUndoManager();
+    const node = sceneGraph.getNode(nodeId);
+    if (!node) {
+      sceneGraph.updateNode(nodeId, props);
+      return;
+    }
+
+    // Record undo operations for each property change
+    undoManager.beginGroup('Property Change');
+    for (const [key, newValue] of Object.entries(props)) {
+      const oldValue = (node as unknown as Record<string, unknown>)[key];
+      // Only record if value actually changed
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        undoManager.push({
+          id: `prop_${nodeId}_${key}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'SET_PROPERTY',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId,
+          path: [key],
+          oldValue: oldValue !== undefined ? JSON.parse(JSON.stringify(oldValue)) : undefined,
+          newValue: JSON.parse(JSON.stringify(newValue)),
+        } as import('@operations/operation').SetPropertyOperation);
+      }
+    }
+    undoManager.endGroup();
+
     sceneGraph.updateNode(nodeId, props);
   }
 

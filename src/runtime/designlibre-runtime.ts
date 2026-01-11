@@ -300,6 +300,33 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
           updates[path] = operation.oldValue;
           this.sceneGraph.updateNode(operation.nodeId, updates as Partial<import('@scene/nodes/base-node').NodeData>);
         }
+      } else if (operation.type === 'DELETE_NODE') {
+        // Undo delete = recreate node
+        const op = operation as import('@operations/operation').DeleteNodeOperation & { parentId: NodeId; index: number };
+        if (op.deletedNodes.length > 0) {
+          const nodeData = op.deletedNodes[0]!;
+          // Pass nodeData which includes the original id
+          this.sceneGraph.createNode(
+            nodeData.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
+            op.parentId,
+            op.index,
+            nodeData as Parameters<typeof this.sceneGraph.createNode>[3]
+          );
+        }
+      } else if (operation.type === 'INSERT_NODE') {
+        // Undo insert = delete node
+        const op = operation as import('@operations/operation').InsertNodeOperation;
+        this.sceneGraph.deleteNode(op.nodeId);
+      } else if (operation.type === 'MOVE_NODE') {
+        // Undo move = move back to old parent/index
+        const op = operation as import('@operations/operation').MoveNodeOperation;
+        if (op.oldParentId) {
+          this.sceneGraph.moveNode(op.nodeId, op.oldParentId, op.oldIndex);
+        }
+      } else if (operation.type === 'REORDER_CHILDREN') {
+        // Undo reorder = reorder back to old index
+        const op = operation as import('@operations/operation').ReorderChildrenOperation;
+        this.sceneGraph.reorderNode(op.nodeId, op.oldIndex);
       }
     });
 
@@ -312,6 +339,26 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
           updates[path] = operation.newValue;
           this.sceneGraph.updateNode(operation.nodeId, updates as Partial<import('@scene/nodes/base-node').NodeData>);
         }
+      } else if (operation.type === 'DELETE_NODE') {
+        // Redo delete = delete node again
+        this.sceneGraph.deleteNode(operation.nodeId);
+      } else if (operation.type === 'INSERT_NODE') {
+        // Redo insert = recreate node
+        const op = operation as import('@operations/operation').InsertNodeOperation;
+        this.sceneGraph.createNode(
+          op.node.type as 'FRAME' | 'GROUP' | 'VECTOR' | 'TEXT' | 'IMAGE' | 'COMPONENT' | 'INSTANCE',
+          op.parentId,
+          op.index,
+          op.node as Parameters<typeof this.sceneGraph.createNode>[3]
+        );
+      } else if (operation.type === 'MOVE_NODE') {
+        // Redo move = move to new parent/index
+        const op = operation as import('@operations/operation').MoveNodeOperation;
+        this.sceneGraph.moveNode(op.nodeId, op.newParentId, op.newIndex);
+      } else if (operation.type === 'REORDER_CHILDREN') {
+        // Redo reorder = reorder to new index
+        const op = operation as import('@operations/operation').ReorderChildrenOperation;
+        this.sceneGraph.reorderNode(op.nodeId, op.newIndex);
       }
     });
 
@@ -928,6 +975,13 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   }
 
   /**
+   * Get the undo manager.
+   */
+  getUndoManager(): UndoManager {
+    return this.undoManager;
+  }
+
+  /**
    * Get a node by ID.
    */
   getNode(nodeId: NodeId): ReturnType<SceneGraph['getNode']> {
@@ -1391,6 +1445,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Rectangle');
+
       this.selectionManager.select([nodeId], 'replace');
 
       // Canonical behavior: return to Select tool after creating object
@@ -1417,6 +1474,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         height: rect.height,
         fills: [solidPaint(rgba(1, 1, 1, 1))], // White background
       });
+
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Frame');
 
       this.selectionManager.select([nodeId], 'replace');
 
@@ -1445,6 +1505,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         vectorPaths: [path],
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
+
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Ellipse');
 
       this.selectionManager.select([nodeId], 'replace');
 
@@ -1489,6 +1552,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         strokes: [solidPaint(rgba(this.lastUsedStrokeColor.r, this.lastUsedStrokeColor.g, this.lastUsedStrokeColor.b, this.lastUsedStrokeColor.a))],
         strokeWeight: this.lastUsedStrokeWeight,
       });
+
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Line');
 
       this.selectionManager.select([nodeId], 'replace');
 
@@ -1569,6 +1635,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         strokeWeight: this.lastUsedStrokeWeight,
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Path');
+
       this.selectionManager.select([nodeId], 'replace');
 
       // Canonical behavior: return to Select tool after creating object
@@ -1613,6 +1682,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Polygon');
+
       this.selectionManager.select([nodeId], 'replace');
 
       // Canonical behavior: return to Select tool after creating object
@@ -1656,6 +1728,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         vectorPaths: [path],
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
+
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Star');
 
       this.selectionManager.select([nodeId], 'replace');
 
@@ -1708,6 +1783,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         strokeWeight: this.lastUsedStrokeWeight,
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Freehand');
+
       this.selectionManager.select([nodeId], 'replace');
 
       // Canonical behavior: return to Select tool after creating object
@@ -1738,6 +1816,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         scaleMode: 'FILL',
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Image');
+
       this.selectionManager.select([nodeId], 'replace');
 
       // Canonical behavior: return to Select tool after creating object
@@ -1764,6 +1845,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.sceneGraph.updateNode(nodeId, {
         fills: [solidPaint(rgba(0, 0, 0, 1))],
       });
+
+      // Record for undo (after all updates applied)
+      this.recordNodeInsertion(nodeId, parentId, 'Text');
 
       this.selectionManager.select([nodeId], 'replace');
 
@@ -1836,6 +1920,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         strokeWeight: this.lastUsedStrokeWeight,
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Polyline');
+
       this.selectionManager.select([nodeId], 'replace');
       this.setTool('select');
       return nodeId;
@@ -1863,6 +1950,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         strokeWeight: this.lastUsedStrokeWeight,
       });
 
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Arc');
+
       this.selectionManager.select([nodeId], 'replace');
       this.setTool('select');
       return nodeId;
@@ -1887,6 +1977,9 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
         vectorPaths: [path],
         fills: [solidPaint(rgba(this.lastUsedFillColor.r, this.lastUsedFillColor.g, this.lastUsedFillColor.b, this.lastUsedFillColor.a))],
       });
+
+      // Record for undo
+      this.recordNodeInsertion(nodeId, parentId, 'Circle');
 
       this.selectionManager.select([nodeId], 'replace');
       this.setTool('select');
@@ -2772,15 +2865,49 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
     if (selectedIds.length === 0) return;
 
+    this.undoManager.beginGroup('Nudge');
+
     for (const nodeId of selectedIds) {
       const node = this.sceneGraph.getNode(nodeId);
       if (node && 'x' in node && 'y' in node) {
-        this.sceneGraph.updateNode(nodeId, {
-          x: (node.x as number) + dx,
-          y: (node.y as number) + dy,
-        });
+        const oldX = node.x as number;
+        const oldY = node.y as number;
+        const newX = oldX + dx;
+        const newY = oldY + dy;
+
+        // Record undo for x
+        if (dx !== 0) {
+          this.undoManager.push({
+            id: `nudge_${nodeId}_x_${Date.now()}` as import('@core/types/common').OperationId,
+            type: 'SET_PROPERTY',
+            timestamp: Date.now(),
+            clientId: 'local',
+            nodeId,
+            path: ['x'],
+            oldValue: oldX,
+            newValue: newX,
+          } as import('@operations/operation').SetPropertyOperation);
+        }
+
+        // Record undo for y
+        if (dy !== 0) {
+          this.undoManager.push({
+            id: `nudge_${nodeId}_y_${Date.now()}` as import('@core/types/common').OperationId,
+            type: 'SET_PROPERTY',
+            timestamp: Date.now(),
+            clientId: 'local',
+            nodeId,
+            path: ['y'],
+            oldValue: oldY,
+            newValue: newY,
+          } as import('@operations/operation').SetPropertyOperation);
+        }
+
+        this.sceneGraph.updateNode(nodeId, { x: newX, y: newY });
       }
     }
+
+    this.undoManager.endGroup();
   }
 
   // ============================================================
@@ -2799,6 +2926,20 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     const parentId = firstNode.parentId;
     if (!parentId) return;
 
+    // Capture old positions before moving
+    const oldPositions: Array<{ nodeId: NodeId; parentId: NodeId; index: number }> = [];
+    for (const nodeId of selectedIds) {
+      const node = this.sceneGraph.getNode(nodeId);
+      if (node && node.parentId) {
+        const siblings = this.sceneGraph.getChildIds(node.parentId);
+        oldPositions.push({
+          nodeId,
+          parentId: node.parentId,
+          index: siblings.indexOf(nodeId),
+        });
+      }
+    }
+
     // Create group
     const groupId = this.sceneGraph.createNode('GROUP', parentId, -1, {
       name: 'Group',
@@ -2809,6 +2950,22 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       this.sceneGraph.moveNode(nodeId, groupId, -1);
     }
 
+    // Record undo operations (in reverse order for proper undo)
+    this.undoManager.beginGroup('Group');
+
+    // Record group creation
+    this.recordNodeInsertion(groupId, parentId, 'Group');
+
+    // Record move operations
+    for (let i = 0; i < selectedIds.length; i++) {
+      const nodeId = selectedIds[i]!;
+      const oldPos = oldPositions[i]!;
+      const newSiblings = this.sceneGraph.getChildIds(groupId);
+      this.recordNodeMove(nodeId, oldPos.parentId, groupId, oldPos.index, newSiblings.indexOf(nodeId));
+    }
+
+    this.undoManager.endGroup();
+
     // Select the new group
     this.selectionManager.select([groupId], 'replace');
   }
@@ -2816,6 +2973,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private ungroupSelection(): void {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
     const newSelection: NodeId[] = [];
+
+    this.undoManager.beginGroup('Ungroup');
 
     for (const nodeId of selectedIds) {
       const node = this.sceneGraph.getNode(nodeId);
@@ -2827,15 +2986,48 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       // Get children before ungrouping
       const childIds = this.sceneGraph.getChildIds(nodeId);
 
+      // Capture old positions
+      const oldPositions: Array<{ childId: NodeId; index: number }> = [];
+      for (let i = 0; i < childIds.length; i++) {
+        oldPositions.push({ childId: childIds[i]!, index: i });
+      }
+
       // Move children to parent
       for (const childId of childIds) {
         this.sceneGraph.moveNode(childId, parentId, -1);
         newSelection.push(childId);
       }
 
+      // Record move operations
+      for (let i = 0; i < childIds.length; i++) {
+        const childId = childIds[i]!;
+        const oldPos = oldPositions[i]!;
+        const newSiblings = this.sceneGraph.getChildIds(parentId);
+        this.recordNodeMove(childId, nodeId, parentId, oldPos.index, newSiblings.indexOf(childId));
+      }
+
+      // Record group deletion before deleting
+      const groupData = JSON.parse(JSON.stringify(node));
+      const groupSiblings = this.sceneGraph.getChildIds(parentId);
+      const groupIndex = groupSiblings.indexOf(nodeId);
+
       // Delete the empty group
       this.sceneGraph.deleteNode(nodeId);
+
+      // Record deletion
+      this.undoManager.push({
+        id: `del_${nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+        type: 'DELETE_NODE',
+        timestamp: Date.now(),
+        clientId: 'local',
+        nodeId,
+        deletedNodes: [groupData],
+        parentId,
+        index: groupIndex >= 0 ? groupIndex : 0,
+      } as import('@operations/operation').Operation & { parentId: NodeId; index: number });
     }
+
+    this.undoManager.endGroup();
 
     // Select the ungrouped items
     if (newSelection.length > 0) {
@@ -2849,45 +3041,78 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
   private bringSelectionToFront(): void {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    this.undoManager.beginGroup('Bring to Front');
     for (const nodeId of selectedIds) {
       const node = this.sceneGraph.getNode(nodeId);
       if (!node?.parentId) continue;
       const siblings = this.sceneGraph.getChildIds(node.parentId);
-      this.sceneGraph.reorderNode(nodeId, siblings.length - 1);
+      const oldIndex = siblings.indexOf(nodeId);
+      const newIndex = siblings.length - 1;
+      if (oldIndex !== newIndex) {
+        this.sceneGraph.reorderNode(nodeId, newIndex);
+        this.recordNodeReorder(nodeId, node.parentId, oldIndex, newIndex);
+      }
     }
+    this.undoManager.endGroup();
   }
 
   private sendSelectionToBack(): void {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    this.undoManager.beginGroup('Send to Back');
     for (const nodeId of selectedIds) {
-      this.sceneGraph.reorderNode(nodeId, 0);
+      const node = this.sceneGraph.getNode(nodeId);
+      if (!node?.parentId) continue;
+      const siblings = this.sceneGraph.getChildIds(node.parentId);
+      const oldIndex = siblings.indexOf(nodeId);
+      const newIndex = 0;
+      if (oldIndex !== newIndex) {
+        this.sceneGraph.reorderNode(nodeId, newIndex);
+        this.recordNodeReorder(nodeId, node.parentId, oldIndex, newIndex);
+      }
     }
+    this.undoManager.endGroup();
   }
 
   private bringSelectionForward(): void {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    this.undoManager.beginGroup('Bring Forward');
     for (const nodeId of selectedIds) {
       const node = this.sceneGraph.getNode(nodeId);
       if (!node?.parentId) continue;
       const siblings = this.sceneGraph.getChildIds(node.parentId);
-      const currentIndex = siblings.indexOf(nodeId);
-      if (currentIndex < siblings.length - 1) {
-        this.sceneGraph.reorderNode(nodeId, currentIndex + 1);
+      const oldIndex = siblings.indexOf(nodeId);
+      if (oldIndex < siblings.length - 1) {
+        const newIndex = oldIndex + 1;
+        this.sceneGraph.reorderNode(nodeId, newIndex);
+        this.recordNodeReorder(nodeId, node.parentId, oldIndex, newIndex);
       }
     }
+    this.undoManager.endGroup();
   }
 
   private sendSelectionBackward(): void {
     const selectedIds = this.selectionManager.getSelectedNodeIds();
+    if (selectedIds.length === 0) return;
+
+    this.undoManager.beginGroup('Send Backward');
     for (const nodeId of selectedIds) {
       const node = this.sceneGraph.getNode(nodeId);
       if (!node?.parentId) continue;
       const siblings = this.sceneGraph.getChildIds(node.parentId);
-      const currentIndex = siblings.indexOf(nodeId);
-      if (currentIndex > 0) {
-        this.sceneGraph.reorderNode(nodeId, currentIndex - 1);
+      const oldIndex = siblings.indexOf(nodeId);
+      if (oldIndex > 0) {
+        const newIndex = oldIndex - 1;
+        this.sceneGraph.reorderNode(nodeId, newIndex);
+        this.recordNodeReorder(nodeId, node.parentId, oldIndex, newIndex);
       }
     }
+    this.undoManager.endGroup();
   }
 
   // ============================================================
@@ -2941,6 +3166,18 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       newIds.push(newNodeId);
     }
 
+    // Record for undo
+    if (newIds.length > 0) {
+      this.undoManager.beginGroup('Duplicate');
+      for (const nodeId of newIds) {
+        const node = this.sceneGraph.getNode(nodeId);
+        if (node && node.parentId) {
+          this.recordNodeInsertion(nodeId, node.parentId, 'Duplicate');
+        }
+      }
+      this.undoManager.endGroup();
+    }
+
     // Select the duplicates
     if (newIds.length > 0) {
       this.selectionManager.select(newIds, 'replace');
@@ -2982,10 +3219,120 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
   private deleteSelection(): void {
     const selection = this.selectionManager.getSelectedNodeIds();
+    if (selection.length === 0) return;
+
+    // Collect node data before deleting for undo support
+    const deletedNodesData: Array<{
+      nodeId: NodeId;
+      nodeData: import('@scene/nodes/base-node').NodeData;
+      parentId: NodeId;
+      index: number;
+    }> = [];
+
+    for (const nodeId of selection) {
+      const node = this.sceneGraph.getNode(nodeId);
+      const parent = this.sceneGraph.getParent(nodeId);
+      if (node && parent) {
+        const siblings = this.sceneGraph.getChildIds(parent.id);
+        const index = siblings.indexOf(nodeId);
+        deletedNodesData.push({
+          nodeId,
+          nodeData: JSON.parse(JSON.stringify(node)),
+          parentId: parent.id,
+          index,
+        });
+      }
+    }
+
+    // Record delete operations for undo
+    if (deletedNodesData.length > 0) {
+      this.undoManager.beginGroup('Delete');
+      for (const item of deletedNodesData) {
+        this.undoManager.push({
+          id: `del_${item.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'DELETE_NODE',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId: item.nodeId,
+          deletedNodes: [item.nodeData],
+          parentId: item.parentId,
+          index: item.index,
+        } as import('@operations/operation').Operation & { parentId: NodeId; index: number });
+      }
+      this.undoManager.endGroup();
+    }
+
+    // Actually delete the nodes
     for (const nodeId of selection) {
       this.sceneGraph.deleteNode(nodeId);
     }
     this.clearSelection();
+  }
+
+  /**
+   * Record a node insertion for undo support.
+   */
+  private recordNodeInsertion(nodeId: NodeId, parentId: NodeId, description: string = 'Create'): void {
+    const node = this.sceneGraph.getNode(nodeId);
+    if (!node) return;
+
+    const siblings = this.sceneGraph.getChildIds(parentId);
+    const index = siblings.indexOf(nodeId);
+
+    this.undoManager.push({
+      id: `ins_${nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+      type: 'INSERT_NODE',
+      timestamp: Date.now(),
+      clientId: 'local',
+      nodeId,
+      node: JSON.parse(JSON.stringify(node)),
+      parentId,
+      index: index >= 0 ? index : siblings.length - 1,
+    } as import('@operations/operation').InsertNodeOperation);
+  }
+
+  /**
+   * Record a node move for undo support.
+   */
+  private recordNodeMove(
+    nodeId: NodeId,
+    oldParentId: NodeId | null,
+    newParentId: NodeId,
+    oldIndex: number,
+    newIndex: number
+  ): void {
+    this.undoManager.push({
+      id: `mov_${nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+      type: 'MOVE_NODE',
+      timestamp: Date.now(),
+      clientId: 'local',
+      nodeId,
+      oldParentId,
+      newParentId,
+      oldIndex,
+      newIndex,
+    } as import('@operations/operation').MoveNodeOperation);
+  }
+
+  /**
+   * Record a node reorder for undo support.
+   */
+  private recordNodeReorder(
+    nodeId: NodeId,
+    parentId: NodeId,
+    oldIndex: number,
+    newIndex: number
+  ): void {
+    this.undoManager.push({
+      id: `reo_${nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+      type: 'REORDER_CHILDREN',
+      timestamp: Date.now(),
+      clientId: 'local',
+      nodeId,
+      parentId,
+      oldIndex,
+      newIndex,
+    } as import('@operations/operation').ReorderChildrenOperation);
   }
 
   /**
