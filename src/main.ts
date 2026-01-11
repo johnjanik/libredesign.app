@@ -171,7 +171,7 @@ async function initializeApp(config: AppConfig): Promise<void> {
   createCanvasContainer(runtime, canvasContainer);
 
   // Create toolbar FIRST (before view switcher captures canvas)
-  createToolbar(runtime, canvasContainer, { position: 'bottom' });
+  createToolbar(runtime, canvasContainer);
 
   // Create tool options panel (shows context-sensitive options for active tool)
   createToolOptionsPanel(runtime);
