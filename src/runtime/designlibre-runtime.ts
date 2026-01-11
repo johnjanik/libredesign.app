@@ -49,6 +49,7 @@ import { ConstructionLineTool, createConstructionLineTool } from '@tools/constru
 import { ReferencePointTool, createReferencePointTool } from '@tools/construction/reference-point-tool';
 import { HatchTool, createHatchTool } from '@tools/annotation/hatch-tool';
 import { BlockInsertionTool, createBlockInsertionTool } from '@tools/block/block-insertion-tool';
+import { BlockManager, createBlockManager } from '@/blocks/block-manager';
 import { WireTool, createWireTool } from '@tools/schematic/wire-tool';
 import { NetLabelTool } from '@tools/schematic/net-label-tool';
 import { TrackRoutingTool, createTrackRoutingTool } from '@tools/pcb/track-routing-tool';
@@ -233,6 +234,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private referencePointTool: ReferencePointTool | null = null;
   private hatchTool: HatchTool | null = null;
   private blockInsertionTool: BlockInsertionTool | null = null;
+  private blockManager: BlockManager | null = null;
   private wireTool: WireTool | null = null;
   private netLabelTool: NetLabelTool | null = null;
   private trackRoutingTool: TrackRoutingTool | null = null;
@@ -2166,10 +2168,227 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Block Tools
     this.blockInsertionTool = createBlockInsertionTool();
+    this.blockManager = createBlockManager();
 
     // Schematic Tools
     this.wireTool = createWireTool();
+    this.wireTool.setOnWireCreate((result) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return;
+
+      // Create a VECTOR node for each wire segment
+      for (const wire of result.wires) {
+        const minX = Math.min(wire.start.x, wire.end.x);
+        const minY = Math.min(wire.start.y, wire.end.y);
+        const width = Math.abs(wire.end.x - wire.start.x) || 1;
+        const height = Math.abs(wire.end.y - wire.start.y) || 1;
+
+        // Create path relative to bounding box
+        const wirePath: VectorPath = {
+          windingRule: 'NONZERO',
+          commands: [
+            { type: 'M', x: wire.start.x - minX, y: wire.start.y - minY },
+            { type: 'L', x: wire.end.x - minX, y: wire.end.y - minY },
+          ] as PathCommand[],
+        };
+
+        const nodeId = this.sceneGraph.createVector(parentId, {
+          name: 'Wire',
+          x: minX,
+          y: minY,
+          width,
+          height,
+          vectorPaths: [wirePath],
+          strokes: [solidPaint(rgba(0, 0.8, 0, 1))],
+          strokeWeight: wire.style.width,
+        });
+
+        // Record for undo
+        this.recordNodeInsertion(nodeId, parentId, 'Draw Wire');
+      }
+
+      // Create junction dots as small filled circles
+      for (const junction of result.junctions) {
+        const radius = junction.style.radius;
+        const size = radius * 2;
+        // Create ellipse path for junction dot
+        const junctionPath: VectorPath = {
+          windingRule: 'NONZERO',
+          commands: [
+            { type: 'M', x: size, y: radius },
+            { type: 'C', x1: size, y1: radius + radius * 0.552, x2: radius + radius * 0.552, y2: size, x: radius, y: size },
+            { type: 'C', x1: radius - radius * 0.552, y1: size, x2: 0, y2: radius + radius * 0.552, x: 0, y: radius },
+            { type: 'C', x1: 0, y1: radius - radius * 0.552, x2: radius - radius * 0.552, y2: 0, x: radius, y: 0 },
+            { type: 'C', x1: radius + radius * 0.552, y1: 0, x2: size, y2: radius - radius * 0.552, x: size, y: radius },
+            { type: 'Z' },
+          ] as PathCommand[],
+        };
+        const nodeId = this.sceneGraph.createVector(parentId, {
+          name: 'Junction',
+          x: junction.position.x - radius,
+          y: junction.position.y - radius,
+          width: size,
+          height: size,
+          vectorPaths: [junctionPath],
+          fills: [solidPaint(rgba(0, 0.8, 0, 1))],
+        });
+        this.recordNodeInsertion(nodeId, parentId, 'Create Junction');
+      }
+    });
+
     this.netLabelTool = new NetLabelTool();
+    this.netLabelTool.setOnLabelPlace((result) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return;
+
+      const label = result.label;
+      const nodeId = this.sceneGraph.createText(parentId, {
+        name: `Net: ${label.text}`,
+        x: label.position.x,
+        y: label.position.y,
+        characters: label.text,
+        fills: [solidPaint(rgba(
+          label.style.textColor.r,
+          label.style.textColor.g,
+          label.style.textColor.b,
+          label.style.textColor.a
+        ))],
+      });
+
+      // Apply rotation if needed
+      if (label.rotation !== 0) {
+        this.sceneGraph.updateNode(nodeId, { rotation: label.rotation });
+      }
+
+      this.recordNodeInsertion(nodeId, parentId, 'Place Net Label');
+    });
+    this.netLabelTool.setOnPreviewUpdate(() => {
+      // Render loop handles updates automatically
+    });
+
+    // Block Tools callback
+    this.blockInsertionTool.setOnInsert((instance) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return;
+
+      // Get block definition from block manager
+      const blockDef = this.blockManager?.getBlock(instance.blockId);
+      if (!blockDef) {
+        console.warn(`Block definition not found: ${instance.blockId}`);
+        return;
+      }
+
+      // Create a frame to contain the block instance
+      const frameId = this.sceneGraph.createFrame(parentId, {
+        name: instance.name || blockDef.name,
+        x: instance.position.x,
+        y: instance.position.y,
+        width: 100,
+        height: 100,
+      });
+
+      // Apply rotation after creation if needed
+      if (instance.rotation !== 0) {
+        this.sceneGraph.updateNode(frameId, { rotation: instance.rotation });
+      }
+
+      // Clone block geometry into the frame
+      for (const geomNode of blockDef.geometry) {
+        const node = geomNode as unknown as Record<string, unknown>;
+        const nodeType = node['type'] as string;
+
+        if (nodeType === 'RECTANGLE') {
+          const rx = ((node['x'] as number) || 0) * instance.scale.x;
+          const ry = ((node['y'] as number) || 0) * instance.scale.y;
+          const rw = ((node['width'] as number) || 10) * Math.abs(instance.scale.x);
+          const rh = ((node['height'] as number) || 10) * Math.abs(instance.scale.y);
+          // Create rectangle as a vector path
+          const rectPath: VectorPath = {
+            windingRule: 'NONZERO',
+            commands: [
+              { type: 'M', x: 0, y: 0 },
+              { type: 'L', x: rw, y: 0 },
+              { type: 'L', x: rw, y: rh },
+              { type: 'L', x: 0, y: rh },
+              { type: 'Z' },
+            ] as PathCommand[],
+          };
+          this.sceneGraph.createVector(frameId, {
+            name: (node['name'] as string) || 'Rectangle',
+            x: rx,
+            y: ry,
+            width: rw,
+            height: rh,
+            vectorPaths: [rectPath],
+            fills: [solidPaint(rgba(0.8, 0.8, 0.8, 1))],
+          });
+        } else if (nodeType === 'ELLIPSE') {
+          const ex = ((node['x'] as number) || 0) * instance.scale.x;
+          const ey = ((node['y'] as number) || 0) * instance.scale.y;
+          const ew = ((node['width'] as number) || 10) * Math.abs(instance.scale.x);
+          const eh = ((node['height'] as number) || 10) * Math.abs(instance.scale.y);
+          const rx = ew / 2;
+          const ry = eh / 2;
+          // Create ellipse as bezier curves (approximation)
+          const k = 0.552284749831;
+          const ellipsePath: VectorPath = {
+            windingRule: 'NONZERO',
+            commands: [
+              { type: 'M', x: ew, y: ry },
+              { type: 'C', x1: ew, y1: ry + ry * k, x2: rx + rx * k, y2: eh, x: rx, y: eh },
+              { type: 'C', x1: rx - rx * k, y1: eh, x2: 0, y2: ry + ry * k, x: 0, y: ry },
+              { type: 'C', x1: 0, y1: ry - ry * k, x2: rx - rx * k, y2: 0, x: rx, y: 0 },
+              { type: 'C', x1: rx + rx * k, y1: 0, x2: ew, y2: ry - ry * k, x: ew, y: ry },
+              { type: 'Z' },
+            ] as PathCommand[],
+          };
+          this.sceneGraph.createVector(frameId, {
+            name: (node['name'] as string) || 'Ellipse',
+            x: ex,
+            y: ey,
+            width: ew,
+            height: eh,
+            vectorPaths: [ellipsePath],
+            fills: [solidPaint(rgba(0.8, 0.8, 0.8, 1))],
+          });
+        } else if (nodeType === 'LINE' || nodeType === 'VECTOR') {
+          const x1 = (node['x1'] as number) || 0;
+          const y1 = (node['y1'] as number) || 0;
+          const x2 = (node['x2'] as number) || 10;
+          const y2 = (node['y2'] as number) || 0;
+          const minX = Math.min(x1, x2) * instance.scale.x;
+          const minY = Math.min(y1, y2) * instance.scale.y;
+          const w = Math.abs(x2 - x1) * Math.abs(instance.scale.x) || 1;
+          const h = Math.abs(y2 - y1) * Math.abs(instance.scale.y) || 1;
+
+          const linePath: VectorPath = {
+            windingRule: 'NONZERO',
+            commands: [
+              { type: 'M', x: (x1 - Math.min(x1, x2)) * Math.abs(instance.scale.x), y: (y1 - Math.min(y1, y2)) * Math.abs(instance.scale.y) },
+              { type: 'L', x: (x2 - Math.min(x1, x2)) * Math.abs(instance.scale.x), y: (y2 - Math.min(y1, y2)) * Math.abs(instance.scale.y) },
+            ] as PathCommand[],
+          };
+          this.sceneGraph.createVector(frameId, {
+            name: (node['name'] as string) || 'Line',
+            x: minX,
+            y: minY,
+            width: w,
+            height: h,
+            vectorPaths: [linePath],
+            strokes: [solidPaint(rgba(0, 0, 0, 1))],
+          });
+        } else if (nodeType === 'TEXT') {
+          this.sceneGraph.createText(frameId, {
+            name: (node['name'] as string) || 'Text',
+            x: ((node['x'] as number) || 0) * instance.scale.x,
+            y: ((node['y'] as number) || 0) * instance.scale.y,
+            characters: (node['characters'] as string) || '',
+          });
+        }
+      }
+
+      this.recordNodeInsertion(frameId, parentId, 'Insert Block');
+    });
 
     // PCB Tools
     this.trackRoutingTool = createTrackRoutingTool();
