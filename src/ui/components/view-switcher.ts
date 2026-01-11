@@ -20,6 +20,9 @@ export interface ViewSwitcherOptions {
   defaultLanguage?: CodeLanguage;
 }
 
+/** Toolbar mode (from toolbar.ts) */
+export type ToolbarMode = 'design' | 'cad' | 'schematic' | 'pcb';
+
 const STORAGE_KEY_MODE = 'designlibre-view-mode';
 const STORAGE_KEY_SPLIT = 'designlibre-split-ratio';
 const STORAGE_KEY_LANG = 'designlibre-code-language';
@@ -39,13 +42,17 @@ export class ViewSwitcher {
   private divider: HTMLElement;
   private divider2: HTMLElement;
   private toolbar: HTMLElement;
+  private tabsContainer: HTMLElement;
+  private modeLabel: HTMLElement;
   private codeView: CodeView | null = null;
   private previewPanel: PreviewPanel | null = null;
   private currentMode: ViewMode;
+  private currentToolbarMode: ToolbarMode = 'design';
   private splitRatio: number;
   private minPanelWidth: number;
   private isDragging = false;
   private originalDesignContent: HTMLElement | null = null;
+  private toolbarModeUnsubscribe: (() => void) | null = null;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -69,9 +76,17 @@ export class ViewSwitcher {
     this.divider = this.element.querySelector('.view-switcher-divider')!;
     this.divider2 = this.element.querySelector('.view-switcher-divider-2')!;
     this.toolbar = this.element.querySelector('.view-switcher-toolbar')!;
+    this.tabsContainer = this.element.querySelector('.view-switcher-tabs')!;
+    this.modeLabel = this.element.querySelector('.view-switcher-mode-label')!;
 
     // Insert view structure into container
     this.container.appendChild(this.element);
+
+    // Listen for toolbar mode changes
+    this.toolbarModeUnsubscribe = this.runtime.on('toolbar:mode-changed', (data) => {
+      const { mode } = data as { mode: ToolbarMode };
+      this.setToolbarMode(mode);
+    });
 
     // Move existing canvas content to design container (if any exists)
     this.captureDesignContent();
@@ -98,6 +113,9 @@ export class ViewSwitcher {
     wrapper.className = 'view-switcher';
     wrapper.innerHTML = `
       <div class="view-switcher-toolbar">
+        <div class="view-switcher-mode-label" style="display: none;">
+          <span class="mode-name">CAD</span>
+        </div>
         <div class="view-switcher-tabs">
           <button class="view-switcher-tab" data-mode="design" title="Design view (Cmd+1)">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -148,7 +166,63 @@ export class ViewSwitcher {
       </div>
     `;
 
+    // Style the mode label
+    const modeLabel = wrapper.querySelector('.view-switcher-mode-label') as HTMLElement;
+    modeLabel.style.cssText = `
+      display: none;
+      align-items: center;
+      padding: 0 16px;
+      height: 36px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--designlibre-text-primary, #e4e4e4);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    `;
+
     return wrapper;
+  }
+
+  /**
+   * Set the toolbar mode (Design, CAD, Schematic, PCB)
+   * This controls whether view tabs are shown or just a mode label
+   */
+  setToolbarMode(mode: ToolbarMode): void {
+    this.currentToolbarMode = mode;
+
+    if (mode === 'design') {
+      // Show view tabs, hide mode label
+      this.tabsContainer.style.display = 'flex';
+      this.modeLabel.style.display = 'none';
+    } else {
+      // Hide view tabs, show mode label
+      this.tabsContainer.style.display = 'none';
+      this.modeLabel.style.display = 'flex';
+
+      // Update mode label text
+      const modeNames: Record<ToolbarMode, string> = {
+        design: 'Design',
+        cad: 'CAD',
+        schematic: 'Schematic',
+        pcb: 'PCB',
+      };
+      const modeNameEl = this.modeLabel.querySelector('.mode-name');
+      if (modeNameEl) {
+        modeNameEl.textContent = modeNames[mode];
+      }
+
+      // When switching away from design mode, ensure we're in design view
+      if (this.currentMode !== 'design') {
+        this.setMode('design');
+      }
+    }
+  }
+
+  /**
+   * Get the current toolbar mode
+   */
+  getToolbarMode(): ToolbarMode {
+    return this.currentToolbarMode;
   }
 
   private captureDesignContent(): void {
@@ -440,6 +514,12 @@ export class ViewSwitcher {
     document.removeEventListener('keydown', this.handleKeyboard.bind(this));
     document.removeEventListener('mousemove', this.onDrag.bind(this));
     document.removeEventListener('mouseup', this.endDrag.bind(this));
+
+    // Unsubscribe from toolbar mode changes
+    if (this.toolbarModeUnsubscribe) {
+      this.toolbarModeUnsubscribe();
+      this.toolbarModeUnsubscribe = null;
+    }
 
     if (this.codeView) {
       this.codeView.dispose();

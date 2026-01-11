@@ -625,40 +625,91 @@ export class Toolbar {
   }
 
   /**
-   * Create mode switcher UI
+   * Create mode switcher UI as a dropdown/stack
    */
   private createModeSwitcher(): HTMLElement {
     const container = document.createElement('div');
     container.className = 'designlibre-mode-switcher';
     container.style.cssText = `
+      position: relative;
       display: flex;
-      flex-direction: row;
-      gap: 1px;
-      padding: 2px;
+      flex-direction: column;
       background: var(--designlibre-bg-secondary, #2d2d2d);
       border-radius: 6px;
     `;
 
+    // Create the current mode button (always visible)
+    const currentModeButton = document.createElement('button');
+    currentModeButton.className = 'designlibre-mode-current';
+    currentModeButton.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 6px;
+      background: var(--designlibre-accent-light, #1a3a5c);
+      color: var(--designlibre-accent, #4dabff);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    `;
+
+    // Create the dropdown container (hidden by default)
+    const dropdown = document.createElement('div');
+    dropdown.className = 'designlibre-mode-dropdown';
+    dropdown.style.cssText = `
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px;
+      margin-top: 4px;
+      background: var(--designlibre-bg-secondary, #2d2d2d);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    `;
+
+    // Update current mode button icon
+    const updateCurrentButton = () => {
+      const currentMode = TOOLBAR_MODES.find(m => m.id === this.currentMode);
+      if (currentMode) {
+        currentModeButton.innerHTML = currentMode.icon;
+        currentModeButton.title = `${currentMode.name} Mode - Click to change`;
+      }
+    };
+    updateCurrentButton();
+
+    // Create buttons for each mode in the dropdown
     for (const mode of TOOLBAR_MODES) {
       const button = document.createElement('button');
       button.className = 'designlibre-mode-button';
       button.title = `${mode.name} Mode (${mode.shortcut})`;
-      button.innerHTML = mode.icon;
 
-      const isActive = mode.id === this.currentMode;
-      button.style.cssText = `
-        width: 32px;
-        height: 32px;
-        border: none;
-        border-radius: 4px;
-        background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
-        color: ${isActive ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.15s;
+      // Create button content with icon and text
+      button.innerHTML = `
+        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+          ${mode.icon}
+        </span>
+        <span style="margin-left: 8px; font-size: 12px; white-space: nowrap;">${mode.name}</span>
       `;
+
+      const updateButtonStyle = () => {
+        const isActive = mode.id === this.currentMode;
+        button.style.cssText = `
+          width: 100%;
+          height: 32px;
+          padding: 0 8px;
+          border: none;
+          border-radius: 4px;
+          background: ${isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent'};
+          color: ${isActive ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-secondary, #a0a0a0)'};
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          transition: all 0.15s;
+        `;
+      };
+      updateButtonStyle();
 
       button.addEventListener('mouseenter', () => {
         if (mode.id !== this.currentMode) {
@@ -668,19 +719,40 @@ export class Toolbar {
       });
 
       button.addEventListener('mouseleave', () => {
-        if (mode.id !== this.currentMode) {
-          button.style.backgroundColor = 'transparent';
-          button.style.color = 'var(--designlibre-text-secondary, #a0a0a0)';
+        updateButtonStyle();
+      });
+
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.setMode(mode.id);
+        dropdown.style.display = 'none';
+        updateCurrentButton();
+        // Update all button styles
+        for (const [modeId, btn] of this.modeButtons) {
+          const isActive = modeId === this.currentMode;
+          btn.style.backgroundColor = isActive ? 'var(--designlibre-accent-light, #1a3a5c)' : 'transparent';
+          btn.style.color = isActive ? 'var(--designlibre-accent, #4dabff)' : 'var(--designlibre-text-secondary, #a0a0a0)';
         }
       });
 
-      button.addEventListener('click', () => {
-        this.setMode(mode.id);
-      });
-
       this.modeButtons.set(mode.id, button);
-      container.appendChild(button);
+      dropdown.appendChild(button);
     }
+
+    // Toggle dropdown on current mode button click
+    currentModeButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dropdown.style.display === 'flex';
+      dropdown.style.display = isOpen ? 'none' : 'flex';
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+      dropdown.style.display = 'none';
+    });
+
+    container.appendChild(currentModeButton);
+    container.appendChild(dropdown);
 
     return container;
   }
