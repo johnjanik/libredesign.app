@@ -411,8 +411,12 @@ export class Toolbar {
   ) {
     this.runtime = runtime;
     this.container = container;
+
+    // Load saved toolbar position from localStorage
+    const savedPosition = this.loadToolbarPosition();
+
     this.options = {
-      position: options.position ?? 'left',
+      position: options.position ?? savedPosition,
       showLabels: options.showLabels ?? false,
     };
 
@@ -431,6 +435,38 @@ export class Toolbar {
     }
 
     this.setup();
+
+    // Listen for settings changes
+    window.addEventListener('designlibre-settings-changed', ((e: CustomEvent) => {
+      if (e.detail?.toolbarPosition) {
+        this.setPosition(e.detail.toolbarPosition as 'top' | 'bottom');
+      }
+    }) as EventListener);
+  }
+
+  /**
+   * Load toolbar position from localStorage
+   */
+  private loadToolbarPosition(): 'top' | 'bottom' {
+    try {
+      const saved = localStorage.getItem('designlibre-toolbar-position');
+      if (saved === 'top' || saved === 'bottom') {
+        return saved;
+      }
+    } catch {
+      // localStorage not available
+    }
+    return 'bottom';
+  }
+
+  /**
+   * Set toolbar position and update UI
+   */
+  setPosition(position: 'top' | 'bottom'): void {
+    this.options.position = position;
+    if (this.element) {
+      this.element.style.cssText = this.getToolbarStyles();
+    }
   }
 
   /**
@@ -874,7 +910,15 @@ export class Toolbar {
     popup.className = 'designlibre-toolbar-popup';
 
     const isHorizontal = this.options.position === 'top' || this.options.position === 'bottom';
-    const popupPosition = isHorizontal ? 'bottom: 100%; left: 0; margin-bottom: 4px;' : 'left: 100%; top: 0; margin-left: 4px;';
+    // When toolbar is at top, popup opens downward; when at bottom, popup opens upward
+    let popupPosition: string;
+    if (isHorizontal) {
+      popupPosition = this.options.position === 'top'
+        ? 'top: 100%; left: 0; margin-top: 4px;'
+        : 'bottom: 100%; left: 0; margin-bottom: 4px;';
+    } else {
+      popupPosition = 'left: 100%; top: 0; margin-left: 4px;';
+    }
 
     popup.style.cssText = `
       position: absolute;

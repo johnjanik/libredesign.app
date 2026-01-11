@@ -456,6 +456,25 @@ export class SettingsModal {
   }
 
   private renderEditorSettings(container: HTMLElement): void {
+    this.addSectionHeader(container, 'Toolbar');
+
+    this.addSettingRow(container, {
+      title: 'Toolbar position',
+      description: 'Position the toolbar at the top or bottom of the canvas',
+      type: 'select',
+      value: this.getSetting('toolbar-position', 'bottom'),
+      options: [
+        { value: 'bottom', label: 'Bottom' },
+        { value: 'top', label: 'Top' },
+      ],
+      onChange: (v) => {
+        this.setSetting('toolbar-position', v);
+        window.dispatchEvent(new CustomEvent('designlibre-settings-changed', {
+          detail: { toolbarPosition: v }
+        }));
+      },
+    });
+
     this.addSectionHeader(container, 'Code View');
 
     this.addSettingRow(container, {
