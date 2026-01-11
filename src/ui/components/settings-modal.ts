@@ -462,10 +462,10 @@ export class SettingsModal {
       title: 'Toolbar position',
       description: 'Position the toolbar at the top or bottom of the canvas',
       type: 'select',
-      value: this.getSetting('toolbar-position', 'bottom'),
+      value: this.getSetting('toolbar-position', 'top'),
       options: [
-        { value: 'bottom', label: 'Bottom' },
         { value: 'top', label: 'Top' },
+        { value: 'bottom', label: 'Bottom' },
       ],
       onChange: (v) => {
         this.setSetting('toolbar-position', v);

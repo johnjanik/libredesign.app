@@ -456,7 +456,7 @@ export class Toolbar {
     } catch {
       // localStorage not available
     }
-    return 'bottom';
+    return 'top';
   }
 
   /**
