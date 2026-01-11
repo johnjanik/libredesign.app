@@ -39,6 +39,32 @@ interface SnapGuide {
 type RotationCorner = 'nw' | 'ne' | 'sw' | 'se';
 
 /**
+ * Move operation for undo/redo
+ */
+export interface SelectToolMoveOperation {
+  nodeId: NodeId;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+/**
+ * Resize operation for undo/redo
+ */
+export interface SelectToolResizeOperation {
+  nodeId: NodeId;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
+  endX: number;
+  endY: number;
+  endWidth: number;
+  endHeight: number;
+}
+
+/**
  * Rotation operation for undo/redo
  */
 export interface SelectToolRotationOperation {
@@ -56,6 +82,8 @@ export interface SelectToolRotationOperation {
  */
 export interface SelectToolOptions {
   onSelectionChange?: ((nodeIds: NodeId[]) => void) | undefined;
+  onMoveEnd?: ((operations: SelectToolMoveOperation[]) => void) | undefined;
+  onResizeEnd?: ((operation: SelectToolResizeOperation) => void) | undefined;
   onRotationEnd?: ((operations: SelectToolRotationOperation[]) => void) | undefined;
 }
 
@@ -128,11 +156,15 @@ export class SelectTool extends BaseTool {
 
   // Callbacks for external actions
   private onSelectionChange: ((nodeIds: NodeId[]) => void) | undefined;
+  private onMoveEnd: ((operations: SelectToolMoveOperation[]) => void) | undefined;
+  private onResizeEnd: ((operation: SelectToolResizeOperation) => void) | undefined;
   private onRotationEnd: ((operations: SelectToolRotationOperation[]) => void) | undefined;
 
   constructor(options?: SelectToolOptions) {
     super();
     this.onSelectionChange = options?.onSelectionChange;
+    this.onMoveEnd = options?.onMoveEnd;
+    this.onResizeEnd = options?.onResizeEnd;
     this.onRotationEnd = options?.onRotationEnd;
   }
 
@@ -508,6 +540,64 @@ export class SelectTool extends BaseTool {
 
   onPointerUp(event: PointerEventData, context: ToolContext): void {
     super.onPointerUp(event, context);
+
+    // Handle move end - record operations for undo/redo
+    if (this.state.mode === 'moving' && this.state.moveStartPositions) {
+      if (this.onMoveEnd) {
+        const operations: SelectToolMoveOperation[] = [];
+
+        for (const [nodeId, startPos] of this.state.moveStartPositions) {
+          const node = context.sceneGraph.getNode(nodeId);
+          if (node && 'x' in node && 'y' in node) {
+            const n = node as { x: number; y: number };
+
+            // Only include if position actually changed
+            if (Math.abs(n.x - startPos.x) > 0.01 || Math.abs(n.y - startPos.y) > 0.01) {
+              operations.push({
+                nodeId,
+                startX: startPos.x,
+                startY: startPos.y,
+                endX: n.x,
+                endY: n.y,
+              });
+            }
+          }
+        }
+
+        if (operations.length > 0) {
+          this.onMoveEnd(operations);
+        }
+      }
+    }
+
+    // Handle resize end - record operation for undo/redo
+    if (this.state.mode === 'resizing' && this.state.resizeTarget && this.state.resizeStartBounds) {
+      if (this.onResizeEnd) {
+        const node = context.sceneGraph.getNode(this.state.resizeTarget);
+        if (node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
+          const n = node as { x: number; y: number; width: number; height: number };
+          const start = this.state.resizeStartBounds;
+
+          // Only record if bounds actually changed
+          if (Math.abs(n.x - start.x) > 0.01 ||
+              Math.abs(n.y - start.y) > 0.01 ||
+              Math.abs(n.width - start.width) > 0.01 ||
+              Math.abs(n.height - start.height) > 0.01) {
+            this.onResizeEnd({
+              nodeId: this.state.resizeTarget,
+              startX: start.x,
+              startY: start.y,
+              startWidth: start.width,
+              startHeight: start.height,
+              endX: n.x,
+              endY: n.y,
+              endWidth: n.width,
+              endHeight: n.height,
+            });
+          }
+        }
+      }
+    }
 
     if (this.state.mode === 'rotating') {
       // Build rotation operations for undo/redo

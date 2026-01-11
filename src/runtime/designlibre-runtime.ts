@@ -1229,6 +1229,80 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       onSelectionChange: (nodeIds) => {
         this.selectionManager.select(nodeIds, 'replace');
       },
+      onMoveEnd: (operations) => {
+        // Record move operations for undo/redo
+        if (operations.length > 0) {
+          this.undoManager.beginGroup('Move');
+          for (const op of operations) {
+            this.undoManager.push({
+              id: `movex_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+              type: 'SET_PROPERTY',
+              timestamp: Date.now(),
+              clientId: 'local',
+              nodeId: op.nodeId,
+              path: ['x'],
+              oldValue: op.startX,
+              newValue: op.endX,
+            });
+            this.undoManager.push({
+              id: `movey_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+              type: 'SET_PROPERTY',
+              timestamp: Date.now(),
+              clientId: 'local',
+              nodeId: op.nodeId,
+              path: ['y'],
+              oldValue: op.startY,
+              newValue: op.endY,
+            });
+          }
+          this.undoManager.endGroup();
+        }
+      },
+      onResizeEnd: (op) => {
+        // Record resize operation for undo/redo
+        this.undoManager.beginGroup('Resize');
+        this.undoManager.push({
+          id: `resizex_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'SET_PROPERTY',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId: op.nodeId,
+          path: ['x'],
+          oldValue: op.startX,
+          newValue: op.endX,
+        });
+        this.undoManager.push({
+          id: `resizey_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'SET_PROPERTY',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId: op.nodeId,
+          path: ['y'],
+          oldValue: op.startY,
+          newValue: op.endY,
+        });
+        this.undoManager.push({
+          id: `resizew_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'SET_PROPERTY',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId: op.nodeId,
+          path: ['width'],
+          oldValue: op.startWidth,
+          newValue: op.endWidth,
+        });
+        this.undoManager.push({
+          id: `resizeh_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+          type: 'SET_PROPERTY',
+          timestamp: Date.now(),
+          clientId: 'local',
+          nodeId: op.nodeId,
+          path: ['height'],
+          oldValue: op.startHeight,
+          newValue: op.endHeight,
+        });
+        this.undoManager.endGroup();
+      },
       onRotationEnd: (operations) => {
         // Record rotation operations for undo/redo
         if (operations.length > 0) {
