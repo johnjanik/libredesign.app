@@ -115,3 +115,72 @@ export type {
   PluginStateCallback,
   PluginRegistryStats,
 } from './loader';
+
+// Host APIs
+export {
+  createDesignAPI,
+  createSelectionAPI,
+  createViewportAPI,
+  createHistoryAPI,
+  createEventsAPI,
+  createStorageAPI,
+  createNetworkAPI,
+  createUIAPI,
+  createConsoleAPI,
+  DEFAULT_STORAGE_CONFIG,
+  DEFAULT_NETWORK_CONFIG,
+  DEFAULT_UI_CONFIG,
+  DEFAULT_CONSOLE_CONFIG,
+} from './api/host-api';
+export type {
+  SceneGraphAdapter,
+  NodeQuery,
+  DesignAPIHandlers,
+  SelectionAdapter,
+  SelectionAPIHandlers,
+  ViewportAdapter,
+  ViewportAPIHandlers,
+  HistoryAdapter,
+  HistoryAPIHandlers,
+  EventEmitterAdapter,
+  EventListener,
+  PluginEventType,
+  EventsAPIHandlers,
+  StorageConfig,
+  StorageAPIHandlers,
+  NetworkConfig,
+  PluginFetchOptions,
+  PluginFetchResponse,
+  NetworkAPIHandlers,
+  UIAdapter,
+  UIConfig,
+  PanelHandle,
+  ModalResult,
+  UIAPIHandlers,
+  ConsoleConfig,
+  ConsoleLogLevel,
+  ConsoleLogEntry,
+  ConsoleOutputHandler,
+  ConsoleAPIHandlers,
+} from './api/host-api';
+
+// UI Sandbox
+export {
+  createUISandbox,
+  renderUI,
+  updateComponent,
+  setEventHandler,
+  destroySandbox,
+  UIBridge,
+  UIRenderer,
+  DEFAULT_UI_SANDBOX_CONFIG,
+} from './ui';
+export type {
+  UISandboxConfig,
+  UISandboxInstance,
+  UIMessageType,
+  UIHostMessage,
+  UIIframeMessage,
+  UIEventHandler,
+  UIRendererConfig,
+} from './ui';

@@ -21,3 +21,6 @@ export type {
 
 export { APIDispatcher, createDesignAPIMethods } from './api-dispatcher';
 export type { APIMethodDefinition } from './api-dispatcher';
+
+// Host API exports
+export * from './host-api';
