@@ -42,7 +42,8 @@
       "@prototype/*": ["src/prototype/*"],
       "@ai/*": ["src/ai/*"],
       "@templates/*": ["src/templates/*"],
-      "@semantic/*": ["src/semantic/*"]
+      "@semantic/*": ["src/semantic/*"],
+      "@plugins/*": ["src/plugins/*"]
     },
 
     "types": ["vitest/globals"]
