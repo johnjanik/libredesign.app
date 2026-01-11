@@ -291,6 +291,30 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
       });
     });
 
+    // Apply undo operations to scene graph
+    this.undoManager.on('undo', ({ operation }) => {
+      if (operation.type === 'SET_PROPERTY') {
+        const updates: Record<string, unknown> = {};
+        const path = operation.path[0];
+        if (typeof path === 'string') {
+          updates[path] = operation.oldValue;
+          this.sceneGraph.updateNode(operation.nodeId, updates as Partial<import('@scene/nodes/base-node').NodeData>);
+        }
+      }
+    });
+
+    // Apply redo operations to scene graph
+    this.undoManager.on('redo', ({ operation }) => {
+      if (operation.type === 'SET_PROPERTY') {
+        const updates: Record<string, unknown> = {};
+        const path = operation.path[0];
+        if (typeof path === 'string') {
+          updates[path] = operation.newValue;
+          this.sceneGraph.updateNode(operation.nodeId, updates as Partial<import('@scene/nodes/base-node').NodeData>);
+        }
+      }
+    });
+
     // Initialize library component registry with core components
     this.libraryRegistry = createLibraryComponentRegistry();
     this.libraryRegistry.registerAll(getAllLibraryComponents());
@@ -1204,6 +1228,46 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.selectTool = createSelectTool({
       onSelectionChange: (nodeIds) => {
         this.selectionManager.select(nodeIds, 'replace');
+      },
+      onRotationEnd: (operations) => {
+        // Record rotation operations for undo/redo
+        if (operations.length > 0) {
+          this.undoManager.beginGroup('Rotate');
+          for (const op of operations) {
+            // Create SET_PROPERTY operations for rotation and position
+            this.undoManager.push({
+              id: `rot_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+              type: 'SET_PROPERTY',
+              timestamp: Date.now(),
+              clientId: 'local',
+              nodeId: op.nodeId,
+              path: ['rotation'],
+              oldValue: op.startRotation,
+              newValue: op.endRotation,
+            });
+            this.undoManager.push({
+              id: `rotx_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+              type: 'SET_PROPERTY',
+              timestamp: Date.now(),
+              clientId: 'local',
+              nodeId: op.nodeId,
+              path: ['x'],
+              oldValue: op.startX,
+              newValue: op.endX,
+            });
+            this.undoManager.push({
+              id: `roty_${op.nodeId}_${Date.now()}` as import('@core/types/common').OperationId,
+              type: 'SET_PROPERTY',
+              timestamp: Date.now(),
+              clientId: 'local',
+              nodeId: op.nodeId,
+              path: ['y'],
+              oldValue: op.startY,
+              newValue: op.endY,
+            });
+          }
+          this.undoManager.endGroup();
+        }
       },
     });
 

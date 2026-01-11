@@ -39,6 +39,27 @@ interface SnapGuide {
 type RotationCorner = 'nw' | 'ne' | 'sw' | 'se';
 
 /**
+ * Rotation operation for undo/redo
+ */
+export interface SelectToolRotationOperation {
+  nodeId: NodeId;
+  startRotation: number;
+  endRotation: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+/**
+ * Select tool options
+ */
+export interface SelectToolOptions {
+  onSelectionChange?: ((nodeIds: NodeId[]) => void) | undefined;
+  onRotationEnd?: ((operations: SelectToolRotationOperation[]) => void) | undefined;
+}
+
+/**
  * Select tool state
  */
 interface SelectToolState {
@@ -107,10 +128,12 @@ export class SelectTool extends BaseTool {
 
   // Callbacks for external actions
   private onSelectionChange: ((nodeIds: NodeId[]) => void) | undefined;
+  private onRotationEnd: ((operations: SelectToolRotationOperation[]) => void) | undefined;
 
-  constructor(options?: { onSelectionChange?: ((nodeIds: NodeId[]) => void) | undefined }) {
+  constructor(options?: SelectToolOptions) {
     super();
     this.onSelectionChange = options?.onSelectionChange;
+    this.onRotationEnd = options?.onRotationEnd;
   }
 
   activate(context: ToolContext): void {
@@ -487,8 +510,40 @@ export class SelectTool extends BaseTool {
     super.onPointerUp(event, context);
 
     if (this.state.mode === 'rotating') {
-      // Rotation complete - could add undo entry here if history manager is available
-      // context.historyManager?.commit('Rotate');
+      // Build rotation operations for undo/redo
+      if (this.onRotationEnd && this.state.rotationStartRotations && this.state.rotationStartPositions) {
+        const operations: SelectToolRotationOperation[] = [];
+
+        for (const nodeId of context.selectedNodeIds) {
+          const startRotation = this.state.rotationStartRotations.get(nodeId);
+          const startPos = this.state.rotationStartPositions.get(nodeId);
+          const node = context.sceneGraph.getNode(nodeId);
+
+          if (startRotation !== undefined && startPos && node && 'x' in node && 'y' in node && 'width' in node && 'height' in node) {
+            const n = node as { x: number; y: number; width: number; height: number; rotation?: number };
+            const endRotation = n.rotation ?? 0;
+
+            // Only include if rotation actually changed
+            if (Math.abs(endRotation - startRotation) > 0.01 ||
+                Math.abs((n.x + n.width / 2) - startPos.x) > 0.01 ||
+                Math.abs((n.y + n.height / 2) - startPos.y) > 0.01) {
+              operations.push({
+                nodeId,
+                startRotation,
+                endRotation,
+                startX: startPos.x - n.width / 2,
+                startY: startPos.y - n.height / 2,
+                endX: n.x,
+                endY: n.y,
+              });
+            }
+          }
+        }
+
+        if (operations.length > 0) {
+          this.onRotationEnd(operations);
+        }
+      }
     }
 
     if (this.state.mode === 'marquee') {
@@ -1364,8 +1419,6 @@ export class SelectTool extends BaseTool {
 /**
  * Create a select tool.
  */
-export function createSelectTool(options?: {
-  onSelectionChange?: (nodeIds: NodeId[]) => void;
-}): SelectTool {
+export function createSelectTool(options?: SelectToolOptions): SelectTool {
   return new SelectTool(options);
 }
