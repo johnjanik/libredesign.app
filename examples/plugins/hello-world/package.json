@@ -1,0 +1,25 @@
+{
+  "name": "@designlibre/plugin-hello-world",
+  "version": "1.0.0",
+  "description": "A simple example plugin for DesignLibre",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --outfile=dist/main.js --format=iife --target=es2020 --minify",
+    "dev": "esbuild src/main.ts --bundle --outfile=dist/main.js --format=iife --target=es2020 --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "designlibre",
+    "plugin",
+    "example",
+    "hello-world"
+  ],
+  "author": "DesignLibre Team",
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.0"
+  }
+}

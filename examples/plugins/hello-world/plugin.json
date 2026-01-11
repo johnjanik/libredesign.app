@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "com.designlibre.hello-world",
+  "version": "1.0.0",
+  "name": "Hello World",
+  "description": "A simple example plugin that demonstrates the DesignLibre plugin API",
+  "author": {
+    "name": "DesignLibre Team",
+    "email": "plugins@designlibre.app",
+    "url": "https://designlibre.app"
+  },
+  "homepage": "https://github.com/designlibre/plugins/tree/main/examples/hello-world",
+  "license": "MIT",
+  "keywords": ["example", "hello-world", "starter", "template"],
+  "icon": "icon.svg",
+  "capabilities": {
+    "read": {
+      "types": ["*"],
+      "scopes": ["selection", "current-page"]
+    },
+    "ui": {
+      "types": ["toast", "panel"],
+      "scopes": ["main"]
+    },
+    "storage": true
+  },
+  "limits": {
+    "memory": "32MB",
+    "executionTime": "50ms",
+    "storage": "1MB"
+  },
+  "entry": {
+    "main": "./dist/main.js"
+  },
+  "integrity": {
+    "./dist/main.js": "sha384-placeholder"
+  },
+  "minimumDesignLibreVersion": "1.0.0"
+}

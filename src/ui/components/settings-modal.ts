@@ -1486,15 +1486,52 @@ export class SettingsModal {
 
     this.addSectionHeader(container, 'Community Plugins');
 
-    const placeholder = document.createElement('div');
-    placeholder.style.cssText = `
-      padding: 24px;
+    const pluginsSection = document.createElement('div');
+    pluginsSection.style.cssText = `
+      padding: 16px;
       text-align: center;
       color: var(--designlibre-text-secondary, #888);
-      font-size: 15px;
     `;
-    placeholder.textContent = 'Community plugins coming soon';
-    container.appendChild(placeholder);
+
+    const description = document.createElement('p');
+    description.style.cssText = `
+      font-size: 14px;
+      margin: 0 0 16px;
+    `;
+    description.textContent = 'Install and manage community plugins from the Plugins panel.';
+    pluginsSection.appendChild(description);
+
+    const openPluginsBtn = document.createElement('button');
+    openPluginsBtn.style.cssText = `
+      background: var(--designlibre-accent, #0d99ff);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    `;
+    openPluginsBtn.textContent = 'Open Plugins Panel';
+    openPluginsBtn.addEventListener('mouseenter', () => {
+      openPluginsBtn.style.background = 'var(--designlibre-accent-hover, #0a7acc)';
+    });
+    openPluginsBtn.addEventListener('mouseleave', () => {
+      openPluginsBtn.style.background = 'var(--designlibre-accent, #0d99ff)';
+    });
+    openPluginsBtn.addEventListener('click', () => {
+      // Close settings modal and open plugins panel
+      this.close();
+      window.dispatchEvent(
+        new CustomEvent('designlibre-panel-changed', {
+          detail: { panel: 'plugins' },
+        })
+      );
+    });
+    pluginsSection.appendChild(openPluginsBtn);
+
+    container.appendChild(pluginsSection);
   }
 
   // ============================================================

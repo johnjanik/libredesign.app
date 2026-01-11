@@ -22,6 +22,7 @@ import { ComponentLibraryPanel } from './component-library-panel';
 import { HistoryPanel } from './history-panel';
 import { AssetsPanel } from './assets-panel';
 import { LintPanel } from './lint-panel';
+import { PluginsPanel } from './plugins-panel';
 import { MenuBar } from './menu-bar';
 
 /**
@@ -140,7 +141,7 @@ export class LeftSidebar {
   // State
   private collapsed = false;
   private documentName = 'Untitled';
-  private activeTab: 'layers' | 'assets' | 'library' | 'components' | 'history' | 'lint' = 'layers';
+  private activeTab: 'layers' | 'assets' | 'library' | 'components' | 'history' | 'lint' | 'plugins' = 'layers';
   private leaves: Leaf[] = [{ id: 'leaf-1', name: 'Leaf 1' }];
   private activeLeafId = 'leaf-1';
   private leafCounter = 1;
@@ -161,6 +162,9 @@ export class LeftSidebar {
 
   // Lint panel (lazy-initialized)
   private lintPanel: LintPanel | null = null;
+
+  // Plugins panel (lazy-initialized)
+  private pluginsPanel: PluginsPanel | null = null;
 
   // Menu bar (lazy-initialized)
   private menuBar: MenuBar | null = null;
@@ -229,7 +233,7 @@ export class LeftSidebar {
     // Listen for panel changes from nav rail
     window.addEventListener('designlibre-panel-changed', ((e: CustomEvent) => {
       const panel = e.detail.panel as typeof this.activeTab;
-      if (['layers', 'assets', 'library', 'components', 'history', 'lint'].includes(panel)) {
+      if (['layers', 'assets', 'library', 'components', 'history', 'lint', 'plugins'].includes(panel)) {
         this.activeTab = panel;
         this.render();
       }
@@ -431,6 +435,9 @@ export class LeftSidebar {
     } else if (this.activeTab === 'lint') {
       // Lint panel: accessibility and semantic checks
       this.element.appendChild(this.createLintSection());
+    } else if (this.activeTab === 'plugins') {
+      // Plugins panel: manage installed plugins
+      this.element.appendChild(this.createPluginsSection());
     } else {
       // Layers panel: show leaves and layers
       this.element.appendChild(this.createLeavesSection());
@@ -484,6 +491,62 @@ export class LeftSidebar {
       this.lintPanel = new LintPanel(this.runtime);
     }
     return this.lintPanel.create();
+  }
+
+  private createPluginsSection(): HTMLElement {
+    // Lazy-initialize the plugins panel
+    if (!this.pluginsPanel) {
+      this.pluginsPanel = new PluginsPanel({ runtime: this.runtime });
+      // Wire up the plugin runtime manager callbacks
+      this.setupPluginsCallbacks();
+    }
+    return this.pluginsPanel.createElement();
+  }
+
+  private setupPluginsCallbacks(): void {
+    if (!this.pluginsPanel) return;
+
+    // Import the runtime manager dynamically to avoid circular deps
+    import('@plugins/runtime').then(({ getPluginRuntimeManager }) => {
+      const manager = getPluginRuntimeManager();
+
+      this.pluginsPanel?.setCallbacks({
+        onEnable: async (pluginId: string) => {
+          await manager.enablePlugin(pluginId);
+        },
+        onDisable: async (pluginId: string) => {
+          await manager.disablePlugin(pluginId);
+        },
+        onUninstall: async (pluginId: string) => {
+          await manager.unloadPlugin(pluginId);
+        },
+        onRun: async (pluginId: string) => {
+          await manager.runPlugin(pluginId);
+        },
+        onStop: async (pluginId: string) => {
+          await manager.stopPlugin(pluginId);
+        },
+        onLoadLocal: async (path: string) => {
+          await manager.loadLocalPlugin(path);
+        },
+        onRefresh: async () => {
+          return manager.getPlugins();
+        },
+      });
+
+      // Listen for plugin events to update the panel
+      manager.addEventListener((event) => {
+        if (
+          event.type === 'plugin:loaded' ||
+          event.type === 'plugin:unloaded' ||
+          event.type === 'plugin:started' ||
+          event.type === 'plugin:stopped' ||
+          event.type === 'plugin:error'
+        ) {
+          this.pluginsPanel?.setPlugins(manager.getPlugins());
+        }
+      });
+    });
   }
 
   private createHeader(): HTMLElement {

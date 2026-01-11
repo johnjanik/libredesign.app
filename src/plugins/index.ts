@@ -433,3 +433,14 @@ export type {
   RequestTiming,
   BlockReason,
 } from './devtools';
+
+// Runtime
+export {
+  PluginRuntimeManager,
+  getPluginRuntimeManager,
+} from './runtime';
+export type {
+  RuntimePlugin,
+  PluginRuntimeEvent,
+  PluginRuntimeEventCallback,
+} from './runtime';

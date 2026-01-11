@@ -544,7 +544,36 @@ export class MenuBar {
         menuItem('grids-layouts', 'Grids & Layouts', { ellipsis: true }),
         separator(),
         submenuItem('plugins', 'Plugins', [
-          menuItem('plugins-manage', 'Manage Plugins', { ellipsis: true }),
+          menuItem('plugins-manage', 'Manage Plugins', {
+            ellipsis: true,
+            action: () => {
+              // Open the plugins panel in the left sidebar
+              window.dispatchEvent(
+                new CustomEvent('designlibre-panel-changed', {
+                  detail: { panel: 'plugins' },
+                })
+              );
+            },
+          }),
+          menuItem('plugins-load-local', 'Load Local Plugin', {
+            ellipsis: true,
+            action: () => {
+              // Open the plugins panel in dev mode to load a local plugin
+              window.dispatchEvent(
+                new CustomEvent('designlibre-panel-changed', {
+                  detail: { panel: 'plugins' },
+                })
+              );
+              // Small delay to let panel render, then trigger dev mode
+              setTimeout(() => {
+                window.dispatchEvent(
+                  new CustomEvent('designlibre-plugins-dev-mode', {
+                    detail: { enabled: true },
+                  })
+                );
+              }, 100);
+            },
+          }),
           separator(),
           menuItem('plugins-none', 'No Plugins Installed', { disabled: true }),
         ]),

@@ -43,6 +43,7 @@ export default defineConfig({
       '@templates': resolve(__dirname, 'src/templates'),
       '@tokens': resolve(__dirname, 'src/tokens'),
       '@semantic': resolve(__dirname, 'src/semantic'),
+      '@plugins': resolve(__dirname, 'src/plugins'),
     },
   },
 
