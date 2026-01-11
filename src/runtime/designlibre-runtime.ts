@@ -3272,7 +3272,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   /**
    * Record a node insertion for undo support.
    */
-  private recordNodeInsertion(nodeId: NodeId, parentId: NodeId, description: string = 'Create'): void {
+  private recordNodeInsertion(nodeId: NodeId, parentId: NodeId, _description: string = 'Create'): void {
     const node = this.sceneGraph.getNode(nodeId);
     if (!node) return;
 
