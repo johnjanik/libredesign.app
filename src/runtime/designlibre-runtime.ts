@@ -2393,6 +2393,61 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     // PCB Tools
     this.trackRoutingTool = createTrackRoutingTool();
     this.viaTool = createViaTool();
+    this.viaTool.setOnViaPlace((via) => {
+      const parentId = this.getCurrentPageId();
+      if (!parentId) return;
+
+      // Scale from mm to pixels (assume 1mm = 10px for display)
+      const scale = 10;
+      const outerRadius = (via.diameter / 2) * scale;
+      const innerRadius = (via.drill / 2) * scale;
+      const size = via.diameter * scale;
+
+      // Create via pad as a filled circle with hole
+      // Outer circle (bezier approximation)
+      const k = 0.552284749831;
+      const viaPath: VectorPath = {
+        windingRule: 'EVENODD', // Use even-odd to create hole effect
+        commands: [
+          // Outer circle
+          { type: 'M', x: size, y: outerRadius },
+          { type: 'C', x1: size, y1: outerRadius + outerRadius * k, x2: outerRadius + outerRadius * k, y2: size, x: outerRadius, y: size },
+          { type: 'C', x1: outerRadius - outerRadius * k, y1: size, x2: 0, y2: outerRadius + outerRadius * k, x: 0, y: outerRadius },
+          { type: 'C', x1: 0, y1: outerRadius - outerRadius * k, x2: outerRadius - outerRadius * k, y2: 0, x: outerRadius, y: 0 },
+          { type: 'C', x1: outerRadius + outerRadius * k, y1: 0, x2: size, y2: outerRadius - outerRadius * k, x: size, y: outerRadius },
+          { type: 'Z' },
+          // Inner circle (hole) - draw in opposite direction for even-odd fill
+          { type: 'M', x: outerRadius + innerRadius, y: outerRadius },
+          { type: 'C', x1: outerRadius + innerRadius, y1: outerRadius - innerRadius * k, x2: outerRadius + innerRadius * k, y2: outerRadius - innerRadius, x: outerRadius, y: outerRadius - innerRadius },
+          { type: 'C', x1: outerRadius - innerRadius * k, y1: outerRadius - innerRadius, x2: outerRadius - innerRadius, y2: outerRadius - innerRadius * k, x: outerRadius - innerRadius, y: outerRadius },
+          { type: 'C', x1: outerRadius - innerRadius, y1: outerRadius + innerRadius * k, x2: outerRadius - innerRadius * k, y2: outerRadius + innerRadius, x: outerRadius, y: outerRadius + innerRadius },
+          { type: 'C', x1: outerRadius + innerRadius * k, y1: outerRadius + innerRadius, x2: outerRadius + innerRadius, y2: outerRadius + innerRadius * k, x: outerRadius + innerRadius, y: outerRadius },
+          { type: 'Z' },
+        ] as PathCommand[],
+      };
+
+      // Color based on via type
+      let fillColor = { r: 0.7, g: 0.7, b: 0.7, a: 1 }; // Default silver for through-hole
+      if (via.viaType === 'blind') {
+        fillColor = { r: 0.4, g: 0.7, b: 0.4, a: 1 }; // Green
+      } else if (via.viaType === 'buried') {
+        fillColor = { r: 0.7, g: 0.4, b: 0.4, a: 1 }; // Red
+      } else if (via.viaType === 'micro') {
+        fillColor = { r: 0.4, g: 0.4, b: 0.7, a: 1 }; // Blue
+      }
+
+      const nodeId = this.sceneGraph.createVector(parentId, {
+        name: `Via (${via.viaType})`,
+        x: via.position.x * scale - outerRadius,
+        y: via.position.y * scale - outerRadius,
+        width: size,
+        height: size,
+        vectorPaths: [viaPath],
+        fills: [solidPaint(rgba(fillColor.r, fillColor.g, fillColor.b, fillColor.a))],
+      });
+
+      this.recordNodeInsertion(nodeId, parentId, 'Place Via');
+    });
 
     // Register tools
     this.toolManager.registerTool(this.selectTool);
