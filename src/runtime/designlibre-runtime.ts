@@ -48,6 +48,7 @@ import { ChamferTool, createChamferTool } from '@tools/modification/chamfer-tool
 import { ConstructionLineTool, createConstructionLineTool } from '@tools/construction/construction-line-tool';
 import { ReferencePointTool, createReferencePointTool } from '@tools/construction/reference-point-tool';
 import { HatchTool, createHatchTool } from '@tools/annotation/hatch-tool';
+import { AngleTool, createAngleTool } from '@tools/measurement/angle-tool';
 import { BlockInsertionTool, createBlockInsertionTool } from '@tools/block/block-insertion-tool';
 import { BlockManager, createBlockManager } from '@/blocks/block-manager';
 import type { SerializedNode } from '@core/types/page-schema';
@@ -234,6 +235,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private constructionLineTool: ConstructionLineTool | null = null;
   private referencePointTool: ReferencePointTool | null = null;
   private hatchTool: HatchTool | null = null;
+  private angleTool: AngleTool | null = null;
   private blockInsertionTool: BlockInsertionTool | null = null;
   private blockManager: BlockManager | null = null;
   private wireTool: WireTool | null = null;
@@ -2127,45 +2129,309 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     // Skew tool - applies horizontal/vertical shear transforms
     this.skewTool = createSkewTool({
       onSkewUpdate: (nodeId, skewX, skewY) => {
-        // Skew is stored as custom properties - not yet part of standard NodeData
-        // For now, log the skew values - full integration requires extending node types
-        console.log('Skew update:', nodeId, { skewX, skewY });
-        // TODO: When node types support skew, uncomment:
-        // this.sceneGraph.updateNode(nodeId, { skewX, skewY });
+        // Store skew values in pluginData since they're not standard node properties
+        const node = this.sceneGraph.getNode(nodeId);
+        if (!node) return;
+
+        // Update node with skew values stored in pluginData
+        const existingPluginData = (node as unknown as { pluginData?: Record<string, unknown> }).pluginData || {};
+        this.sceneGraph.updateNode(nodeId, {
+          pluginData: {
+            ...existingPluginData,
+            skewX,
+            skewY,
+          },
+        });
+      },
+      onSkewEnd: (_operation) => {
+        // Skew is stored in pluginData - undo is handled through the standard scene graph operations
+        // The updateNode call in onSkewUpdate already triggers change tracking
       },
     });
 
     // Dimension tool - creates linear/angular/radial dimensions
     this.dimensionTool = createDimensionTool({
       onDimensionCreate: (data, startPoint, endPoint) => {
-        // For now, create a visual representation as a vector path
-        // In the future, this would create a proper DIMENSION node type
         const pageId = this.getCurrentPageId();
         if (!pageId) return;
 
-        // Create dimension as annotation (vector group for now)
-        console.log('Dimension created:', {
-          type: data.dimensionType,
-          orientation: data.orientation,
-          offset: data.offset,
-          startPoint,
-          endPoint,
+        // Calculate dimension geometry
+        const dx = endPoint.x - startPoint.x;
+        const dy = endPoint.y - startPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Determine dimension line offset direction based on orientation
+        let offsetX = 0, offsetY = 0;
+        if (data.orientation === 'HORIZONTAL') {
+          offsetY = data.offset;
+        } else if (data.orientation === 'VERTICAL') {
+          offsetX = data.offset;
+        } else {
+          // ALIGNED - perpendicular offset
+          const perpX = -dy / distance;
+          const perpY = dx / distance;
+          offsetX = perpX * data.offset;
+          offsetY = perpY * data.offset;
+        }
+
+        // Create dimension group frame
+        const minX = Math.min(startPoint.x, endPoint.x, startPoint.x + offsetX, endPoint.x + offsetX) - 20;
+        const minY = Math.min(startPoint.y, endPoint.y, startPoint.y + offsetY, endPoint.y + offsetY) - 20;
+        const maxX = Math.max(startPoint.x, endPoint.x, startPoint.x + offsetX, endPoint.x + offsetX) + 20;
+        const maxY = Math.max(startPoint.y, endPoint.y, startPoint.y + offsetY, endPoint.y + offsetY) + 20;
+
+        const frameId = this.sceneGraph.createFrame(pageId, {
+          name: 'Dimension',
+          x: minX,
+          y: minY,
+          width: maxX - minX,
+          height: maxY - minY,
         });
+
+        // Create extension lines as vectors
+        const ext1Path: VectorPath = {
+          windingRule: 'NONZERO',
+          commands: [
+            { type: 'M', x: startPoint.x - minX, y: startPoint.y - minY },
+            { type: 'L', x: startPoint.x + offsetX - minX, y: startPoint.y + offsetY - minY },
+          ] as PathCommand[],
+        };
+        this.sceneGraph.createVector(frameId, {
+          name: 'Extension Line 1',
+          x: 0,
+          y: 0,
+          width: maxX - minX,
+          height: maxY - minY,
+          vectorPaths: [ext1Path],
+          strokes: [solidPaint(rgba(0.3, 0.3, 0.3, 1))],
+          strokeWeight: 0.5,
+        });
+
+        const ext2Path: VectorPath = {
+          windingRule: 'NONZERO',
+          commands: [
+            { type: 'M', x: endPoint.x - minX, y: endPoint.y - minY },
+            { type: 'L', x: endPoint.x + offsetX - minX, y: endPoint.y + offsetY - minY },
+          ] as PathCommand[],
+        };
+        this.sceneGraph.createVector(frameId, {
+          name: 'Extension Line 2',
+          x: 0,
+          y: 0,
+          width: maxX - minX,
+          height: maxY - minY,
+          vectorPaths: [ext2Path],
+          strokes: [solidPaint(rgba(0.3, 0.3, 0.3, 1))],
+          strokeWeight: 0.5,
+        });
+
+        // Create dimension line
+        const dimLinePath: VectorPath = {
+          windingRule: 'NONZERO',
+          commands: [
+            { type: 'M', x: startPoint.x + offsetX - minX, y: startPoint.y + offsetY - minY },
+            { type: 'L', x: endPoint.x + offsetX - minX, y: endPoint.y + offsetY - minY },
+          ] as PathCommand[],
+        };
+        this.sceneGraph.createVector(frameId, {
+          name: 'Dimension Line',
+          x: 0,
+          y: 0,
+          width: maxX - minX,
+          height: maxY - minY,
+          vectorPaths: [dimLinePath],
+          strokes: [solidPaint(rgba(0, 0, 0, 1))],
+          strokeWeight: 1,
+        });
+
+        // Create dimension text
+        const textX = (startPoint.x + endPoint.x) / 2 + offsetX;
+        const textY = (startPoint.y + endPoint.y) / 2 + offsetY;
+        const dimText = distance.toFixed(data.style.precision) + (data.style.showUnits ? ' px' : '');
+        this.sceneGraph.createText(frameId, {
+          name: 'Dimension Text',
+          x: textX - minX - 20,
+          y: textY - minY - 8,
+          characters: dimText,
+          fills: [solidPaint(rgba(0, 0, 0, 1))],
+        });
+
+        this.recordNodeInsertion(frameId, pageId, 'Create Dimension');
       },
     });
 
     // CAD Modification Tools
     this.trimTool = createTrimTool();
+    this.trimTool.setOnGetTrimmableLines(() => {
+      // Get all line-like nodes from the scene graph
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return [];
+      const nodeIds = this.sceneGraph.getChildIds(pageId);
+      const lines: import('@tools/modification/trim-tool').TrimmableLine[] = [];
+      for (const nodeId of nodeIds) {
+        const node = this.sceneGraph.getNode(nodeId);
+        if (node && node.type === 'VECTOR') {
+          const vectorNode = node as unknown as { vectorPaths?: VectorPath[]; x: number; y: number };
+          const paths = vectorNode.vectorPaths;
+          if (paths) {
+            for (const path of paths) {
+              // Extract line segments from path commands
+              let lastX = 0, lastY = 0;
+              for (const cmd of path.commands) {
+                if (cmd.type === 'M') {
+                  lastX = cmd.x; lastY = cmd.y;
+                } else if (cmd.type === 'L') {
+                  lines.push({
+                    nodeId,
+                    segment: {
+                      start: { x: lastX + vectorNode.x, y: lastY + vectorNode.y },
+                      end: { x: cmd.x + vectorNode.x, y: cmd.y + vectorNode.y },
+                    },
+                    path,
+                  });
+                  lastX = cmd.x; lastY = cmd.y;
+                }
+              }
+            }
+          }
+        }
+      }
+      return lines;
+    });
+
     this.extendTool = createExtendTool();
     this.filletTool = createFilletTool({ radius: 10 });
     this.chamferTool = createChamferTool({ distance1: 10, distance2: 10 });
 
     // Construction Tools
     this.constructionLineTool = createConstructionLineTool();
+    this.constructionLineTool.setOnConstruct((geometry) => {
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return;
+
+      // Determine start and end points based on geometry type
+      let startX: number, startY: number, endX: number, endY: number;
+      const lineLength = 1000; // Default length for infinite construction lines
+
+      if (geometry.type === 'CONSTRUCTION_LINE') {
+        // Line extends infinitely, use point + direction * length
+        startX = geometry.point.x - geometry.direction.x * lineLength;
+        startY = geometry.point.y - geometry.direction.y * lineLength;
+        endX = geometry.point.x + geometry.direction.x * lineLength;
+        endY = geometry.point.y + geometry.direction.y * lineLength;
+      } else {
+        // Ray extends from origin in direction
+        startX = geometry.origin.x;
+        startY = geometry.origin.y;
+        endX = geometry.origin.x + geometry.direction.x * lineLength;
+        endY = geometry.origin.y + geometry.direction.y * lineLength;
+      }
+
+      // Create a construction line as a dashed vector
+      const path: VectorPath = {
+        windingRule: 'NONZERO',
+        commands: [
+          { type: 'M', x: 0, y: 0 },
+          { type: 'L', x: endX - startX, y: endY - startY },
+        ] as PathCommand[],
+      };
+
+      const nodeId = this.sceneGraph.createVector(pageId, {
+        name: geometry.type === 'CONSTRUCTION_LINE' ? 'Construction Line' : 'Construction Ray',
+        x: startX,
+        y: startY,
+        width: Math.abs(endX - startX) || 1,
+        height: Math.abs(endY - startY) || 1,
+        vectorPaths: [path],
+        strokes: [solidPaint(rgba(0.5, 0.5, 0.5, 0.5))],
+        strokeWeight: 1,
+      });
+      this.recordNodeInsertion(nodeId, pageId, 'Draw Construction Line');
+    });
+
     this.referencePointTool = createReferencePointTool();
+    this.referencePointTool.setOnPointCreate((refPoint) => {
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return;
+
+      // Create a small cross-hair marker for reference point
+      const size = 10;
+      const path: VectorPath = {
+        windingRule: 'NONZERO',
+        commands: [
+          { type: 'M', x: size / 2, y: 0 },
+          { type: 'L', x: size / 2, y: size },
+          { type: 'M', x: 0, y: size / 2 },
+          { type: 'L', x: size, y: size / 2 },
+        ] as PathCommand[],
+      };
+
+      const nodeId = this.sceneGraph.createVector(pageId, {
+        name: refPoint.label || 'Reference Point',
+        x: refPoint.position.x - size / 2,
+        y: refPoint.position.y - size / 2,
+        width: size,
+        height: size,
+        vectorPaths: [path],
+        strokes: [solidPaint(rgba(1, 0, 1, 1))],
+        strokeWeight: 1,
+      });
+      this.recordNodeInsertion(nodeId, pageId, 'Create Reference Point');
+    });
 
     // Hatch Tool
     this.hatchTool = createHatchTool();
+    this.hatchTool.setOnHatchCreate((result) => {
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return;
+
+      // Get the first outer boundary with points
+      const outerBoundary = result.hatchData.boundaries.find(b => b.isOuter && b.points);
+      if (!outerBoundary || !outerBoundary.points || outerBoundary.points.length === 0) return;
+
+      const boundaryPoints = outerBoundary.points;
+
+      // Calculate bounding box
+      const xs = boundaryPoints.map(p => p.x);
+      const ys = boundaryPoints.map(p => p.y);
+      const minX = Math.min(...xs);
+      const minY = Math.min(...ys);
+
+      // Offset path to local coordinates
+      const localCommands: PathCommand[] = boundaryPoints.map((pt, i) =>
+        i === 0
+          ? { type: 'M' as const, x: pt.x - minX, y: pt.y - minY }
+          : { type: 'L' as const, x: pt.x - minX, y: pt.y - minY }
+      );
+      localCommands.push({ type: 'Z' });
+
+      const localPath: VectorPath = {
+        windingRule: 'NONZERO',
+        commands: localCommands,
+      };
+
+      const fill = result.hatchData.fill;
+      const nodeId = this.sceneGraph.createVector(pageId, {
+        name: `Hatch (${fill.pattern})`,
+        x: minX,
+        y: minY,
+        width: Math.max(...xs) - minX,
+        height: Math.max(...ys) - minY,
+        vectorPaths: [localPath],
+        fills: [solidPaint(rgba(fill.color.r, fill.color.g, fill.color.b, fill.color.a))],
+        strokes: [solidPaint(rgba(0, 0, 0, 0.5))],
+        strokeWeight: 0.5,
+      });
+      this.recordNodeInsertion(nodeId, pageId, 'Create Hatch');
+    });
+
+    // Angle Measurement Tool
+    this.angleTool = createAngleTool();
+    this.angleTool.setOnMeasurementComplete((measurement) => {
+      // Angle measurement is visual-only (displays on canvas while tool is active)
+      // Log for debugging and potential future integration
+      console.info(`Angle measured: ${measurement.angleDegrees.toFixed(1)}°`);
+    });
 
     // Block Tools
     this.blockInsertionTool = createBlockInsertionTool();
@@ -2499,6 +2765,8 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.toolManager.registerTool(this.extendTool);
     this.toolManager.registerTool(this.filletTool);
     this.toolManager.registerTool(this.chamferTool);
+    // Note: mirrorTool and arrayTool are helper objects, not Tool implementations
+    // They are invoked through menu commands rather than as interactive tools
 
     // Construction tools
     this.toolManager.registerTool(this.constructionLineTool);
@@ -2506,6 +2774,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
 
     // Annotation tools
     this.toolManager.registerTool(this.hatchTool);
+    this.toolManager.registerTool(this.angleTool);
 
     // Block tools
     this.toolManager.registerTool(this.blockInsertionTool);
