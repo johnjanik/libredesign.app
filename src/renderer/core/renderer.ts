@@ -996,6 +996,21 @@ export class Renderer extends EventEmitter<RendererEvents> {
   // =========================================================================
 
   /**
+   * Set the pixel ratio (for handling browser zoom changes).
+   * Call this before resize() when devicePixelRatio changes.
+   */
+  setPixelRatio(ratio: number): void {
+    this.pixelRatio = ratio;
+  }
+
+  /**
+   * Get the current pixel ratio.
+   */
+  getPixelRatio(): number {
+    return this.pixelRatio;
+  }
+
+  /**
    * Resize the renderer to fit the canvas.
    */
   resize(): void {

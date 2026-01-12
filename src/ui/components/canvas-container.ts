@@ -55,6 +55,8 @@ export class CanvasContainer {
   private isRunning = false;
   private resizeObserver: ResizeObserver | null = null;
   private settingsHandler: ((e: Event) => void) | null = null;
+  private dprMediaQuery: MediaQueryList | null = null;
+  private dprChangeHandler: (() => void) | null = null;
 
   constructor(
     runtime: DesignLibreRuntime,
@@ -139,6 +141,10 @@ export class CanvasContainer {
       this.handleResize();
     });
     this.resizeObserver.observe(this.container);
+
+    // Listen for devicePixelRatio changes (browser zoom)
+    // ResizeObserver doesn't fire when only DPR changes, so we need this
+    this.setupDprChangeListener();
 
     // Listen for settings changes
     this.settingsHandler = (e: Event) => {
@@ -269,6 +275,31 @@ export class CanvasContainer {
     }
   }
 
+  /**
+   * Set up a listener for devicePixelRatio changes (browser zoom).
+   * This is needed because ResizeObserver doesn't fire when only DPR changes.
+   */
+  private setupDprChangeListener(): void {
+    // Clean up existing listener if any
+    if (this.dprMediaQuery && this.dprChangeHandler) {
+      this.dprMediaQuery.removeEventListener('change', this.dprChangeHandler);
+    }
+
+    // Create media query for current DPR
+    const dpr = window.devicePixelRatio;
+    this.dprMediaQuery = window.matchMedia(`(resolution: ${dpr}dppx)`);
+
+    // Handler that re-sets up the listener with new DPR and triggers resize
+    this.dprChangeHandler = () => {
+      // DPR changed, trigger resize and re-setup listener with new DPR
+      this.handleResize();
+      // Re-setup listener with new DPR value
+      this.setupDprChangeListener();
+    };
+
+    this.dprMediaQuery.addEventListener('change', this.dprChangeHandler);
+  }
+
   private handleResize = (): void => {
     if (!this.overlayCanvas) return;
 
@@ -283,6 +314,11 @@ export class CanvasContainer {
     // Also trigger the WebGL renderer's resize to update viewport
     const renderer = this.runtime.getRenderer();
     if (renderer) {
+      // Update pixel ratio if it changed (handles browser zoom)
+      const oldDpr = renderer.getPixelRatio();
+      if (oldDpr !== dpr) {
+        renderer.setPixelRatio(dpr);
+      }
       renderer.resize();
     }
 
@@ -359,7 +395,11 @@ export class CanvasContainer {
     }
 
     // Render dimension label for selected objects
-    this.renderSelectionOverlay(ctx, scaleX, scaleY);
+    // Use the same viewport transform as WebGL to ensure alignment
+    ctx.save();
+    ctx.setTransform(zoom, 0, 0, zoom, offset.x, offset.y);
+    this.renderSelectionOverlay(ctx, zoom);
+    ctx.restore();
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
@@ -367,20 +407,20 @@ export class CanvasContainer {
   /**
    * Render selection overlay with bounding box and handles.
    *
-   * @param ctx - Canvas 2D rendering context
-   * @param scaleX - X scale factor (canvas.width / cssWidth)
-   * @param scaleY - Y scale factor (canvas.height / cssHeight)
+   * The context already has the viewport transform applied (zoom + offset),
+   * so we draw in world coordinates directly.
+   *
+   * @param ctx - Canvas 2D rendering context (with viewport transform)
+   * @param zoom - Current zoom level (for scaling UI elements)
    */
   private renderSelectionOverlay(
     ctx: CanvasRenderingContext2D,
-    scaleX: number,
-    scaleY: number
+    zoom: number
   ): void {
     const selectionManager = this.runtime.getSelectionManager();
     const sceneGraph = this.runtime.getSceneGraph();
-    const viewport = this.runtime.getViewport();
 
-    if (!selectionManager || !sceneGraph || !viewport) return;
+    if (!selectionManager || !sceneGraph) return;
 
     const selectedIds = selectionManager.getSelectedNodeIds();
     if (selectedIds.length === 0) return;
@@ -402,40 +442,34 @@ export class CanvasContainer {
 
     if (!isFinite(minX)) return;
 
-    // Convert to screen coordinates
-    // worldToCanvas returns canvas pixels, divide by scale to get CSS pixels
-    const screenTopLeft = viewport.worldToCanvas(minX, minY);
-    const screenBottomRight = viewport.worldToCanvas(maxX, maxY);
+    // Draw in world coordinates - the viewport transform is already applied
+    const worldWidth = maxX - minX;
+    const worldHeight = maxY - minY;
+    const dimensionText = `${Math.round(worldWidth)} × ${Math.round(worldHeight)}`;
 
-    const screenX = screenTopLeft.x / scaleX;
-    const screenY = screenTopLeft.y / scaleY;
-    const screenWidth = (screenBottomRight.x - screenTopLeft.x) / scaleX;
+    // Scale UI elements inversely to zoom so they appear consistent size on screen
+    const uiScale = 1 / zoom;
 
-    // Draw dimension label above the selection
-    const worldWidth = Math.round(maxX - minX);
-    const worldHeight = Math.round(maxY - minY);
-    const dimensionText = `${worldWidth} × ${worldHeight}`;
-
-    ctx.font = '11px system-ui, -apple-system, sans-serif';
+    ctx.font = `${11 * uiScale}px system-ui, -apple-system, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
 
     const textMetrics = ctx.measureText(dimensionText);
-    const labelPadding = 4;
-    const labelHeight = 16;
+    const labelPadding = 4 * uiScale;
+    const labelHeight = 16 * uiScale;
     const labelWidth = textMetrics.width + labelPadding * 2;
-    const labelX = screenX + screenWidth / 2 - labelWidth / 2;
-    const labelY = screenY - 4 - labelHeight;
+    const labelX = minX + worldWidth / 2 - labelWidth / 2;
+    const labelY = minY - 4 * uiScale - labelHeight;
 
     // Label background
     ctx.fillStyle = '#0d99ff';
     ctx.beginPath();
-    ctx.roundRect(labelX, labelY, labelWidth, labelHeight, 3);
+    ctx.roundRect(labelX, labelY, labelWidth, labelHeight, 3 * uiScale);
     ctx.fill();
 
     // Label text
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(dimensionText, screenX + screenWidth / 2, screenY - 6);
+    ctx.fillText(dimensionText, minX + worldWidth / 2, minY - 6 * uiScale);
   }
 
   private drawPixelGrid(ctx: CanvasRenderingContext2D): void {
@@ -724,6 +758,12 @@ export class CanvasContainer {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
+    }
+
+    if (this.dprMediaQuery && this.dprChangeHandler) {
+      this.dprMediaQuery.removeEventListener('change', this.dprChangeHandler);
+      this.dprMediaQuery = null;
+      this.dprChangeHandler = null;
     }
 
     if (this.settingsHandler) {
