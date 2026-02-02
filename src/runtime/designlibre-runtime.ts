@@ -45,6 +45,8 @@ import { TrimTool, createTrimTool } from '@tools/modification/trim-tool';
 import { ExtendTool, createExtendTool } from '@tools/modification/extend-tool';
 import { FilletTool, createFilletTool } from '@tools/modification/fillet-tool';
 import { ChamferTool, createChamferTool } from '@tools/modification/chamfer-tool';
+import { InteractiveDivideTool, createInteractiveDivideTool } from '@tools/modification/interactive-divide-tool';
+import { extractCurveDataFromNode } from '@tools/modification/divide-tool';
 import { ConstructionLineTool, createConstructionLineTool } from '@tools/construction/construction-line-tool';
 import { ReferencePointTool, createReferencePointTool } from '@tools/construction/reference-point-tool';
 import { HatchTool, createHatchTool } from '@tools/annotation/hatch-tool';
@@ -232,6 +234,7 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
   private extendTool: ExtendTool | null = null;
   private filletTool: FilletTool | null = null;
   private chamferTool: ChamferTool | null = null;
+  private divideTool: InteractiveDivideTool | null = null;
   private constructionLineTool: ConstructionLineTool | null = null;
   private referencePointTool: ReferencePointTool | null = null;
   private hatchTool: HatchTool | null = null;
@@ -2302,6 +2305,96 @@ export class DesignLibreRuntime extends EventEmitter<RuntimeEvents> {
     this.extendTool = createExtendTool();
     this.filletTool = createFilletTool({ radius: 10 });
     this.chamferTool = createChamferTool({ distance1: 10, distance2: 10 });
+
+    // Divide tool
+    this.divideTool = createInteractiveDivideTool({ segments: 4 });
+    this.divideTool.setOnFindCurveAtPoint((point) => {
+      // Find divisible curves at the given point
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return null;
+
+      const childIds = this.sceneGraph.getChildIds(pageId);
+      for (const nodeId of childIds) {
+        const node = this.sceneGraph.getNode(nodeId);
+        if (!node) continue;
+
+        // Check if the node is a divisible type (vectors include all primitives like ellipse, line, etc.)
+        if (node.type === 'VECTOR') {
+          const props = node as unknown as Record<string, unknown>;
+          const extractProps: {
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+            startAngle?: number;
+            endAngle?: number;
+            points?: { x: number; y: number }[];
+          } = {
+            x: (props['x'] as number) ?? 0,
+            y: (props['y'] as number) ?? 0,
+            width: (props['width'] as number) ?? 0,
+            height: (props['height'] as number) ?? 0,
+          };
+          if (typeof props['startAngle'] === 'number') extractProps.startAngle = props['startAngle'];
+          if (typeof props['endAngle'] === 'number') extractProps.endAngle = props['endAngle'];
+          if (Array.isArray(props['points'])) extractProps.points = props['points'] as { x: number; y: number }[];
+          const curveData = extractCurveDataFromNode(node.type, extractProps);
+
+          if (curveData) {
+            // Simple hit test: check if point is within the node bounds
+            const bounds = this.sceneGraph.getWorldBounds(nodeId);
+            if (bounds) {
+              const margin = 10; // Hit test margin
+              if (
+                point.x >= bounds.x - margin &&
+                point.x <= bounds.x + bounds.width + margin &&
+                point.y >= bounds.y - margin &&
+                point.y <= bounds.y + bounds.height + margin
+              ) {
+                return { nodeId, curveData };
+              }
+            }
+          }
+        }
+      }
+      return null;
+    });
+    this.divideTool.setOnCreateMarker((point, size) => {
+      const pageId = this.getCurrentPageId();
+      if (!pageId) return '' as NodeId;
+
+      // Create a small circle marker at the division point using a vector
+      // Use cubic bezier approximation for circle (kappa constant)
+      const kappa = 0.5522847498;
+      const r = size / 2;
+      const k = r * kappa;
+      const commands: PathCommand[] = [
+        { type: 'M', x: r, y: 0 },
+        { type: 'C', x1: r, y1: k, x2: k, y2: r, x: 0, y: r },
+        { type: 'C', x1: -k, y1: r, x2: -r, y2: k, x: -r, y: 0 },
+        { type: 'C', x1: -r, y1: -k, x2: -k, y2: -r, x: 0, y: -r },
+        { type: 'C', x1: k, y1: -r, x2: r, y2: -k, x: r, y: 0 },
+        { type: 'Z' },
+      ];
+      const vectorPath: VectorPath = { windingRule: 'NONZERO', commands };
+
+      const nodeId = this.sceneGraph.createVector(pageId, {
+        name: 'Division Point',
+        x: point.x,
+        y: point.y,
+        width: size,
+        height: size,
+        vectorPaths: [vectorPath],
+        fills: [solidPaint(rgba(0.2, 0.5, 1, 1))], // Blue marker
+      });
+      this.recordNodeInsertion(nodeId, pageId, 'Create Division Marker');
+      return nodeId;
+    });
+    this.divideTool.setOnDivisionComplete((result) => {
+      if (result.success) {
+        this.renderer?.requestRender();
+      }
+    });
 
     // Construction Tools
     this.constructionLineTool = createConstructionLineTool();

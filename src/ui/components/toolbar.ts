@@ -169,6 +169,14 @@ const TOOL_ICONS: Record<string, string> = {
     <rect x="2" y="9" width="5" height="5" rx="1" opacity="0.7"/>
     <rect x="9" y="9" width="5" height="5" rx="1" opacity="0.4"/>
   </svg>`,
+  divide: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="9"/>
+    <circle cx="12" cy="3" r="1.5" fill="currentColor"/>
+    <circle cx="20.5" cy="8" r="1.5" fill="currentColor"/>
+    <circle cx="18" cy="18" r="1.5" fill="currentColor"/>
+    <circle cx="6" cy="18" r="1.5" fill="currentColor"/>
+    <circle cx="3.5" cy="8" r="1.5" fill="currentColor"/>
+  </svg>`,
 
   // Construction tools
   constructionLine: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -300,6 +308,7 @@ const MODIFICATION_TOOLS: ToolDefinition[] = [
   { id: 'chamfer', name: 'Chamfer', icon: TOOL_ICONS['chamfer']!, shortcut: 'Shift+C' },
   { id: 'mirror', name: 'Mirror', icon: TOOL_ICONS['mirror']!, shortcut: 'Ctrl+M' },
   { id: 'array', name: 'Array', icon: TOOL_ICONS['array']!, shortcut: 'Ctrl+Shift+A' },
+  { id: 'divide', name: 'Divide', icon: TOOL_ICONS['divide']!, shortcut: 'Shift+D' },
 ];
 
 /**

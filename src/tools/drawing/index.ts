@@ -33,3 +33,12 @@ export type { ImageToolOptions, ImagePlacementData } from './image-tool';
 
 export { TextTool, createTextTool } from './text-tool';
 export type { TextToolOptions } from './text-tool';
+
+export { PolylineTool, createPolylineTool } from './polyline-tool';
+export type { PolylineToolOptions } from './polyline-tool';
+
+export { ArcTool, createArcTool } from './arc-tool';
+export type { ArcToolOptions, ArcMode } from './arc-tool';
+
+export { CircleTool, createCircleTool } from './circle-tool';
+export type { CircleToolOptions, CircleMode } from './circle-tool';

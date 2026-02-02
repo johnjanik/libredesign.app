@@ -39,3 +39,31 @@ export type {
   DetectedBoundary,
   BoundaryDetectionConfig,
 } from './boundary-detection';
+
+// Circular division and patterns
+export {
+  divideCircle,
+  divideArc,
+  divideLine,
+  dividePolyline,
+  divideParametricCurve,
+  divideCurve,
+  divideCurveByLength,
+  circularPattern,
+  circularPatternPoints,
+  createPathFromDivision,
+  createMarkersFromDivision,
+  DivisionError,
+} from './circular-division';
+export type {
+  Circle,
+  LineSegment,
+  Arc,
+  ParametricCurve,
+  Curve,
+  DivisionResult,
+  DivisionOptions,
+  CircularPatternResult,
+  CircularPatternOptions,
+  PositionedElement,
+} from './circular-division';

@@ -372,12 +372,16 @@ export class TextEditTool extends BaseTool {
 
     ctx.save();
 
-    // Get text node bounds
-    const nodeWithPos = node as { x?: number; y?: number; width?: number; height?: number };
-    const nodeX = nodeWithPos.x ?? 0;
-    const nodeY = nodeWithPos.y ?? 0;
-    const nodeWidth = nodeWithPos.width ?? 100;
-    const nodeHeight = nodeWithPos.height ?? 20;
+    // Get text node world bounds (accounts for parent transforms)
+    const worldBounds = context.sceneGraph.getWorldBounds(this.editingNodeId);
+    if (!worldBounds) {
+      ctx.restore();
+      return;
+    }
+    const nodeX = worldBounds.x;
+    const nodeY = worldBounds.y;
+    const nodeWidth = worldBounds.width;
+    const nodeHeight = worldBounds.height;
 
     // Draw bounding box outline
     const lineWidth = 1 / viewport.getZoom();
@@ -469,10 +473,7 @@ export class TextEditTool extends BaseTool {
       let cursorY: number;
       let cursorHeight: number;
 
-      // Get text node position for cursor placement
-      const nodeWithPos = node as { x?: number; y?: number; width?: number; height?: number };
-      const nodeX = nodeWithPos.x ?? 0;
-      const nodeY = nodeWithPos.y ?? 0;
+      // Use world coordinates (nodeX, nodeY already set from worldBounds above)
       const defaultFontSize = 16; // Default font size for cursor height
 
       if (this.layoutQuery) {

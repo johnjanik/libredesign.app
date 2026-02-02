@@ -8,12 +8,20 @@
  * - Click on first point to close path
  * - Escape to finish open path
  * - Backspace to remove last point
+ * - Object snapping (when snap callback provided)
  */
 
 import type { Point, VectorPath } from '@core/types/geometry';
 import type { NodeId } from '@core/types/common';
 import { BaseTool, type ToolContext, type PointerEventData, type KeyEventData, type ToolCursor } from '../base/tool';
 import { PathBuilder, createPathBuilder } from './path-builder';
+
+/** Snap result from snap callback */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
 
 /**
  * Pen tool state
@@ -58,9 +66,14 @@ export class PenTool extends BaseTool {
   private handlePosition: Point | null = null;
   private createdNodeId: NodeId | null = null;
 
+  // Snap state
+  private currentSnap: SnapResult | null = null;
+
   // Callbacks
   private onPathComplete?: (path: VectorPath) => NodeId | null;
   private onPreviewUpdate?: () => void;
+  private onFindSnap?: (x: number, y: number) => SnapResult | null;
+  private onRenderSnap?: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void;
 
   constructor(options: PenToolOptions = {}) {
     super();
@@ -80,6 +93,20 @@ export class PenTool extends BaseTool {
    */
   setOnPreviewUpdate(callback: () => void): void {
     this.onPreviewUpdate = callback;
+  }
+
+  /**
+   * Set callback for finding snap points.
+   */
+  setOnFindSnap(callback: (x: number, y: number) => SnapResult | null): void {
+    this.onFindSnap = callback;
+  }
+
+  /**
+   * Set callback for rendering snap indicators.
+   */
+  setOnRenderSnap(callback: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void): void {
+    this.onRenderSnap = callback;
   }
 
   /**
@@ -132,7 +159,9 @@ export class PenTool extends BaseTool {
   }
 
   override onPointerDown(event: PointerEventData, context: ToolContext): boolean {
-    const worldPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    const worldPoint = { x: snapPoint.x, y: snapPoint.y };
 
     // Check if clicking near first anchor to close
     if (this.pathBuilder.anchorCount >= 2) {
@@ -152,7 +181,13 @@ export class PenTool extends BaseTool {
   }
 
   override onPointerMove(event: PointerEventData, context: ToolContext): void {
-    const worldPoint = { x: event.worldX, y: event.worldY };
+    // Find snap point
+    if (this.onFindSnap) {
+      this.currentSnap = this.onFindSnap(event.worldX, event.worldY);
+    }
+
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    const worldPoint = { x: snapPoint.x, y: snapPoint.y };
 
     if (this.state === 'PLACING_ANCHOR' && this.anchorPosition) {
       // Check if dragging far enough to create handles
@@ -386,6 +421,11 @@ export class PenTool extends BaseTool {
     }
 
     ctx.restore();
+
+    // Draw snap indicator
+    if (this.currentSnap && this.onRenderSnap) {
+      this.onRenderSnap(ctx, this.currentSnap);
+    }
   }
 
   /**
@@ -425,6 +465,7 @@ export class PenTool extends BaseTool {
     this.anchorPosition = null;
     this.handlePosition = null;
     this.createdNodeId = null;
+    this.currentSnap = null;
   }
 
   /**

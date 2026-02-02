@@ -32,12 +32,29 @@ export interface ParsedPropValue {
   rawExpression: string;
 }
 
+/** Gradient direction for Tailwind bg-gradient-to-* classes */
+export type GradientDirection = 't' | 'r' | 'b' | 'l' | 'tr' | 'br' | 'bl' | 'tl';
+
+/** Parsed gradient for Tailwind from/via/to classes */
+export interface ParsedGradient {
+  direction: GradientDirection;
+  fromColor?: string;
+  fromOpacity?: number;
+  viaColor?: string;
+  viaOpacity?: number;
+  toColor?: string;
+  toOpacity?: number;
+}
+
 /** Parsed style object */
 export interface ParsedStyle {
   width?: number | string;
   height?: number | string;
   backgroundColor?: string;
+  backgroundOpacity?: number;
+  gradient?: ParsedGradient;
   color?: string;
+  textOpacity?: number;
   fontSize?: number | string;
   fontWeight?: string | number;
   padding?: number | string;
@@ -50,6 +67,7 @@ export interface ParsedStyle {
   border?: string;
   borderWidth?: number | string;
   borderColor?: string;
+  borderOpacity?: number;
   display?: string;
   flexDirection?: string;
   justifyContent?: string;

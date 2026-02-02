@@ -80,6 +80,18 @@ export type {
   ParsedStyle,
 } from './react';
 
+// Project Import (folder import)
+export {
+  ProjectImporter,
+  createProjectImporter,
+} from './project';
+
+export type {
+  ProjectImportOptions,
+  ProjectImportResult,
+  ImportedFileInfo,
+} from './project';
+
 // DXF Import (CAD format)
 export { DXFParser, parseDXF } from './dxf-parser';
 export { DXFImporter, importDXF } from './dxf-importer';

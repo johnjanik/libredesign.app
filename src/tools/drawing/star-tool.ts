@@ -8,11 +8,19 @@
  * - Shift to constrain rotation to 15-degree increments
  * - Alt to draw from center
  * - Arrow keys to adjust point count while drawing
+ * - Object snapping (when snap callback provided)
  */
 
 import type { Point, Rect } from '@core/types/geometry';
 import type { NodeId } from '@core/types/common';
 import { BaseTool, type ToolContext, type PointerEventData, type KeyEventData, type ToolCursor } from '../base/tool';
+
+/** Snap result from snap callback */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
 
 /**
  * Star tool options
@@ -81,9 +89,14 @@ export class StarTool extends BaseTool {
   private currentRotation = 0;
   private createdNodeId: NodeId | null = null;
 
+  // Snap state
+  private currentSnap: SnapResult | null = null;
+
   // Callbacks
   private onStarComplete?: (star: StarData) => NodeId | null;
   private onPreviewUpdate?: () => void;
+  private onFindSnap?: (x: number, y: number) => SnapResult | null;
+  private onRenderSnap?: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void;
 
   constructor(options: StarToolOptions = {}) {
     super();
@@ -104,6 +117,20 @@ export class StarTool extends BaseTool {
    */
   setOnPreviewUpdate(callback: () => void): void {
     this.onPreviewUpdate = callback;
+  }
+
+  /**
+   * Set callback for finding snap points.
+   */
+  setOnFindSnap(callback: (x: number, y: number) => SnapResult | null): void {
+    this.onFindSnap = callback;
+  }
+
+  /**
+   * Set callback for rendering snap indicators.
+   */
+  setOnRenderSnap(callback: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void): void {
+    this.onRenderSnap = callback;
   }
 
   /**
@@ -165,7 +192,9 @@ export class StarTool extends BaseTool {
   }
 
   override onPointerDown(event: PointerEventData, _context: ToolContext): boolean {
-    this.startPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.startPoint = { x: snapPoint.x, y: snapPoint.y };
     this.currentPoint = this.startPoint;
     this.constrainRotation = event.shiftKey;
     this.drawFromCenter = event.altKey;
@@ -174,9 +203,16 @@ export class StarTool extends BaseTool {
   }
 
   override onPointerMove(event: PointerEventData, _context: ToolContext): void {
+    // Find snap point
+    if (this.onFindSnap) {
+      this.currentSnap = this.onFindSnap(event.worldX, event.worldY);
+    }
+
     if (!this.startPoint) return;
 
-    this.currentPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.currentPoint = { x: snapPoint.x, y: snapPoint.y };
     this.constrainRotation = event.shiftKey;
     this.drawFromCenter = event.altKey;
 
@@ -197,7 +233,9 @@ export class StarTool extends BaseTool {
   override onPointerUp(event: PointerEventData, context: ToolContext): void {
     if (!this.startPoint) return;
 
-    this.currentPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.currentPoint = { x: snapPoint.x, y: snapPoint.y };
     this.constrainRotation = event.shiftKey;
     this.drawFromCenter = event.altKey;
 
@@ -211,6 +249,7 @@ export class StarTool extends BaseTool {
       }
     }
 
+    this.currentSnap = null;
     this.reset();
     this.onPreviewUpdate?.();
   }
@@ -323,6 +362,11 @@ export class StarTool extends BaseTool {
     );
 
     ctx.restore();
+
+    // Draw snap indicator
+    if (this.currentSnap && this.onRenderSnap) {
+      this.onRenderSnap(ctx, this.currentSnap);
+    }
   }
 
   /**

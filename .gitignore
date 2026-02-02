@@ -1,9 +1,23 @@
 # Dependencies
 node_modules/
 
+# SSH keys and secrets
+*.pem
+*.key
+pzkey*
+*.pub
+!*.public
+
+# Business and pricing documents (keep private)
+business_model/
+docs/*pricing*
+docs/*business*
+
 # Build output
 dist/
 *.tsbuildinfo
+deploy/designlibre-deploy*/
+deploy/*.tar.gz
 
 # IDE
 .idea/
@@ -23,6 +37,13 @@ Thumbs.db
 *.toc
 *.aux
 npm-debug.log*
+
+# Personal notes
+thingstodo*.md
+todo*.md
+
+# Reference PDFs (potential copyright)
+docs/*.pdf
 
 # Testing
 coverage/

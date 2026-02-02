@@ -259,32 +259,49 @@ export function reorderNode(
 
 /**
  * Duplicate a node and all its descendants.
+ * Returns the duplicated root node, or null if duplication failed.
  */
 export function duplicateNode(
   registry: NodeRegistry,
   nodeId: NodeId,
-  idGenerator: () => NodeId
+  idGenerator: () => NodeId,
+  offset: { x?: number; y?: number } = {}
 ): NodeData | null {
   const original = registry.getNode(nodeId);
   if (!original || !original.parentId) {
     return null;
   }
 
+  const offsetX = offset.x ?? 10;
+  const offsetY = offset.y ?? 10;
+  const originalId = original.id;
+
   // Create a mapping from old IDs to new IDs
   const idMap = new Map<NodeId, NodeId>();
 
-  // Clone the node tree
-  function cloneTree(node: NodeData, newParentId: NodeId | null): NodeData {
-    const newId = idGenerator();
-    idMap.set(node.id, newId);
-
-    // Clone children first
-    const newChildIds: NodeId[] = [];
+  // First pass: generate new IDs for all nodes
+  function generateIds(node: NodeData): void {
+    idMap.set(node.id, idGenerator());
     for (const childId of node.childIds) {
       const child = registry.getNode(childId);
       if (child) {
-        const clonedChild = cloneTree(child, newId);
-        newChildIds.push(clonedChild.id);
+        generateIds(child);
+      }
+    }
+  }
+  generateIds(original);
+
+  // Second pass: clone and insert nodes
+  function cloneAndInsert(node: NodeData, newParentId: NodeId, position: number): NodeData {
+    const newId = idMap.get(node.id)!;
+    const isRoot = node.id === originalId;
+
+    // Get new child IDs from the map
+    const newChildIds: NodeId[] = [];
+    for (const childId of node.childIds) {
+      const newChildId = idMap.get(childId);
+      if (newChildId) {
+        newChildIds.push(newChildId);
       }
     }
 
@@ -292,25 +309,40 @@ export function duplicateNode(
     const cloned: NodeData = {
       ...node,
       id: newId,
-      name: node.name + ' Copy',
+      name: isRoot ? node.name + ' Copy' : node.name,
       parentId: newParentId,
-      childIds: newChildIds,
+      childIds: [], // Will be populated as children are inserted
     } as NodeData;
+
+    // Apply offset to root node position
+    if (isRoot && 'x' in cloned && 'y' in cloned) {
+      const c = cloned as { x: number; y: number };
+      c.x += offsetX;
+      c.y += offsetY;
+    }
+
+    // Insert the node
+    insertNode(registry, cloned, newParentId, position);
+
+    // Recursively insert children
+    for (let i = 0; i < node.childIds.length; i++) {
+      const childId = node.childIds[i];
+      const child = registry.getNode(childId!);
+      if (child) {
+        cloneAndInsert(child, newId, i);
+      }
+    }
 
     return cloned;
   }
-
-  // Clone the tree starting from the original
-  const cloned = cloneTree(original, original.parentId);
 
   // Find the position after the original
   const siblingIds = registry.getChildIds(original.parentId);
   const originalIndex = siblingIds.indexOf(nodeId);
   const insertPosition = originalIndex >= 0 ? originalIndex + 1 : siblingIds.length;
 
-  // Note: This is a simplified implementation that only duplicates the root node.
-  // A full implementation would recursively insert all children.
-  insertNode(registry, { ...cloned, childIds: [] } as NodeData, original.parentId, insertPosition);
+  // Clone and insert the entire tree
+  const cloned = cloneAndInsert(original, original.parentId, insertPosition);
 
   return cloned;
 }

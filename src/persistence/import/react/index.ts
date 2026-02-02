@@ -8,6 +8,8 @@ export type {
   ParsedJSXElement,
   ParsedPropValue,
   ParsedStyle,
+  ParsedGradient,
+  GradientDirection,
   ReactImportOptions,
   ReactImportResult,
 } from './types';

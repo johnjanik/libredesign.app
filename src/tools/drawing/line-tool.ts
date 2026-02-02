@@ -4,11 +4,21 @@
  * Creates straight lines by click-and-drag.
  * Supports:
  * - Shift to constrain to 45° angles
+ * - Object snapping (when snap callback provided)
  */
 
 import type { Point, VectorPath, PathCommand } from '@core/types/geometry';
 import type { NodeId } from '@core/types/common';
 import { BaseTool, type ToolContext, type PointerEventData, type KeyEventData, type ToolCursor } from '../base/tool';
+
+/**
+ * Snap result from snap callback
+ */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
 
 /**
  * Line tool options
@@ -48,10 +58,13 @@ export class LineTool extends BaseTool {
   private endPoint: Point | null = null;
   private constrainAngle = false;
   private createdNodeId: NodeId | null = null;
+  private currentSnap: SnapResult | null = null;
 
   // Callbacks
   private onLineComplete?: (path: VectorPath, start: Point, end: Point) => NodeId | null;
   private onPreviewUpdate?: () => void;
+  private onFindSnap?: (x: number, y: number) => SnapResult | null;
+  private onRenderSnap?: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void;
 
   constructor(options: LineToolOptions = {}) {
     super();
@@ -70,6 +83,20 @@ export class LineTool extends BaseTool {
    */
   setOnPreviewUpdate(callback: () => void): void {
     this.onPreviewUpdate = callback;
+  }
+
+  /**
+   * Set callback for finding snap points.
+   */
+  setOnFindSnap(callback: (x: number, y: number) => SnapResult | null): void {
+    this.onFindSnap = callback;
+  }
+
+  /**
+   * Set callback for rendering snap indicators.
+   */
+  setOnRenderSnap(callback: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void): void {
+    this.onRenderSnap = callback;
   }
 
   /**
@@ -101,25 +128,54 @@ export class LineTool extends BaseTool {
   }
 
   override onPointerDown(event: PointerEventData, _context: ToolContext): boolean {
-    this.startPoint = { x: event.worldX, y: event.worldY };
-    this.endPoint = this.startPoint;
+    let point = { x: event.worldX, y: event.worldY };
     this.constrainAngle = event.shiftKey;
+
+    // Apply snapping for start point (unless angle constrain is active)
+    if (!this.constrainAngle && this.currentSnap) {
+      point = { x: this.currentSnap.x, y: this.currentSnap.y };
+    }
+
+    this.startPoint = point;
+    this.endPoint = this.startPoint;
     return true;
   }
 
   override onPointerMove(event: PointerEventData, _context: ToolContext): void {
-    if (!this.startPoint) return;
-
-    this.endPoint = { x: event.worldX, y: event.worldY };
+    const point = { x: event.worldX, y: event.worldY };
     this.constrainAngle = event.shiftKey;
+
+    // Find snap point (only when not constraining angle)
+    if (!this.constrainAngle && this.onFindSnap) {
+      this.currentSnap = this.onFindSnap(event.worldX, event.worldY);
+    } else {
+      this.currentSnap = null;
+    }
+
+    if (this.startPoint) {
+      // Apply snapping for end point
+      if (!this.constrainAngle && this.currentSnap) {
+        this.endPoint = { x: this.currentSnap.x, y: this.currentSnap.y };
+      } else {
+        this.endPoint = point;
+      }
+    }
+
     this.onPreviewUpdate?.();
   }
 
   override onPointerUp(event: PointerEventData, context: ToolContext): void {
     if (!this.startPoint) return;
 
-    this.endPoint = { x: event.worldX, y: event.worldY };
+    let endPoint = { x: event.worldX, y: event.worldY };
     this.constrainAngle = event.shiftKey;
+
+    // Apply snapping for end point
+    if (!this.constrainAngle && this.currentSnap) {
+      endPoint = { x: this.currentSnap.x, y: this.currentSnap.y };
+    }
+
+    this.endPoint = endPoint;
 
     const finalEnd = this.constrainAngle
       ? this.constrainEndPoint(this.startPoint, this.endPoint)
@@ -222,6 +278,11 @@ export class LineTool extends BaseTool {
       midX + offsetX,
       midY + offsetY
     );
+
+    // Render snap indicator
+    if (this.currentSnap && this.onRenderSnap) {
+      this.onRenderSnap(ctx, this.currentSnap);
+    }
 
     ctx.restore();
   }

@@ -5,11 +5,19 @@
  * Supports:
  * - Single click to create text at that position
  * - Click and drag to create text box with specific width
+ * - Object snapping (when snap callback provided)
  */
 
 import type { Point, Rect } from '@core/types/geometry';
 import type { NodeId } from '@core/types/common';
 import { BaseTool, type ToolContext, type PointerEventData, type ToolCursor } from '../base/tool';
+
+/** Snap result from snap callback */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
 
 /**
  * Text tool options
@@ -47,9 +55,13 @@ export class TextTool extends BaseTool {
   private currentPoint: Point | null = null;
   protected override isDragging = false;
 
+  // Snap state
+  private currentSnap: SnapResult | null = null;
+
   // Callbacks
   private onTextComplete?: (position: Point, width?: number) => NodeId | null;
   private onPreviewUpdate?: () => void;
+  private onFindSnap?: (x: number, y: number) => SnapResult | null;
 
   constructor(options: TextToolOptions = {}) {
     super();
@@ -69,6 +81,13 @@ export class TextTool extends BaseTool {
    */
   setOnPreviewUpdate(callback: () => void): void {
     this.onPreviewUpdate = callback;
+  }
+
+  /**
+   * Set callback for finding snap points.
+   */
+  setOnFindSnap(callback: (x: number, y: number) => SnapResult | null): void {
+    this.onFindSnap = callback;
   }
 
   /**
@@ -131,16 +150,25 @@ export class TextTool extends BaseTool {
   }
 
   override onPointerDown(event: PointerEventData, _context: ToolContext): boolean {
-    this.startPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.startPoint = { x: snapPoint.x, y: snapPoint.y };
     this.currentPoint = this.startPoint;
     this.isDragging = false;
     return true;
   }
 
   override onPointerMove(event: PointerEventData, _context: ToolContext): void {
+    // Find snap point
+    if (this.onFindSnap) {
+      this.currentSnap = this.onFindSnap(event.worldX, event.worldY);
+    }
+
     if (!this.startPoint) return;
 
-    this.currentPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.currentPoint = { x: snapPoint.x, y: snapPoint.y };
 
     // Check if we've dragged far enough to consider it a drag operation
     const dx = this.currentPoint.x - this.startPoint.x;
@@ -168,6 +196,7 @@ export class TextTool extends BaseTool {
       this.onTextComplete?.(this.startPoint);
     }
 
+    this.currentSnap = null;
     this.reset();
   }
 

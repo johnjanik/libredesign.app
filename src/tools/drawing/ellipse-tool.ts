@@ -5,11 +5,19 @@
  * Supports:
  * - Shift to constrain to circle
  * - Alt to draw from center
+ * - Object snapping (when snap callback provided)
  */
 
 import type { Point, Rect, VectorPath, PathCommand } from '@core/types/geometry';
 import type { NodeId } from '@core/types/common';
 import { BaseTool, type ToolContext, type PointerEventData, type KeyEventData, type ToolCursor } from '../base/tool';
+
+/** Snap result from snap callback */
+export interface SnapResult {
+  readonly x: number;
+  readonly y: number;
+  readonly type: string;
+}
 
 /**
  * Ellipse tool options
@@ -46,9 +54,14 @@ export class EllipseTool extends BaseTool {
   private drawFromCenter = false;
   private createdNodeId: NodeId | null = null;
 
+  // Snap state
+  private currentSnap: SnapResult | null = null;
+
   // Callbacks
   private onEllipseComplete?: (path: VectorPath, bounds: Rect) => NodeId | null;
   private onPreviewUpdate?: () => void;
+  private onFindSnap?: (x: number, y: number) => SnapResult | null;
+  private onRenderSnap?: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void;
 
   constructor(options: EllipseToolOptions = {}) {
     super();
@@ -67,6 +80,20 @@ export class EllipseTool extends BaseTool {
    */
   setOnPreviewUpdate(callback: () => void): void {
     this.onPreviewUpdate = callback;
+  }
+
+  /**
+   * Set callback for finding snap points.
+   */
+  setOnFindSnap(callback: (x: number, y: number) => SnapResult | null): void {
+    this.onFindSnap = callback;
+  }
+
+  /**
+   * Set callback for rendering snap indicators.
+   */
+  setOnRenderSnap(callback: (ctx: CanvasRenderingContext2D, snap: SnapResult | null) => void): void {
+    this.onRenderSnap = callback;
   }
 
   /**
@@ -95,7 +122,9 @@ export class EllipseTool extends BaseTool {
   }
 
   override onPointerDown(event: PointerEventData, _context: ToolContext): boolean {
-    this.startPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.startPoint = { x: snapPoint.x, y: snapPoint.y };
     this.currentPoint = this.startPoint;
     this.constrainCircle = event.shiftKey;
     this.drawFromCenter = event.altKey;
@@ -103,9 +132,16 @@ export class EllipseTool extends BaseTool {
   }
 
   override onPointerMove(event: PointerEventData, _context: ToolContext): void {
+    // Find snap point
+    if (this.onFindSnap) {
+      this.currentSnap = this.onFindSnap(event.worldX, event.worldY);
+    }
+
     if (!this.startPoint) return;
 
-    this.currentPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.currentPoint = { x: snapPoint.x, y: snapPoint.y };
     this.constrainCircle = event.shiftKey;
     this.drawFromCenter = event.altKey;
     this.onPreviewUpdate?.();
@@ -114,7 +150,9 @@ export class EllipseTool extends BaseTool {
   override onPointerUp(event: PointerEventData, context: ToolContext): void {
     if (!this.startPoint) return;
 
-    this.currentPoint = { x: event.worldX, y: event.worldY };
+    // Use snap point if available
+    const snapPoint = this.currentSnap ?? { x: event.worldX, y: event.worldY };
+    this.currentPoint = { x: snapPoint.x, y: snapPoint.y };
     this.constrainCircle = event.shiftKey;
     this.drawFromCenter = event.altKey;
 
@@ -129,6 +167,7 @@ export class EllipseTool extends BaseTool {
       }
     }
 
+    this.currentSnap = null;
     this.reset();
     this.onPreviewUpdate?.();
   }
@@ -204,6 +243,11 @@ export class EllipseTool extends BaseTool {
     );
 
     ctx.restore();
+
+    // Draw snap indicator
+    if (this.currentSnap && this.onRenderSnap) {
+      this.onRenderSnap(ctx, this.currentSnap);
+    }
   }
 
   /**

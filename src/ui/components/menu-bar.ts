@@ -4,9 +4,17 @@
  */
 
 import type { DesignLibreRuntime } from '@runtime/designlibre-runtime';
+import type { NodeId } from '@core/types/common';
 import { MenuDefinition, separator, menuItem, submenuItem } from './menu-types';
 import { MenuDropdown } from './menu-dropdown';
 import { getSetting, setSetting } from '@core/settings/app-settings';
+import { DesignLibreBundler } from '@persistence/import/designlibre-bundler';
+import { ProjectImporter } from '@persistence/import/project';
+import { SeedWriter } from '@persistence/seed/seed-writer';
+import { SeedReader } from '@persistence/seed/seed-reader';
+import { seedToNode } from '@persistence/seed/converters/node-converter';
+import type { SeedNode } from '@persistence/seed/seed-types';
+import { getRecentFilesManager, type RecentFileEntry } from './recent-files-manager';
 
 export interface MenuBarOptions {
   runtime: DesignLibreRuntime;
@@ -23,6 +31,9 @@ export class MenuBar {
   private activeDropdown: MenuDropdown | null = null;
   private activeMenuId: string | null = null;
   private menuDefinitions: MenuDefinition[] = [];
+
+  // File System Access API handle for current file
+  private currentFileHandle: FileSystemFileHandle | null = null;
 
   constructor(options: MenuBarOptions) {
     this.runtime = options.runtime;
@@ -159,9 +170,11 @@ export class MenuBar {
     // Check if click is inside menu bar
     if (this.menuBarElement?.contains(target)) return;
 
-    // Check if click is inside dropdown (dropdown handles its own clicks)
-    const dropdown = document.querySelector('.menu-dropdown');
-    if (dropdown?.contains(target)) return;
+    // Check if click is inside any dropdown (including submenus)
+    const dropdowns = document.querySelectorAll('.menu-dropdown');
+    for (const dropdown of dropdowns) {
+      if (dropdown.contains(target)) return;
+    }
 
     document.removeEventListener('mousedown', this.handleClickOutside);
     this.close();
@@ -232,15 +245,13 @@ export class MenuBar {
           menuItem('template-presentation', 'Presentation'),
           menuItem('template-social', 'Social Media'),
         ]),
-        menuItem('open', 'Open', { accelerator: 'Ctrl+O', ellipsis: true }),
-        submenuItem('open-recent', 'Open Recent', [
-          menuItem('recent-none', 'No Recent Files', { disabled: true }),
-        ]),
+        menuItem('open', 'Open', { accelerator: 'Ctrl+O', ellipsis: true, action: () => this.handleOpenFile() }),
+        submenuItem('open-recent', 'Open Recent', this.buildRecentFilesSubmenu()),
         separator(),
-        menuItem('save', 'Save', { accelerator: 'Ctrl+S', action: () => this.runtime.saveDocument() }),
-        menuItem('save-as', 'Save As', { accelerator: 'Ctrl+Shift+S', ellipsis: true }),
-        menuItem('save-copy', 'Save a Copy', { ellipsis: true }),
-        menuItem('save-all', 'Save All'),
+        menuItem('save', 'Save', { accelerator: 'Ctrl+S', action: () => this.handleSave() }),
+        menuItem('save-as', 'Save As', { accelerator: 'Ctrl+Shift+S', ellipsis: true, action: () => this.handleSaveAs() }),
+        menuItem('save-copy', 'Save a Copy', { ellipsis: true, action: () => this.handleSaveCopy() }),
+        menuItem('save-all', 'Save All', { action: () => this.handleSaveAll() }),
         separator(),
         menuItem('revert', 'Revert', { disabled: true }),
         submenuItem('version-history', 'Version History', [
@@ -254,6 +265,8 @@ export class MenuBar {
           menuItem('import-image', 'Image'),
           menuItem('import-figma', 'Figma File', { ellipsis: true }),
           menuItem('import-sketch', 'Sketch File', { ellipsis: true }),
+          separator(),
+          menuItem('import-react-project', 'React Project', { ellipsis: true, action: () => this.handleImportReactProject() }),
         ]),
         submenuItem('export', 'Export', [
           menuItem('export-png', 'PNG', { accelerator: 'Ctrl+Shift+E' }),
@@ -621,6 +634,568 @@ export class MenuBar {
       ],
     };
   }
+
+  // ============================================================================
+  // Recent Files
+  // ============================================================================
+
+  /**
+   * Build the recent files submenu items.
+   */
+  private buildRecentFilesSubmenu(): ReturnType<typeof menuItem>[] {
+    const recentFilesManager = getRecentFilesManager();
+    const recentFiles = recentFilesManager.getRecentFiles();
+
+    if (recentFiles.length === 0) {
+      return [
+        menuItem('recent-none', 'No Recent Files', { disabled: true }),
+      ];
+    }
+
+    const items: ReturnType<typeof menuItem>[] = [];
+
+    // Add recent file entries
+    for (let i = 0; i < recentFiles.length; i++) {
+      const entry = recentFiles[i]!;
+      items.push(
+        menuItem(`recent-${i}`, entry.name, {
+          action: () => this.openRecentFile(entry),
+        })
+      );
+    }
+
+    // Add separator and clear option
+    items.push(separator());
+    items.push(
+      menuItem('recent-clear', 'Clear Recent Files', {
+        action: () => this.clearRecentFiles(),
+      })
+    );
+
+    return items;
+  }
+
+  /**
+   * Open a file from the recent files list.
+   */
+  private async openRecentFile(entry: RecentFileEntry): Promise<void> {
+    try {
+      // We need to prompt the user to select the file again
+      // since we can't persist file handles across sessions in most browsers
+      if ('showOpenFilePicker' in window) {
+        const handles = await (window as unknown as { showOpenFilePicker: (options: FilePickerOptions & { multiple?: boolean }) => Promise<FileSystemFileHandle[]> }).showOpenFilePicker({
+          types: [
+            {
+              description: entry.format === 'seed' ? 'Seed Document' : 'DesignLibre Document',
+              accept: entry.format === 'seed'
+                ? { 'application/seed': ['.seed'] }
+                : { 'application/designlibre': ['.designlibre'] },
+            },
+          ],
+        });
+
+        const handle = handles[0];
+        if (!handle) {
+          return;
+        }
+
+        const file = await handle.getFile();
+        await this.loadFile(file);
+
+        // Update recent files and store handle
+        this.trackRecentFile(file.name);
+        this.currentFileHandle = handle;
+        console.log(`Opened recent file: ${file.name}`);
+      } else {
+        // Fall back to input element
+        this.openFileWithInput();
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        return;
+      }
+      console.error('Failed to open recent file:', error);
+
+      // Remove from recent files if it can't be opened
+      const recentFilesManager = getRecentFilesManager();
+      recentFilesManager.removeRecentFile(entry.name);
+
+      alert(`Failed to open file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Track a file in the recent files list.
+   */
+  private trackRecentFile(name: string, path?: string): void {
+    const recentFilesManager = getRecentFilesManager();
+    recentFilesManager.addRecentFile(name, path);
+  }
+
+  /**
+   * Clear all recent files.
+   */
+  private clearRecentFiles(): void {
+    const recentFilesManager = getRecentFilesManager();
+    recentFilesManager.clearRecentFiles();
+    console.log('Recent files cleared');
+  }
+
+  // ============================================================================
+  // File Handlers
+  // ============================================================================
+
+  /**
+   * Handle File -> Open
+   */
+  private async handleOpenFile(): Promise<void> {
+    try {
+      // Check if File System Access API is available
+      if ('showOpenFilePicker' in window) {
+        const handles = await (window as unknown as { showOpenFilePicker: (options: FilePickerOptions & { multiple?: boolean }) => Promise<FileSystemFileHandle[]> }).showOpenFilePicker({
+          types: [
+            {
+              description: 'DesignLibre Document',
+              accept: { 'application/designlibre': ['.designlibre'] },
+            },
+            {
+              description: 'Seed Document',
+              accept: { 'application/seed': ['.seed'] },
+            },
+          ],
+        });
+
+        const handle = handles[0];
+        if (!handle) {
+          return;
+        }
+
+        const file = await handle.getFile();
+        await this.loadFile(file);
+
+        // Store the file handle for save operations
+        this.currentFileHandle = handle;
+
+        // Track in recent files
+        this.trackRecentFile(file.name);
+        console.log(`Opened file: ${file.name}`);
+      } else {
+        // Fall back to input element for browsers without FSAA
+        this.openFileWithInput();
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled - not an error
+        return;
+      }
+      console.error('Failed to open file:', error);
+      alert(`Failed to open file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Open file using traditional input element (fallback for browsers without FSAA).
+   */
+  private openFileWithInput(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.designlibre,.seed';
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        input.remove();
+        return;
+      }
+
+      try {
+        await this.loadFile(file);
+
+        // Track in recent files
+        this.trackRecentFile(file.name);
+
+        // Clear file handle since we used input element
+        this.currentFileHandle = null;
+        console.log(`Opened file: ${file.name}`);
+      } catch (error) {
+        console.error('Failed to open file:', error);
+        alert(`Failed to open file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      input.remove();
+    });
+
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  /**
+   * Load a file into the scene graph.
+   */
+  private async loadFile(file: File): Promise<void> {
+    const filename = file.name.toLowerCase();
+    const sceneGraph = this.runtime.getSceneGraph();
+
+    if (filename.endsWith('.designlibre')) {
+      // Use bundler for .designlibre files
+      const bundler = new DesignLibreBundler(sceneGraph);
+      const result = await bundler.import(file);
+      bundler.apply(result);
+      console.log(`Loaded ${result.document.nodes.length} nodes from .designlibre file`);
+    } else if (filename.endsWith('.seed')) {
+      // Use SeedReader for .seed files
+      const reader = new SeedReader();
+      const archive = await reader.read(file);
+      await this.applySeedArchive(archive);
+      console.log(`Loaded ${archive.pages.size} pages from .seed file`);
+    } else {
+      throw new Error(`Unsupported file format: ${file.name}`);
+    }
+  }
+
+  /**
+   * Apply a seed archive to the scene graph.
+   */
+  private async applySeedArchive(archive: Awaited<ReturnType<SeedReader['read']>>): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+
+    // Get or verify document exists
+    const doc = sceneGraph.getDocument();
+    if (!doc) {
+      throw new Error('No document in scene graph to apply archive to');
+    }
+
+    // Update document name
+    sceneGraph.updateNode(doc.id, { name: archive.document.name });
+
+    // Clear existing pages
+    const existingPageIds = sceneGraph.getChildIds(doc.id);
+    for (const existingPageId of existingPageIds) {
+      sceneGraph.deleteNode(existingPageId);
+    }
+
+    // Import pages
+    for (const [, page] of archive.pages) {
+      // Create page node with correct argument order: (type, parentId, position, options)
+      const pageOptions = {
+        name: page.name,
+        backgroundColor: page.backgroundColor,
+      };
+      const newPageId = sceneGraph.createNode('PAGE', doc.id, -1, pageOptions as Record<string, unknown>);
+
+      // Import nodes recursively
+      if (page.nodes) {
+        for (const seedNode of page.nodes) {
+          this.importSeedNode(seedNode, newPageId);
+        }
+      }
+    }
+  }
+
+  /**
+   * Import a seed node into the scene graph.
+   */
+  private importSeedNode(node: SeedNode, parentId: NodeId): void {
+    const sceneGraph = this.runtime.getSceneGraph();
+
+    const nodeData = seedToNode(node);
+    const nodeType = (nodeData.type as string) ?? 'FRAME';
+    // Create node with correct argument order: (type, parentId, position, options)
+    const nodeId = sceneGraph.createNode(
+      nodeType as Parameters<typeof sceneGraph.createNode>[0],
+      parentId,
+      -1,
+      nodeData as Record<string, unknown>
+    );
+
+    // Import children recursively
+    if ('children' in node && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        this.importSeedNode(child as SeedNode, nodeId);
+      }
+    }
+  }
+
+  /**
+   * Handle File -> Import -> React Project
+   */
+  private handleImportReactProject(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    (input as HTMLInputElement & { webkitdirectory: boolean }).webkitdirectory = true;
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || files.length === 0) {
+        input.remove();
+        return;
+      }
+
+      try {
+        const importer = new ProjectImporter(this.runtime.getSceneGraph());
+        const result = await importer.importFromFileList(files);
+
+        if (result.importedFiles.length > 0) {
+          // Select the container
+          this.runtime.emit('selection:set', { nodeIds: [result.rootId] });
+
+          // Show success message
+          console.log(`Imported ${result.importedFiles.length} files (${result.totalNodeCount} nodes)`);
+          if (result.warnings.length > 0) {
+            console.warn('Import warnings:', result.warnings);
+          }
+        } else {
+          console.warn('No React files found in selected folder');
+          alert('No React/JSX files found in the selected folder.');
+        }
+      } catch (error) {
+        console.error('Failed to import project:', error);
+        alert(`Failed to import project: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      input.remove();
+    });
+
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  // ============================================================================
+  // Save Handlers
+  // ============================================================================
+
+  /**
+   * Handle File -> Save
+   * Saves to the current file if one exists, otherwise prompts for a new file.
+   */
+  private async handleSave(): Promise<void> {
+    try {
+      // If we have a file handle and the File System Access API is available, save to it
+      if (this.currentFileHandle && 'showSaveFilePicker' in window) {
+        await this.saveToFileHandle(this.currentFileHandle);
+        console.log(`Saved: ${this.currentFileHandle.name}`);
+      } else {
+        // Fall back to Save As behavior if no current file
+        await this.handleSaveAs();
+      }
+
+      // Also save to IndexedDB for autosave/recovery
+      await this.runtime.saveDocument();
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled - not an error
+        return;
+      }
+      console.error('Failed to save file:', error);
+      alert(`Failed to save file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Handle File -> Save As
+   * Always prompts for a new file location.
+   */
+  private async handleSaveAs(): Promise<void> {
+    try {
+      const doc = this.runtime.getSceneGraph().getDocument();
+      const docName = doc?.name ?? 'Untitled';
+      const suggestedName = `${docName}.designlibre`;
+
+      // Check if File System Access API is available
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as unknown as { showSaveFilePicker: (options: FilePickerOptions) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: 'DesignLibre Document',
+              accept: { 'application/designlibre': ['.designlibre'] },
+            },
+            {
+              description: 'Seed Document',
+              accept: { 'application/seed': ['.seed'] },
+            },
+          ],
+        });
+
+        await this.saveToFileHandle(handle);
+
+        // Update current file handle
+        this.currentFileHandle = handle;
+
+        // Track in recent files
+        this.trackRecentFile(handle.name);
+        console.log(`Saved as: ${handle.name}`);
+      } else {
+        // Fall back to download for browsers without File System Access API
+        await this.downloadDocument(suggestedName);
+
+        // Track in recent files (using suggested name for downloads)
+        this.trackRecentFile(suggestedName);
+      }
+
+      // Also save to IndexedDB
+      await this.runtime.saveDocument();
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled - not an error
+        return;
+      }
+      console.error('Failed to save file:', error);
+      alert(`Failed to save file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Handle File -> Save a Copy
+   * Saves a copy without changing the current file.
+   */
+  private async handleSaveCopy(): Promise<void> {
+    try {
+      const doc = this.runtime.getSceneGraph().getDocument();
+      const docName = doc?.name ?? 'Untitled';
+      const suggestedName = `${docName} (copy).designlibre`;
+
+      // Check if File System Access API is available
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as unknown as { showSaveFilePicker: (options: FilePickerOptions) => Promise<FileSystemFileHandle> }).showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: 'DesignLibre Document',
+              accept: { 'application/designlibre': ['.designlibre'] },
+            },
+            {
+              description: 'Seed Document',
+              accept: { 'application/seed': ['.seed'] },
+            },
+          ],
+        });
+
+        await this.saveToFileHandle(handle);
+        // Note: We don't update currentFileHandle here, that's the "copy" behavior
+        console.log(`Saved copy as: ${handle.name}`);
+      } else {
+        // Fall back to download for browsers without File System Access API
+        await this.downloadDocument(suggestedName);
+      }
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        // User cancelled - not an error
+        return;
+      }
+      console.error('Failed to save copy:', error);
+      alert(`Failed to save copy: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Handle File -> Save All
+   * Saves all open documents.
+   */
+  private async handleSaveAll(): Promise<void> {
+    try {
+      // Save current document to IndexedDB
+      await this.runtime.saveDocument();
+
+      // If we have a current file, also save to it
+      if (this.currentFileHandle && 'showSaveFilePicker' in window) {
+        await this.saveToFileHandle(this.currentFileHandle);
+      }
+
+      console.log('All documents saved');
+    } catch (error) {
+      console.error('Failed to save all:', error);
+      alert(`Failed to save all: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Save document to a file handle using File System Access API.
+   */
+  private async saveToFileHandle(handle: FileSystemFileHandle): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const filename = handle.name.toLowerCase();
+
+    let blob: Blob;
+    let urlToRevoke: string | null = null;
+
+    if (filename.endsWith('.seed')) {
+      // Use SeedWriter for .seed files
+      const writer = new SeedWriter(sceneGraph, null);
+      blob = await writer.write();
+    } else {
+      // Use DesignLibreBundler for .designlibre files
+      const bundler = new DesignLibreBundler(sceneGraph);
+      const doc = sceneGraph.getDocument();
+      const result = await bundler.bundle({
+        author: 'DesignLibre User',
+        description: doc?.name ?? 'DesignLibre Document',
+      });
+      blob = result.blob;
+      urlToRevoke = result.url;
+    }
+
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+
+    if (urlToRevoke) {
+      URL.revokeObjectURL(urlToRevoke);
+    }
+  }
+
+  /**
+   * Download document using traditional anchor element (fallback for browsers without FSAA).
+   */
+  private async downloadDocument(filename: string): Promise<void> {
+    const sceneGraph = this.runtime.getSceneGraph();
+    const filenameLower = filename.toLowerCase();
+
+    let blob: Blob;
+    let urlToRevoke: string | null = null;
+
+    if (filenameLower.endsWith('.seed')) {
+      // Use SeedWriter for .seed files
+      const writer = new SeedWriter(sceneGraph, null);
+      blob = await writer.write();
+    } else {
+      // Use DesignLibreBundler for .designlibre files
+      const bundler = new DesignLibreBundler(sceneGraph);
+      const doc = sceneGraph.getDocument();
+      const result = await bundler.bundle({
+        author: 'DesignLibre User',
+        description: doc?.name ?? 'DesignLibre Document',
+      });
+      blob = result.blob;
+      urlToRevoke = result.url;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+    if (urlToRevoke) {
+      URL.revokeObjectURL(urlToRevoke);
+    }
+  }
+}
+
+// File picker types for TypeScript
+interface FilePickerAcceptType {
+  description?: string;
+  accept: Record<string, string[]>;
+}
+
+interface FilePickerOptions {
+  suggestedName?: string;
+  types?: FilePickerAcceptType[];
 }
 
 // Convenience function to show the menu bar

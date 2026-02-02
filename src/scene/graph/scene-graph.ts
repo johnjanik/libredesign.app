@@ -30,7 +30,9 @@ import {
   isValidParentChild,
   getNodeDepth,
   findCommonAncestor,
+  duplicateNode as duplicateNodeTree,
 } from './tree-operations';
+import { generateNodeId } from '@core/utils/uuid';
 import { generateFirstIndex } from './fractional-index';
 
 /**
@@ -599,6 +601,48 @@ export class SceneGraph extends EventEmitter<SceneGraphEvents> {
     reorderNode(this.registry, nodeId, newPosition);
 
     this.emit('node:childrenReordered', { parentId: node.parentId });
+  }
+
+  /**
+   * Duplicate a node and all its descendants.
+   * Returns the new node ID, or null if duplication failed.
+   */
+  duplicateNode(nodeId: NodeId, offset?: { x?: number; y?: number }): NodeId | null {
+    const node = this.registry.getNode(nodeId);
+    if (!node) return null;
+
+    const cloned = duplicateNodeTree(this.registry, nodeId, generateNodeId, offset);
+    if (!cloned) return null;
+
+    // Emit creation events for the duplicated tree
+    const emitCreated = (n: NodeData): void => {
+      this.emit('node:created', { nodeId: n.id, nodeType: n.type });
+      for (const childId of n.childIds) {
+        const child = this.registry.getNode(childId);
+        if (child) emitCreated(child);
+      }
+    };
+
+    const duplicated = this.registry.getNode(cloned.id);
+    if (duplicated) {
+      emitCreated(duplicated);
+    }
+
+    return cloned.id;
+  }
+
+  /**
+   * Duplicate multiple nodes. Returns array of new node IDs.
+   */
+  duplicateNodes(nodeIds: NodeId[], offset?: { x?: number; y?: number }): NodeId[] {
+    const newIds: NodeId[] = [];
+    for (const nodeId of nodeIds) {
+      const newId = this.duplicateNode(nodeId, offset);
+      if (newId) {
+        newIds.push(newId);
+      }
+    }
+    return newIds;
   }
 
   /**

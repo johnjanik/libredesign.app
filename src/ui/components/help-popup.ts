@@ -229,7 +229,7 @@ export class HelpPopup {
     });
     visitBtn.addEventListener('click', () => {
       // TBD - will be replaced with actual help site URL
-      window.open('https://designlibre.app/help', '_blank');
+      window.open('https://designlibre.app.practicallyzen.com/help', '_blank');
     });
     helpSection.appendChild(visitBtn);
 
@@ -255,8 +255,8 @@ export class HelpPopup {
 
     const links = [
       { label: 'Keyboard Shortcuts', action: () => this.openShortcuts() },
-      { label: 'Report an Issue', url: 'https://github.com/designlibre/designlibre/issues' },
-      { label: 'Join Community', url: 'https://discord.gg/designlibre' },
+      { label: 'Report an Issue', url: 'https://github.com/designlibre-app' },
+      { label: 'Join Community', url: 'https://discord.com/channels/1459794666848387156/1459794667565748388' },
     ];
 
     for (const link of links) {
